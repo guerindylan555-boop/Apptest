@@ -1,5 +1,5 @@
 import StreamPlaceholder from './StreamPlaceholder';
-import type { StreamTicket } from '../services/streamClient';
+import type { StreamTicket } from '../services/backendClient';
 import '../styles/stream.css';
 
 interface StreamViewerProps {
@@ -21,11 +21,11 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
       className="stream-viewer"
       style={{
         width: '100%',
-        maxWidth: '1280px',
-        minHeight: '900px',
+        maxWidth: '420px',
+        aspectRatio: '9 / 16',
         background: '#000',
         border: 'none',
-        borderRadius: '8px'
+        borderRadius: '16px'
       }}
       allow="autoplay; fullscreen"
     />

@@ -41,7 +41,8 @@ export const issueStreamTicket = async () => {
     action: 'stream',
     udid: emulatorSerial,
     player,
-    ws: proxyUrl.toString()
+    ws: proxyUrl.toString(),
+    embedded: '1'
   });
 
   const httpUrl = `http://${streamHost}:${streamPort}/#!${hashParams.toString()}`;
