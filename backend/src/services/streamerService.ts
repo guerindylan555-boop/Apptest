@@ -30,7 +30,7 @@ export const issueStreamTicket = async () => {
   const streamHost = process.env.WS_SCRCPY_HOST ?? streamConfig.host;
   const streamPort = process.env.WS_SCRCPY_PORT ?? '8000';
   const player = process.env.WS_SCRCPY_PLAYER ?? 'broadway';
-  const remote = process.env.WS_SCRCPY_REMOTE ?? 'tcp:27183';
+  const remote = process.env.WS_SCRCPY_REMOTE ?? 'tcp:8886';
 
   const proxyUrl = new URL(`ws://${streamHost}:${streamPort}/`);
   proxyUrl.searchParams.set('action', 'proxy-adb');
