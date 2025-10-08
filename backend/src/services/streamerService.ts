@@ -45,7 +45,8 @@ export const issueStreamTicket = async () => {
     embedded: '1'
   });
 
-  const httpUrl = `http://${streamHost}:${streamPort}/#!${hashParams.toString()}`;
+  const hashString = hashParams.toString().replace(/%253A/g, '%3A');
+  const httpUrl = `http://${streamHost}:${streamPort}/#!${hashString}`;
 
   const record = sessionStore.generateStreamTicket(emulatorSerial, httpUrl);
   return {
