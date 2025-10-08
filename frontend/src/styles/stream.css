@@ -1,6 +1,6 @@
 .stream-viewer {
-  width: min(860px, 100%);
-  aspect-ratio: 16 / 9;
+  width: min(1280px, 100%);
+  min-height: 900px;
   border-radius: 1rem;
   background: #000;
   border: 1px solid rgba(148, 163, 184, 0.3);

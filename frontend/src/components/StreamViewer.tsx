@@ -22,13 +22,12 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
       style={{
         width: '100%',
         maxWidth: '1280px',
-        height: '800px',
+        minHeight: '900px',
         background: '#000',
         border: 'none',
         borderRadius: '8px'
       }}
       allow="autoplay; fullscreen"
-      sandbox="allow-scripts allow-same-origin"
     />
   );
 };
