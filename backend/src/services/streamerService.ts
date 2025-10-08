@@ -50,6 +50,8 @@ export const issueStreamTicket = async () => {
   return {
     token: record.token,
     url: httpUrl,
+    wsUrl: proxyUrl.toString(),
+    player,
     expiresAt: new Date(record.expiresAt).toISOString()
   };
 };

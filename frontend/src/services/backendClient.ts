@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_BACKEND_URL ?? 'http://127.0.0.1:8080/api';
+const API_BASE = import.meta.env.VITE_BACKEND_URL ?? 'http://127.0.0.1:7070/api';
 
 type EmulatorState = 'Stopped' | 'Booting' | 'Running' | 'Stopping' | 'Error';
 
@@ -21,6 +21,8 @@ export interface StreamTicket {
   url: string;
   token: string;
   expiresAt: string;
+  wsUrl?: string;
+  player?: string;
 }
 
 const request = async <T>(path: string, options?: RequestInit): Promise<T> => {
