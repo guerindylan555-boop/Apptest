@@ -22,6 +22,7 @@ Local-only web UI for Android emulator control with read-only WebSocket streamin
    - Ensure `ANDROID_HOME` and `ANDROID_SDK_ROOT` are set
    - Verify AVD exists: `emulator -list-avds`
    - Configure environment variables (see backend/.env.example)
+   - Optional: override stream defaults via `WS_SCRCPY_HOST`, `WS_SCRCPY_PORT`, `WS_SCRCPY_PLAYER`, `WS_SCRCPY_REMOTE`
    - Clone and bootstrap ws-scrcpy (once per machine):
      ```bash
      git clone https://github.com/NetrisTV/ws-scrcpy

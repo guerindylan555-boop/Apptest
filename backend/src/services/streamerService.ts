@@ -27,16 +27,24 @@ export const issueStreamTicket = async () => {
   await ensureStreamer();
   const emulatorSerial = await getEmulatorSerial();
 
-  const streamHost = process.env.WS_SCRCPY_HOST ?? '127.0.0.1';
+  const streamHost = process.env.WS_SCRCPY_HOST ?? streamConfig.host;
   const streamPort = process.env.WS_SCRCPY_PORT ?? '8000';
-  const player = process.env.WS_SCRCPY_PLAYER ?? 'mse';
-  const query = new URLSearchParams({
+  const player = process.env.WS_SCRCPY_PLAYER ?? 'broadway';
+  const remote = process.env.WS_SCRCPY_REMOTE ?? 'tcp:27183';
+
+  const proxyUrl = new URL(`ws://${streamHost}:${streamPort}/`);
+  proxyUrl.searchParams.set('action', 'proxy-adb');
+  proxyUrl.searchParams.set('remote', remote);
+  proxyUrl.searchParams.set('udid', emulatorSerial);
+
+  const hashParams = new URLSearchParams({
     action: 'stream',
     udid: emulatorSerial,
-    player
+    player,
+    ws: proxyUrl.toString()
   });
 
-  const httpUrl = `http://${streamHost}:${streamPort}/?${query.toString()}`;
+  const httpUrl = `http://${streamHost}:${streamPort}/#!${hashParams.toString()}`;
 
   const record = sessionStore.generateStreamTicket(emulatorSerial, httpUrl);
   return {

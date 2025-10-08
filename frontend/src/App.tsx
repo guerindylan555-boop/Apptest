@@ -11,7 +11,7 @@ import { useHealthPoller } from './hooks/useHealthPoller';
 const App = () => {
   const emulatorState = useAppStore((state) => state.emulatorState);
   const isTransitioning = useAppStore((state) => state.isTransitioning);
-  const streamUrl = useAppStore((state) => state.streamUrl);
+  const streamTicket = useAppStore((state) => state.streamTicket);
   const setState = useAppStore((state) => state.setState);
   const setTransitioning = useAppStore((state) => state.setTransitioning);
   const lastError = useAppStore((state) => state.lastError);
@@ -45,7 +45,9 @@ const App = () => {
   }, [emulatorState, setState, setTransitioning]);
 
   const isRunning = emulatorState === 'Running';
-  const buttonLabel = isRunning ? 'Stop Emulator' : 'Start Emulator';
+  const buttonLabel = emulatorState === 'Stopping' ? 'Stopping...' :
+                     emulatorState === 'Booting' ? 'Starting...' :
+                     isRunning ? 'Stop Emulator' : 'Start Emulator';
   const intent = isRunning ? 'stop' : 'start';
   const disableButton =
     isTransitioning || emulatorState === 'Stopping' || emulatorState === 'Booting';
@@ -67,6 +69,33 @@ const App = () => {
     }
   }, [setState, setTransitioning]);
 
+  const handleRetry = useCallback(async () => {
+    setTransitioning(true);
+    try {
+      setState({ lastError: undefined });
+      if (emulatorState === 'Error' || emulatorState === 'Stopped') {
+        await startEmulator();
+      }
+    } catch (error) {
+      setState({
+        lastError: {
+          code: 'RETRY_FAILED',
+          message: error instanceof Error ? error.message : 'Retry failed'
+        }
+      });
+    } finally {
+      setTransitioning(false);
+    }
+  }, [emulatorState, setState, setTransitioning]);
+
+  // Determine if retry action should be shown
+  const showRetry = lastError && (
+    lastError.code === 'BOOT_FAILED' ||
+    lastError.code === 'STREAM_TICKET_FAILED' ||
+    lastError.code === 'RETRY_FAILED' ||
+    lastError.code === 'HEALTH_UNREACHABLE'
+  );
+
   return (
     <div style={{ fontFamily: 'Inter, system-ui, sans-serif', padding: '2rem' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
@@ -77,21 +106,30 @@ const App = () => {
         <StateBadge state={emulatorState} />
       </header>
 
-      <main style={{ display: 'grid', gap: '1.5rem' }}>
+      <main
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '1.5rem'
+        }}
+      >
         {lastError && (
           <ErrorBanner
             message={lastError.message}
             hint={lastError.hint}
             logsPath="var/log/autoapp/backend.log"
-            actionLabel={forceStopRequired ? 'Force Stop' : undefined}
-            onAction={forceStopRequired ? handleForceStop : undefined}
+            actions={[
+              ...(forceStopRequired ? [{ label: 'Force Stop', onClick: handleForceStop, primary: true }] : []),
+              ...(showRetry ? [{ label: 'Retry', onClick: handleRetry }] : [])
+            ]}
           />
         )}
-        <section style={{ display: 'grid', placeItems: 'center' }}>
-          <StreamViewer state={emulatorState} src={streamUrl} />
+        <section style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+          <StreamViewer state={emulatorState} streamTicket={streamTicket} />
         </section>
 
-        <section>
+        <section style={{ display: 'flex', justifyContent: 'center' }}>
           <ControlButton
             label={buttonLabel}
             intent={intent}
@@ -101,12 +139,14 @@ const App = () => {
           />
         </section>
 
-        <DiagnosticsDrawer
-          pid={pid}
-          bootElapsedMs={bootElapsedMs}
-          ports={ports}
-          lastError={lastError}
-        />
+        <div style={{ alignSelf: 'stretch' }}>
+          <DiagnosticsDrawer
+            pid={pid}
+            bootElapsedMs={bootElapsedMs}
+            ports={ports}
+            lastError={lastError}
+          />
+        </div>
       </main>
     </div>
   );
