@@ -1,0 +1,98 @@
+diff --git a/src/app/googDevice/client/StreamClientScrcpy.ts b/src/app/googDevice/client/StreamClientScrcpy.ts
+index 29e8f9c..5c83e57 100644
+--- a/src/app/googDevice/client/StreamClientScrcpy.ts
++++ b/src/app/googDevice/client/StreamClientScrcpy.ts
+@@ -293,6 +293,9 @@ export class StreamClientScrcpy
+ 
+         const deviceView = document.createElement('div');
+         deviceView.className = 'device-view';
++        if (document.body.classList.contains('embedded')) {
++            deviceView.classList.add('embedded-view');
++        }
+         const stop = (ev?: string | Event) => {
+             if (ev && ev instanceof Event && ev.type === 'error') {
+                 console.error(TAG, ev);
+@@
+         document.body.appendChild(deviceView);
+         if (fitToScreen) {
+             const newBounds = this.getMaxSize();
+             if (newBounds) {
+                 videoSettings = StreamClientScrcpy.createVideoSettingsWithBounds(videoSettings, newBounds);
+             }
+         }
+         this.applyNewVideoSettings(videoSettings, false);
+         const element = player.getTouchableElement();
+         const logger = new DragAndPushLogger(element);
+         this.filePushHandler = new FilePushHandler(element, new ScrcpyFilePushStream(this.streamReceiver));
+         this.filePushHandler.addEventListener(logger);
+diff --git a/src/app/index.ts b/src/app/index.ts
+index cbc7a28..e3da2e3 100644
+--- a/src/app/index.ts
++++ b/src/app/index.ts
+@@ -6,6 +6,10 @@ import { Tool } from './client/Tool';
+ window.onload = async function (): Promise<void> {
+     const hash = location.hash.replace(/^#!/, '');
+     const parsedQuery = new URLSearchParams(hash);
++    const isEmbedded = parsedQuery.get('embedded') === '1';
++    if (isEmbedded) {
++        document.body.classList.add('embedded');
++    }
+     const action = parsedQuery.get('action');
+ 
+     /// #if USE_BROADWAY
+diff --git a/src/style/app.css b/src/style/app.css
+index e13218c..d92ce46 100644
+--- a/src/style/app.css
++++ b/src/style/app.css
+@@ -82,6 +82,51 @@ body.stream {
+     background-color: var(--stream-bg-color);
+ }
+ 
++body.embedded {
++    background: transparent;
++    display: flex;
++    align-items: center;
++    justify-content: center;
++    padding: 0;
++}
++
++body.embedded .device-view.embedded-view {
++    float: none;
++    width: 100%;
++    max-width: 420px;
++    aspect-ratio: 9 / 16;
++    border-radius: 16px;
++    overflow: hidden;
++    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.45);
++    background: rgba(0, 0, 0, 0.9);
++    display: flex;
++    flex-direction: column;
++}
++
++body.embedded .device-view.embedded-view .control-buttons-list,
++body.embedded .device-view.embedded-view .goog-more-box,
++body.embedded .device-view.embedded-view .services,
++body.embedded .device-view.embedded-view .device-header,
++body.embedded .device-view.embedded-view .more-box {
++    display: none !important;
++}
++
++body.embedded .device-view.embedded-view .video {
++    float: none;
++    width: 100%;
++    height: 100%;
++    display: flex;
++    align-items: center;
++    justify-content: center;
++    background: #000;
++}
++
++body.embedded .device-view.embedded-view canvas {
++    width: 100% !important;
++    height: 100% !important;
++    object-fit: contain;
++}
++
+ .terminal-container {
+     width: 100%;
+     height: 100%;

@@ -42,6 +42,14 @@ start_ws_scrcpy() {
     npm install
   fi
 
+  if ! grep -q 'embedded-view' src/style/app.css 2>/dev/null; then
+    if git apply "$ROOT_DIR/scripts/ws-scrcpy-embedded.patch"; then
+      echo "[run-everything] Applied embedded-mode patch to ws-scrcpy"
+    else
+      echo "[run-everything] Warning: failed to apply embedded patch (maybe already applied)" >&2
+    fi
+  fi
+
   echo "[run-everything] Starting ws-scrcpy"
   nohup npm start > "$WS_SCRCPY_LOG" 2>&1 &
   WS_PID=$!
