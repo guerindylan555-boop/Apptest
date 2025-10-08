@@ -82,7 +82,7 @@ main() {
   echo "  ws-scrcpy log: $WS_SCRCPY_LOG"
   echo "  backend log: $BACKEND_LOG"
   echo "  frontend log: $FRONTEND_LOG"
-  echo "[run-everything] Give ws-scrcpy a few seconds to build and start, then open http://127.0.0.1:8000/ to enable 'proxy over adb'."
+  echo "[run-everything] Embedded stream is auto-configured; the ws-scrcpy dashboard remains available at http://127.0.0.1:8000/ if you need to inspect it."
 }
 
 main "$@"
