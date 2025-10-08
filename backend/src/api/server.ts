@@ -1,11 +1,26 @@
 import express from 'express';
 import type { Express } from 'express';
+import cors from 'cors';
 import { apiRouter } from './routes';
 
 export const createServer = (): Express => {
   const app = express();
 
   app.disable('x-powered-by');
+
+  // Enable CORS for local development
+  const allowedOrigins = [
+    'http://127.0.0.1:8080',
+    'http://localhost:8080',
+    'http://127.0.0.1:8081',
+    'http://localhost:8081'
+  ];
+
+  app.use(cors({
+    origin: allowedOrigins,
+    credentials: false
+  }));
+
   app.use(express.json());
 
   app.use('/api', apiRouter);

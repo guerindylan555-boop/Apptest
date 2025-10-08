@@ -1,63 +1,121 @@
-# Quickstart — Web UI: Read-Only Android Stream + Start/Stop Emulator (v1)
+# Quickstart — AutoApp Emulator Control UI
+
+## Overview
+Local-only web UI for Android emulator control with read-only WebSocket streaming. Features start/stop lifecycle, an embedded ws-scrcpy player, and comprehensive error handling.
 
 ## Prerequisites
-- Ubuntu 25.04 host with ≥6 vCPU, ≥12 GB RAM
-- Android SDK command-line tools installed (sdkmanager, avdmanager, emulator, adb available in `PATH`)
-- Node.js 20 LTS and npm (or pnpm) installed locally
-- Chromium- or Firefox-based browser with Media Source Extensions (MSE) enabled
+- Node.js 20 LTS or later
+- Android SDK tools with emulator and ADB
+- AVD (Android Virtual Device) configured
+- `adb` and `emulator` commands in PATH
+- ws-scrcpy bridge installed and accessible
 
-## One-Time Setup
-1. **Install Android system image & create AVD**
-   ```bash
-   # From repository root
-   ./scripts/setup-avd.sh
-   ```
-   - Installs `system-images;android-34;google_apis;x86_64`
-   - Creates rooted AVD named `autoapp-local`
-2. **Install JavaScript dependencies**
+## Setup
+
+1. **Install dependencies**
    ```bash
    cd backend && npm install
    cd ../frontend && npm install
    ```
-3. **Bootstrap ws-scrcpy**
+
+2. **Environment Configuration**
+   - Ensure `ANDROID_HOME` and `ANDROID_SDK_ROOT` are set
+   - Verify AVD exists: `emulator -list-avds`
+   - Configure environment variables (see backend/.env.example)
+   - Clone and bootstrap ws-scrcpy (once per machine):
+     ```bash
+     git clone https://github.com/NetrisTV/ws-scrcpy
+     cd ws-scrcpy && npm install
+     ```
+
+## Development
+
+1. **Start ws-scrcpy streamer**
    ```bash
-   npm install --global ws-scrcpy
+   cd path/to/ws-scrcpy
+   npm start
    ```
-   (Alternatively add `ws-scrcpy` as a backend dependency and expose via npm scripts.)
+   - Open `http://127.0.0.1:8000/` → gear icon → select **proxy over adb**
 
-## Running the Stack (Development)
-1. Run the helper script to launch backend, streamer, and frontend together:
+2. **Start Backend**
    ```bash
-   ./scripts/run-local.sh
+   cd backend
+   npm run dev
    ```
-   - Backend API → http://127.0.0.1:8080
-   - ws-scrcpy streamer → ws://127.0.0.1:8081
-   - Frontend SPA → http://127.0.0.1:5173
-2. Open the control UI at `http://127.0.0.1:5173`.
-3. Prefer manual control? Start each service in separate terminals:
+   - API available at `http://127.0.0.1:7070`
+   - Health endpoint: `GET /api/health`
+   - Logs written to `var/log/autoapp/backend.log`
+
+3. **Start Frontend**
    ```bash
-   # Backend API
-   cd backend && npm run dev
-
-   # Streamer (requires ws-scrcpy installed globally)
-   ws-scrcpy --address 127.0.0.1 --port 8081 --serial emulator-5555 --disable-control
-
-   # Frontend
-   cd frontend && npm run dev -- --host 127.0.0.1 --port 5173
+   cd frontend
+   npm run dev
    ```
+   - UI available at `http://127.0.0.1:8080`
+   - Hot reload enabled for development
 
-## Operational Flow
-1. Click **Start Emulator** → backend enters Booting, launches emulator headless, waits for `sys.boot_completed`.
-2. When Running, the UI auto-requests `/stream/url`, receives a one-time ws-scrcpy URL, and renders the stream read-only.
-3. Click **Stop Emulator** to trigger console kill ladder; backend stops ws-scrcpy and returns to Stopped.
-4. On errors, the UI presents a banner with a link to backend/emulator logs (see `var/log/autoapp/*.log`).
+## Usage Workflow
+
+1. **Start Emulator**
+   - Click "Start Emulator" button
+   - Monitor state badge: Stopped → Booting → Running
+   - Boot typically takes 30-60 seconds
+
+2. **Stream Validation**
+   - When state shows "Running", the embedded ws-scrcpy player should appear
+   - The iframe points to `http://127.0.0.1:8000/?action=stream&udid=<serial>&player=mse`
+   - Switch players in the ws-scrcpy UI if MSE fails (e.g., TinyH264)
+
+3. **Stop Emulator**
+   - Click "Stop Emulator" for graceful shutdown
+   - State transitions: Running → Stopping → Stopped
+   - Stream automatically disconnects and clears canvas
+
+4. **Error Recovery**
+   - **Normal failures**: Use "Retry" button for boot/stream issues
+   - **Stuck processes**: Use "Force Stop" when normal stop fails
+   - **Backend issues**: Check logs at `var/log/autoapp/backend.log`
+
+## Stream Embedding
+- UI renders the ws-scrcpy player inside an iframe
+- Player selection (MSE/WebCodecs/TinyH264) managed via ws-scrcpy controls
+- Placeholder shown while emulator boots or stops
+
+## Force Stop Guidance
+- Only use when normal stop sequence fails
+- Terminates emulator process forcefully
+- May leave orphaned processes requiring manual cleanup
+- Check system processes: `ps aux | grep emulator`
 
 ## Testing
-- Backend integration tests: `cd backend && npm test`
-- UI component tests: `cd frontend && npm test`
-- End-to-end smoke (mocked backend): `cd frontend && npm run test:e2e`
 
-## Cleanup
-- Stop dev servers (Ctrl+C)
-- Remove AVD if needed: `avdmanager delete avd -n autoapp-local`
-- Logs retained for 30 days under `var/log/autoapp/`
+**Backend Tests**
+```bash
+cd backend
+npm test
+```
+
+**Frontend Tests**
+```bash
+cd frontend
+npm test
+```
+
+**Linting**
+```bash
+# Both directories
+npm run lint
+```
+
+## Troubleshooting
+
+1. **Boot timeout**: Increase `EMULATOR_BOOT_TIMEOUT_MS` in backend/.env
+2. **Port conflicts**: Check `EMULATOR_CONSOLE_PORT` and `EMULATOR_ADB_PORT`
+3. **ADB issues**: Verify device connectivity: `adb devices`
+4. **Stream problems**: Ensure ws-scrcpy bridge is running
+5. **Permission issues**: Check backend log file permissions
+
+## Log Locations
+- **Backend**: `var/log/autoapp/backend.log`
+- **Frontend**: Browser developer console
+- **Streamer**: Integrated with backend logger

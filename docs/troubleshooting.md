@@ -20,10 +20,19 @@
 **Symptoms**: Banner shows "Stream unavailable; retrying…" while emulator reports Running.
 
 **Checks**
-1. Verify `ws-scrcpy` is installed and executable in PATH.
-2. Ensure streamer port 8081 is free: `ss -ltn sport = :8081`.
-3. Restart streamer manually: `ws-scrcpy --address 127.0.0.1 --port 8081 --serial emulator-5555 --disable-control`.
-4. Confirm Chrome/Firefox supports Media Source Extensions; reload UI after streamer is healthy.
+1. Run the standalone ws-scrcpy bridge locally:
+   ```bash
+   # once per machine
+   git clone https://github.com/NetrisTV/ws-scrcpy
+   cd ws-scrcpy
+   npm install
+
+   # start the bridge (listens on http://127.0.0.1:8000)
+   npm start
+   ```
+2. In the ws-scrcpy UI (gear icon → Interfaces) pick **proxy over adb** when targeting Android emulators.
+3. Ensure the stream endpoint responds: `curl -I http://127.0.0.1:8000/?action=stream&udid=emulator-5555` should return `200`.
+4. Reload the AutoApp UI; the iframe should display the ws-scrcpy player once the bridge reports "Connected".
 
 ### Health endpoint unreachable
 **Symptoms**: UI switches to Error with hint to check backend service.

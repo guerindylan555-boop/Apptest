@@ -1,44 +1,34 @@
-import { useEffect, useRef } from 'react';
 import StreamPlaceholder from './StreamPlaceholder';
+import type { StreamTicket } from '../services/streamClient';
 import '../styles/stream.css';
 
 interface StreamViewerProps {
-  src?: string;
+  streamTicket?: StreamTicket;
   state: 'Stopped' | 'Booting' | 'Running' | 'Stopping' | 'Error';
 }
 
-const StreamViewer = ({ src, state }: StreamViewerProps) => {
-  const videoRef = useRef<HTMLVideoElement | null>(null);
+const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
+  console.log('[StreamViewer]', { state, hasTicket: !!streamTicket, ticket: streamTicket });
 
-  useEffect(() => {
-    const video = videoRef.current;
-    if (!video) {
-      return;
-    }
-    if (!src) {
-      video.pause();
-      video.removeAttribute('src');
-      video.load();
-      return;
-    }
-    video.src = src;
-    void video.play().catch(() => {
-      // playback errors are surfaced via UI banner elsewhere
-    });
-  }, [src]);
-
-  if (!src || state !== 'Running') {
+  if (!streamTicket || state !== 'Running') {
     return <StreamPlaceholder />;
   }
 
   return (
-    <video
-      ref={videoRef}
+    <iframe
+      title="Emulator Stream"
+      src={streamTicket.url}
       className="stream-viewer"
-      aria-label="Android emulator live stream"
-      muted
-      playsInline
-      autoPlay
+      style={{
+        width: '100%',
+        maxWidth: '1280px',
+        height: '800px',
+        background: '#000',
+        border: 'none',
+        borderRadius: '8px'
+      }}
+      allow="autoplay; fullscreen"
+      sandbox="allow-scripts allow-same-origin"
     />
   );
 };

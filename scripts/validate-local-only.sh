@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-PORTS=(8080 8081 5173)
+PORTS=(7070 8080 8000)
 
 collect_listeners() {
   if command -v ss >/dev/null 2>&1; then
