@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import StreamPlaceholder from './StreamPlaceholder';
 import type { StreamTicket } from '../services/backendClient';
 import { fetchStreamUrl } from '../services/backendClient';
+import { useAppStore } from '../state/useAppStore';
 import '../styles/stream.css';
 
 interface StreamViewerProps {
@@ -11,6 +12,7 @@ interface StreamViewerProps {
 
 const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
   const [localTicket, setLocalTicket] = useState<StreamTicket | undefined>(streamTicket);
+  const setGlobalState = useAppStore((state) => state.setState);
   const activeTicket = streamTicket ?? localTicket;
 
   useEffect(() => {
@@ -29,6 +31,7 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
       .then((ticket) => {
         if (!cancelled) {
           setLocalTicket(ticket);
+          setGlobalState({ streamTicket: ticket });
         }
       })
       .catch((error) => {
@@ -41,7 +44,7 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
     return () => {
       cancelled = true;
     };
-  }, [state, streamTicket?.token]);
+  }, [state, streamTicket?.token, setGlobalState]);
 
   if (state !== 'Running' || !activeTicket) {
     return <StreamPlaceholder />;
