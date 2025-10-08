@@ -1,0 +1,14 @@
+.stream-viewer {
+  width: min(420px, 100%);
+  aspect-ratio: 9 / 16;
+  border-radius: 1rem;
+  background: #000;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  pointer-events: none;
+  user-select: none;
+  box-shadow: 0 20px 60px rgba(15, 23, 42, 0.45);
+}
+
+.stream-viewer::-webkit-media-controls {
+  display: none !important;
+}
