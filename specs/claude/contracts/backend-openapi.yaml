@@ -1,0 +1,167 @@
+openapi: 3.0.3
+info:
+  title: Local Emulator Control API
+  version: 1.0.0
+  description: >-
+    Local-only HTTP interface for starting/stopping the rooted Android emulator
+    and retrieving stream tickets.
+servers:
+  - url: http://127.0.0.1:8080
+paths:
+  /health:
+    get:
+      summary: Retrieve emulator health snapshot
+      responses:
+        '200':
+          description: Current state and diagnostics
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthResponse'
+  /emulator/start:
+    post:
+      summary: Initiate emulator boot sequence
+      responses:
+        '202':
+          description: Boot sequence accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StartResponse'
+        '409':
+          description: Emulator already booting or running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Boot failed to launch
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /emulator/stop:
+    post:
+      summary: Begin controlled shutdown sequence
+      responses:
+        '202':
+          description: Stop sequence accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StopResponse'
+        '409':
+          description: Emulator already stopping or stopped
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '500':
+          description: Stop ladder failed
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /stream/url:
+    get:
+      summary: Obtain single-use stream URL when emulator is running
+      responses:
+        '200':
+          description: Stream ticket issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamUrlResponse'
+        '409':
+          description: Emulator not ready for streaming
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    HealthResponse:
+      type: object
+      required: [state, avd, timestamps]
+      properties:
+        state:
+          type: string
+          enum: [Stopped, Booting, Running, Stopping, Error]
+        avd:
+          type: string
+        bootElapsedMs:
+          type: integer
+          nullable: true
+        pid:
+          type: integer
+          nullable: true
+        ports:
+          type: object
+          nullable: true
+          properties:
+            console:
+              type: integer
+            adb:
+              type: integer
+        streamAttached:
+          type: boolean
+        lastError:
+          $ref: '#/components/schemas/ErrorDetail'
+        timestamps:
+          type: object
+          properties:
+            bootStartedAt:
+              type: string
+              format: date-time
+              nullable: true
+            bootCompletedAt:
+              type: string
+              format: date-time
+              nullable: true
+    StartResponse:
+      type: object
+      required: [state]
+      properties:
+        state:
+          type: string
+          enum: [Booting]
+        message:
+          type: string
+    StopResponse:
+      type: object
+      required: [state]
+      properties:
+        state:
+          type: string
+          enum: [Stopping]
+        message:
+          type: string
+    StreamUrlResponse:
+      type: object
+      required: [url, token]
+      properties:
+        url:
+          type: string
+          format: uri
+        token:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetail'
+    ErrorDetail:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        hint:
+          type: string
+          nullable: true

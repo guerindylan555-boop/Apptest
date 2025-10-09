@@ -1,0 +1,331 @@
+openapi: 3.0.3
+info:
+  title: APK Management & Security Testing API
+  version: 1.0.0
+  description: Localhost-only API for APK upload, Frida control, traffic capture, and MobSF scanning
+
+servers:
+  - url: http://127.0.0.1:3000/api
+    description: Local development server
+
+paths:
+  /apk/upload:
+    post:
+      summary: Upload and verify APK
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                apk:
+                  type: string
+                  format: binary
+      responses:
+        '201':
+          description: APK uploaded and metadata extracted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APKProject'
+        '400':
+          description: Invalid APK file
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /apk/{projectId}/install:
+    post:
+      summary: Install APK on emulator
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Installation successful
+        '409':
+          description: Installation failed (signature mismatch, insufficient storage, etc.)
+
+  /apk/{projectId}/launch:
+    post:
+      summary: Launch installed app
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: App launched
+        '404':
+          description: App not installed
+
+  /apk/{projectId}/uninstall:
+    delete:
+      summary: Uninstall app from emulator
+      parameters:
+        - name: projectId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: App uninstalled
+
+  /frida/start:
+    post:
+      summary: Start Frida server on emulator
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                projectId:
+                  type: string
+      responses:
+        '200':
+          description: Frida server started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FridaSession'
+        '412':
+          description: Version/arch mismatch or emulator not rooted
+
+  /frida/stop:
+    post:
+      summary: Stop Frida server
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                projectId:
+                  type: string
+      responses:
+        '200':
+          description: Frida server stopped
+
+  /traffic/start:
+    post:
+      summary: Start mitmproxy traffic capture
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                projectId:
+                  type: string
+                proxyPort:
+                  type: number
+                  default: 8080
+      responses:
+        '200':
+          description: Traffic capture started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrafficCaptureSession'
+        '409':
+          description: Port already in use
+
+  /traffic/stop:
+    post:
+      summary: Stop traffic capture
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                projectId:
+                  type: string
+      responses:
+        '200':
+          description: Traffic capture stopped
+
+  /traffic/ca-install:
+    post:
+      summary: Install proxy CA on emulator (user-trusted)
+      responses:
+        '200':
+          description: CA installed (user-trusted)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [UserTrusted]
+                  instructions:
+                    type: string
+
+  /mobsf/scan:
+    post:
+      summary: Trigger MobSF static scan (opt-in)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                projectId:
+                  type: string
+      responses:
+        '202':
+          description: Scan queued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobSFScanResult'
+        '503':
+          description: MobSF not available
+
+  /mobsf/scan/{scanId}:
+    get:
+      summary: Get scan status and results
+      parameters:
+        - name: scanId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Scan status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MobSFScanResult'
+
+  /status:
+    get:
+      summary: Get system status
+      responses:
+        '200':
+          description: System status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  emulator:
+                    type: string
+                    enum: [Running, Stopped, Error]
+                  currentProject:
+                    $ref: '#/components/schemas/APKProject'
+                  frida:
+                    $ref: '#/components/schemas/FridaSession'
+                  traffic:
+                    $ref: '#/components/schemas/TrafficCaptureSession'
+
+components:
+  schemas:
+    APKProject:
+      type: object
+      properties:
+        id:
+          type: string
+        packageName:
+          type: string
+        versionName:
+          type: string
+        versionCode:
+          type: number
+        minSdkVersion:
+          type: number
+        targetSdkVersion:
+          type: number
+        sha256:
+          type: string
+        signingCert:
+          type: object
+          properties:
+            issuer:
+              type: string
+            sha256:
+              type: string
+        uploadedAt:
+          type: string
+          format: date-time
+        isPinned:
+          type: boolean
+
+    FridaSession:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [Stopped, Starting, Running, Stopping, Error]
+        deviceArch:
+          type: string
+        serverVersion:
+          type: string
+        hostVersion:
+          type: string
+        serverPid:
+          type: number
+        errorMessage:
+          type: string
+
+    TrafficCaptureSession:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [Stopped, Starting, Running, Stopping, Error]
+        proxyPort:
+          type: number
+        caStatus:
+          type: string
+          enum: [NotInstalled, UserTrusted]
+        flowCount:
+          type: number
+        errorMessage:
+          type: string
+
+    MobSFScanResult:
+      type: object
+      properties:
+        scanId:
+          type: string
+        status:
+          type: string
+          enum: [Queued, Scanning, Complete, Error]
+        permissions:
+          type: array
+          items:
+            type: string
+        trackers:
+          type: array
+          items:
+            type: string
+        vulnerableLibs:
+          type: array
+          items:
+            type: object
+        securityScore:
+          type: number
+        reportPath:
+          type: string
+        errorMessage:
+          type: string
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: string

@@ -7,8 +7,14 @@ const POLL_INTERVAL_MS = 1000;
 export const useHealthPoller = () => {
   const setState = useAppStore((state) => state.setState);
   const setTransitioning = useAppStore((state) => state.setTransitioning);
-  const streamUrl = useAppStore((state) => state.streamUrl);
+  const streamTicket = useAppStore((state) => state.streamTicket);
   const forceStopRequired = useAppStore((state) => state.forceStopRequired);
+
+  // Check if ticket is expired
+  const isTicketExpired = (ticket?: { expiresAt: string }): boolean => {
+    if (!ticket) return true;
+    return new Date(ticket.expiresAt) <= new Date();
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -16,6 +22,14 @@ export const useHealthPoller = () => {
       try {
         const payload = await fetchHealth();
         if (cancelled) return;
+
+        console.log('[Health Poll]', {
+          state: payload.state,
+          streamAttached: payload.streamAttached,
+          hasTicket: !!streamTicket,
+          ticketExpired: streamTicket ? isTicketExpired(streamTicket) : null
+        });
+
         setState({
           emulatorState: payload.state,
           lastError: payload.lastError
@@ -32,28 +46,31 @@ export const useHealthPoller = () => {
         });
         setTransitioning(payload.state === 'Booting' || payload.state === 'Stopping');
 
-        if (payload.state === 'Running' && !streamUrl) {
+        if (payload.state === 'Running' && (!streamTicket || isTicketExpired(streamTicket))) {
+          console.log('[Health Poll] Fetching stream ticket...');
           try {
             const ticket = await fetchStreamUrl();
+            console.log('[Health Poll] Got stream ticket:', ticket);
             if (!cancelled) {
-              setState({ streamUrl: ticket.url, lastError: undefined });
+              setState({ streamTicket: ticket, lastError: undefined });
             }
           } catch (error) {
             console.warn('Stream attach failed; retrying', error);
             if (!cancelled) {
               setState({
+                streamTicket: undefined, // Clear expired/invalid ticket
                 lastError: {
                   code: 'STREAM_RETRY',
-                  message: 'Stream unavailable; retrying…',
-                  hint: 'ws-scrcpy may still be initialising; ensure the streamer process is running.'
+                  message: 'Stream ticket unavailable; retrying…',
+                  hint: 'ws-scrcpy bridge may still be initialising; ensure the bridge process is running.'
                 }
               });
             }
           }
         }
 
-        if (payload.state !== 'Running' && streamUrl) {
-          setState({ streamUrl: undefined });
+        if (payload.state !== 'Running' && streamTicket) {
+          setState({ streamTicket: undefined });
         }
       } catch (error) {
         console.error('Health poll failed', error);
@@ -63,7 +80,7 @@ export const useHealthPoller = () => {
             lastError: {
               code: 'HEALTH_UNREACHABLE',
               message: 'Lost contact with backend health endpoint',
-              hint: 'Confirm backend service is running on http://127.0.0.1:8080'
+              hint: 'Confirm backend service is running on http://127.0.0.1:7070'
             },
             forceStopRequired: false
           });
@@ -79,5 +96,5 @@ export const useHealthPoller = () => {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [forceStopRequired, setState, setTransitioning, streamUrl]);
+  }, [forceStopRequired, setState, setTransitioning, streamTicket]);
 };

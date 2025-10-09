@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import { logger } from '../services/logger';
 import type { EmulatorSession, EmulatorState, SessionError } from '../types/session';
 
-interface StreamTicket {
+interface InternalStreamTicket {
   token: string;
   emulatorSerial: string;
   expiresAt: number;
@@ -18,7 +18,7 @@ class SessionStore {
     forceStopRequired: false
   };
 
-  private streamTicket?: StreamTicket;
+  private streamTicket?: InternalStreamTicket;
 
   getSession(): EmulatorSession {
     return { ...this.session };
@@ -37,6 +37,8 @@ class SessionStore {
     if (nextState !== 'Running') {
       this.streamTicket = undefined;
       this.session.streamToken = undefined;
+      this.session.streamBridgeUrl = undefined;
+      this.session.streamTicketExpiresAt = undefined;
       this.session.forceStopRequired = false;
     }
   }
@@ -88,12 +90,14 @@ class SessionStore {
     this.session.lastError = undefined;
   }
 
-  generateStreamTicket(emulatorSerial: string) {
+  generateStreamTicket(emulatorSerial: string, bridgeUrl?: string) {
     const token = randomUUID();
     const expiresAt = Date.now() + STREAM_TTL_MS;
     this.streamTicket = { token, emulatorSerial, expiresAt };
     this.session.streamToken = token;
-    return { token, expiresAt, emulatorSerial };
+    this.session.streamBridgeUrl = bridgeUrl;
+    this.session.streamTicketExpiresAt = new Date(expiresAt).toISOString();
+    return { token, expiresAt, emulatorSerial, bridgeUrl };
   }
 
   consumeStreamTicket(token: string) {
@@ -107,11 +111,15 @@ class SessionStore {
       logger.warn('Stream ticket expired', { token });
       this.streamTicket = undefined;
       this.session.streamToken = undefined;
+      this.session.streamBridgeUrl = undefined;
+      this.session.streamTicketExpiresAt = undefined;
       return undefined;
     }
     const ticket = this.streamTicket;
     this.streamTicket = undefined;
     this.session.streamToken = undefined;
+    this.session.streamBridgeUrl = undefined;
+    this.session.streamTicketExpiresAt = undefined;
     return ticket;
   }
 
@@ -128,6 +136,8 @@ class SessionStore {
     delete this.session.pid;
     delete this.session.ports;
     delete this.session.streamToken;
+    delete this.session.streamBridgeUrl;
+    delete this.session.streamTicketExpiresAt;
     delete this.session.lastError;
   }
 }

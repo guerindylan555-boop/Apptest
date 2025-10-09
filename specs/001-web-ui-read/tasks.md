@@ -1,158 +1,148 @@
 # Tasks: Web UI: Read-Only Android Stream + Start/Stop Emulator (v1)
 
 **Input**: Design documents from `/specs/001-web-ui-read/`
-**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/
+**Prerequisites**: plan.md, spec.md, research.md, data-model.md, contracts/, quickstart.md
 
-**Tests**: Automated tests are optional for this feature; include them when they directly support acceptance criteria.
+**Tests**: Backend Jest unit coverage is required for lifecycle and stream logic per plan.md. Frontend relies on manual validation via quickstart checklist.
 
-**Organization**: Tasks are grouped by user story to enable independent implementation and validation.
+**Organization**: Tasks are grouped by user story to enable independent delivery and validation. IDs are unique and strictly ordered for execution.
 
 ## Format: `[ID] [P?] [Story] Description`
-- **[P]**: Task can run in parallel (different files, no ordering dependency)
-- **[Story]**: User story label (US1, US2, US3)
-- Include exact file paths in descriptions
+- **[P]**: Task can run in parallel with others in its phase (touches different files/no dependency)
+- **[Story]**: `Setup`, `Foundation`, or user story label (`US1`, `US2`, `US3`, …)
+- Include concrete file paths so each task is immediately actionable
+
+---
 
 ## Phase 1: Setup (Shared Infrastructure)
 
-**Purpose**: Establish repository structure, tooling, and base scripts required for all stories.
+**Purpose**: Establish shared tooling and environment required by all stories
 
-- [X] T001 Create project directories per plan (`backend/src`, `frontend/src`, `scripts`, `var/log/autoapp`) and add `.gitkeep` placeholders.
-- [X] T002 Initialize backend Node.js workspace with TypeScript support (`backend/package.json`, `backend/tsconfig.json`, `backend/src/index.ts`).
-- [X] T003 [P] Scaffold frontend Vite React TypeScript app (`frontend/package.json`, `frontend/tsconfig.json`, `frontend/src/main.tsx`).
-- [X] T004 [P] Author `scripts/setup-avd.sh` to install SDK components and create the rooted `autoapp-local` AVD.
-- [X] T005 [P] Configure shared lint/format tooling (`package.json` scripts, `.eslintrc.cjs`, `.prettierrc`) scoped to backend and frontend.
+- [ ] T001 [Setup] Add Jest + ts-jest tooling in `backend/package.json`, regenerate `backend/package-lock.json`, create `backend/jest.config.ts`, and extend `backend/tsconfig.json` so backend services can be unit-tested.
+- [ ] T002 [P] [Setup] Create `backend/.env.example` and `frontend/.env.example` documenting `STREAM_HOST`, `STREAM_PORT`, `STREAM_TIMEOUT_MS`, then update `scripts/run-local.sh` to export sane defaults before launching backend/frontend.
 
 ---
 
 ## Phase 2: Foundational (Blocking Prerequisites)
 
-**Purpose**: Core services and shared state that all user stories rely on.
+**Purpose**: Core state + configuration updates that all stories depend on
 
-**⚠️ CRITICAL**: No user story work can begin until this phase is complete.
+**⚠️ CRITICAL**: Complete these tasks before starting any user story work
 
-- [X] T006 Define shared lifecycle & health types (`backend/src/types/session.ts`, `backend/src/types/health.ts`).
-- [X] T007 Implement structured file logger writing to `var/log/autoapp/backend.log` (`backend/src/services/logger.ts`).
-- [X] T008 Build Android CLI wrapper utilities for emulator and adb commands (`backend/src/services/androidCli.ts`).
-- [X] T009 Create singleton session store with token generation and state transitions (`backend/src/state/sessionStore.ts`).
-- [X] T010 Stand up Express server skeleton bound to `127.0.0.1:8080` with empty routers (`backend/src/api/server.ts`, `backend/src/api/routes/index.ts`).
-- [X] T011 Establish frontend app shell + global state store (`frontend/src/state/useAppStore.ts`, `frontend/src/App.tsx`) rendering placeholder layout.
-- [X] T012 [P] Add shared styles and stream placeholder assets (`frontend/src/styles/base.css`, `frontend/src/components/StreamPlaceholder.tsx`).
+- [ ] T003 [Foundation] Extend lifecycle metadata in `backend/src/types/session.ts` and `backend/src/state/sessionStore.ts` to track stream bridge URL, ticket expiry, and normalized error codes shared across stories.
+- [ ] T004 [P] [Foundation] Introduce `backend/src/config/stream.ts` for host/port/timeouts, refactor `backend/src/services/streamerService.ts` to use it, and delete the legacy `backend/src/ws-scrcpy-wrapper.js` plus stray `backend/-` stub.
 
-**Checkpoint**: Foundation ready — safe to begin user story implementation.
+**Checkpoint**: Backend state models + config ready for story implementations
 
 ---
 
-## Phase 3: User Story 1 – Start emulator and view live stream (Priority: P1) 🎯 MVP
+## Phase 3: User Story 1 - Start emulator and view live stream (Priority: P1) 🎯 MVP
 
-**Goal**: Tester can start the emulator from the page and view a responsive read-only stream within 45 seconds.
+**Goal**: Tester can start the emulator from the UI and see the Android screen streaming with ≤500 ms perceived latency.
 
-**Independent Test**: From a clean boot, run `scripts/run-local.sh`, load the UI, click Start Emulator, and observe the stream with the badge progressing Stopped → Booting → Running.
+**Independent Test**: Launch frontend, trigger "Start Emulator", confirm badge transitions Stopped → Booting… → Running, and ensure the canvas renders the live feed within 45 s.
 
-### Implementation
+### Tests for User Story 1 (write first)
 
-- [X] T013 [US1] Implement `startEmulator` flow with readiness gating and state updates (`backend/src/services/emulatorLifecycle.ts`).
-- [X] T014 [US1] Implement ws-scrcpy streamer supervisor issuing single-use tokens (`backend/src/services/streamerService.ts`).
-- [X] T015 [US1] Wire POST `/emulator/start` route to orchestrator and guard against concurrent boots (`backend/src/api/routes/emulatorStart.ts`).
-- [X] T016 [US1] Provide GET `/stream/url` endpoint returning token + URL when running (`backend/src/api/routes/streamUrl.ts`).
-- [X] T017 [US1] Implement GET `/health` to expose session diagnostics (`backend/src/api/routes/health.ts`).
-- [X] T018 [US1] Finalize backend bootstrap exporting Express app and start script (`backend/src/index.ts`, `backend/package.json` scripts).
-- [X] T019 [US1] Create frontend HTTP client helpers (`frontend/src/services/backendClient.ts`).
-- [X] T020 [US1] Build `useHealthPoller` hook with 1s polling and auto stream fetch (`frontend/src/hooks/useHealthPoller.ts`).
-- [X] T021 [P] [US1] Implement `StateBadge` component with color variants (`frontend/src/components/StateBadge.tsx`).
-- [X] T022 [P] [US1] Implement primary `ControlButton` component handling disabled/loading states (`frontend/src/components/ControlButton.tsx`).
-- [X] T023 [P] [US1] Implement `StreamViewer` rendering `<video>` element with pointer disabled (`frontend/src/components/StreamViewer.tsx`, `frontend/src/styles/stream.css`).
-- [X] T024 [US1] Integrate components in `App.tsx` to trigger start flow, bind state, and attach stream.
-- [X] T025 [US1] Create `scripts/run-local.sh` to launch backend, streamer, and frontend on localhost.
+- [ ] T005 [US1] Create `backend/src/services/__tests__/streamerService.spec.ts` covering `issueStreamTicket` happy path and failure when session.state ≠ 'Running'.
 
-**Checkpoint**: User Story 1 delivers MVP — start flow and read-only stream verified.
+### Implementation for User Story 1
+
+- [ ] T006 [US1] Add `ws-scrcpy` CLI dependency + `npm run streamer:bridge` script in `backend/package.json`, update `backend/package-lock.json`, and document usage in script comments.
+- [ ] T007 [US1] Implement a new `backend/src/services/wsScrcpyBridge.ts` helper that spawns the ws-scrcpy binary via config, watches process output, and exposes a promise-based start hook.
+- [ ] T008 [US1] Refactor `backend/src/services/streamerService.ts` to call the new bridge, generate signed tickets with expiry, and update `stopStreamer` to gracefully close the bridge.
+- [ ] T009 [US1] Update `backend/src/api/routes/streamUrl.ts` (and `backend/src/api/server.ts` if needed for headers) to return `{ url, token, expiresAt }` per contracts/backend.yaml.
+- [ ] T010 [P] [US1] Add `@yume-chan/scrcpy-ws-client` (or equivalent) to `frontend/package.json` / `frontend/package-lock.json` and create `frontend/src/services/streamClient.ts` that opens the ws-scrcpy websocket and renders frames onto a supplied `<canvas>` element.
+- [ ] T011 [US1] Replace `frontend/src/components/StreamViewer.tsx` with a canvas-based renderer using `streamClient`, update `frontend/src/styles/stream.css` for the canvas, and ensure teardown when state ≠ Running.
+- [ ] T012 [US1] Enhance `frontend/src/hooks/useHealthPoller.ts`, `frontend/src/services/backendClient.ts`, `frontend/src/state/useAppStore.ts`, and `frontend/src/App.tsx` to request stream tickets, manage expiry retries, and clear `streamUrl` when transitions leave Running.
+
+**Checkpoint**: Emulator starts from UI, stream renders, quickstart Step 5 passes without manual workarounds.
 
 ---
 
-## Phase 4: User Story 2 – Stop emulator safely from the UI (Priority: P2)
+## Phase 4: User Story 2 - Stop emulator safely from the UI (Priority: P2)
 
-**Goal**: Tester can stop the running emulator from the page, see Stopping → Stopped, and the stream shuts down cleanly.
+**Goal**: Tester stops the running emulator via the UI and sees stream teardown with state badge returning to Stopped.
 
-**Independent Test**: With emulator streaming, press Stop Emulator; confirm state badge transitions to Stopping then Stopped and the stream placeholder returns.
+**Independent Test**: With stream active, press "Stop Emulator"; verify button disables, badge shows Stopping… then Stopped, and stream pane reverts to placeholder.
 
-### Implementation
+### Tests for User Story 2 (write first)
 
-- [X] T026 [US2] Extend lifecycle service with stop ladder (console kill → `adb emu kill` → process kill) and state transitions (`backend/src/services/emulatorLifecycle.ts`).
-- [X] T027 [US2] Add streamer teardown handling (`backend/src/services/streamerService.ts`).
-- [X] T028 [US2] Implement POST `/emulator/stop` route enforcing mutual exclusion and success responses (`backend/src/api/routes/emulatorStop.ts`).
-- [X] T029 [US2] Enhance session store with Stopping state handling and stream cleanup hooks (`backend/src/state/sessionStore.ts`).
-- [X] T030 [US2] Update frontend client with stop request helper (`frontend/src/services/backendClient.ts`).
-- [X] T031 [US2] Update `ControlButton` to toggle Start/Stop labels and show spinner during transitions (`frontend/src/components/ControlButton.tsx`).
-- [X] T032 [US2] Update app logic to disable inputs while stopping and reset stream when stopped (`frontend/src/App.tsx`).
-- [X] T033 [US2] Ensure `StreamViewer` clears media element on stop (`frontend/src/components/StreamViewer.tsx`).
+- [ ] T013 [US2] Add `backend/src/services/__tests__/emulatorLifecycle.spec.ts` to assert `stopEmulator(false)` clears stream tokens, and `stopEmulator(true)` invokes `sessionStore.requireForceStop` on failure.
 
-**Checkpoint**: User Stories 1 & 2 run end-to-end — start/stop cycles succeed.
+### Implementation for User Story 2
 
----
+- [ ] T014 [US2] Update `backend/src/services/emulatorLifecycle.ts` and `backend/src/state/sessionStore.ts` so stop transitions reset stream metadata, trigger `handleEmulatorStopped`, and surface force-stop hints.
+- [ ] T015 [US2] Refine `backend/src/api/routes/emulatorStop.ts` responses to align with contracts (202 + message vs 409/force), ensuring logger context includes `force` flag.
+- [ ] T016 [US2] Adjust `frontend/src/App.tsx` and `frontend/src/components/ControlButton.tsx` to disable controls during Stopping, auto-clear stream canvas on Stopped, and show contextual button label.
 
-## Phase 5: User Story 3 – Understand failures and access logs (Priority: P3)
-
-**Goal**: Tester receives actionable error feedback, can trigger Force Stop, and sees diagnostics/log links during failures.
-
-**Independent Test**: Simulate boot timeout or kill the health endpoint; UI switches to Error, surfaces logs link and Force Stop option; health badge reflects recovery once resolved.
-
-### Implementation
-
-- [X] T034 [US3] Add timeout and error instrumentation to lifecycle service (boot/stop timeouts, health unreachable) (`backend/src/services/emulatorLifecycle.ts`).
-- [X] T035 [US3] Persist `lastError` and Force Stop flags within session store (`backend/src/state/sessionStore.ts`).
-- [X] T036 [US3] Enrich `/health` response with diagnostics (pid, bootElapsedMs, lastError) (`backend/src/api/routes/health.ts`).
-- [X] T037 [US3] Extend `/emulator/stop` route to accept Force Stop and propagate results (`backend/src/api/routes/emulatorStop.ts`).
-- [X] T038 [US3] Introduce reusable `ErrorBanner` + logs link component (`frontend/src/components/ErrorBanner.tsx`).
-- [X] T039 [US3] Integrate error banner, logs link, and Force Stop control into `App.tsx` (`frontend/src/App.tsx`).
-- [X] T040 [US3] Enhance `useHealthPoller` to handle health endpoint loss, stream attach timeout, and error resets (`frontend/src/hooks/useHealthPoller.ts`).
-- [X] T041 [P] [US3] Implement optional diagnostics drawer showing PID, uptime, last error (`frontend/src/components/DiagnosticsDrawer.tsx`).
-
-**Checkpoint**: All user stories complete — failures are observable with recovery tools.
+**Checkpoint**: Start/stop cycle is reliable with deterministic UI transitions.
 
 ---
 
-## Phase 6: Polish & Cross-Cutting Concerns
+## Phase 5: User Story 3 - Understand failures and access logs (Priority: P3)
 
-**Purpose**: Repo hardening, documentation updates, and local-only validation.
+**Goal**: Tester receives actionable messaging and a logs link whenever start/stop/stream attach fails, with optional Force Stop action.
 
-- [X] T042 Update Quickstart instructions with final commands and ports (`specs/001-web-ui-read/quickstart.md`).
-- [X] T043 Document troubleshooting scenarios and log locations (`docs/troubleshooting.md`).
-- [X] T044 Add npm scripts for lifecycle tasks (`backend/package.json`, `frontend/package.json`) aligning with `scripts/run-local.sh`.
-- [X] T045 Create `scripts/validate-local-only.sh` to assert listeners are bound to 127.0.0.1 only using `ss`/`netstat`.
+**Independent Test**: Simulate start timeout or stream attach failure; confirm Error badge with human-readable message, "View local logs" link, and Force Stop/Retry controls per scenario.
+
+### Tests for User Story 3 (write first)
+
+- [ ] T017 [US3] Create `backend/src/state/__tests__/sessionStore.spec.ts` validating `recordError`, `markHealthUnreachable`, and `requireForceStop` populate `lastError` and `forceStopRequired` as expected.
+
+### Implementation for User Story 3
+
+- [ ] T018 [US3] Extend `backend/src/state/sessionStore.ts`, `backend/src/api/routes/health.ts`, and `backend/src/services/emulatorLifecycle.ts` to emit descriptive error codes/messages/hints and persist `forceStopRequired` until cleared.
+- [ ] T019 [US3] Update `frontend/src/components/ErrorBanner.tsx`, `frontend/src/App.tsx`, and `frontend/src/hooks/useHealthPoller.ts` to render error hints, wire Force Stop/Retry actions, and display the `var/log/autoapp/backend.log` link.
+
+**Checkpoint**: Error flows guide the tester without page refreshes, satisfying FR-008 to FR-010.
+
+---
+
+## Phase 6: Polish & Cross-Cutting
+
+**Purpose**: Documentation, verification, and clean-up spanning multiple stories
+
+- [x] T020 [P] [Polish] Refresh `specs/001-web-ui-read/quickstart.md` and `docs/` (if applicable) with canvas streaming notes, Force Stop guidance, and Jest usage instructions.
+- [x] T021 [Polish] Execute `npm run lint && npm run test` in both `backend/` and `frontend/`, capture results in `docs/verification.md` (create if absent), and note any manual quickstart deviations.
 
 ---
 
 ## Dependencies & Execution Order
 
-- **Phase 1 → Phase 2**: Setup must finish before foundational work.
-- **Phase 2 → User Stories**: All foundational tasks (T006–T012) are prerequisites for US1–US3.
-- **User Story Order**: Implement in priority order (US1 → US2 → US3) for MVP-first delivery. Stories can run in parallel post-foundation if staffing allows, but ensure shared files (e.g., `emulatorLifecycle.ts`, `App.tsx`) are coordinated.
-- **Polish Phase**: Execute after desired user stories are complete.
+- **Phase 1 → Phase 2**: Complete T001–T004 before any user story tasks begin.
+- **User Story Phases**: US1 (T005–T012) must finish before US2 (T013–T016); US3 (T017–T019) depends on both prior stories to ensure consistent state handling.
+- **Polish**: T020–T021 run after all targeted user stories are complete.
 
-## Parallel Opportunities
+### Task Dependencies Within Stories
 
-- Phase 1 tasks T003, T004, T005 can run alongside backend initialization once T001 is done.
-- In Phase 3, component work (T021, T022, T023) can proceed in parallel while service logic (T013–T017) is implemented.
-- In Phase 5, diagnostics UI (T041) can progress concurrently with backend error instrumentation (T034–T037).
+- US1: T005 → T006 → T007 → T008 precede frontend tasks; T009 [P] can start once T006 is done; T010 depends on T009; T011 depends on T010.
+- US2: T013 precedes backend updates (T014, T015); frontend adjustments (T016) follow backend stop semantics.
+- US3: T017 informs backend updates (T018) which must complete before UI wiring (T019).
 
-*Example (User Story 1 parallel work):*
+### Parallel Opportunities
+
+- Setup: T002 can run alongside T001 after dependency installation completes.
+- Foundation: T004 [P] can proceed while T003 is under review since it introduces separate config plumbing.
+- US1 Frontend: T009 [P] (frontend service + dependency install) can progress while backend refactors (T007/T008) are underway.
+- Polish: T020 [P] documentation updates can occur while verification task T021 is prepared.
+
+---
+
+## Parallel Example: User Story 1
+
+```bash
+# In parallel, once backend deps are updating (T006) and contracts settled:
+npm --prefix frontend install @yume-chan/scrcpy-ws-client  # (T009)
+# Meanwhile in backend:
+npm --prefix backend run test -- stream  # Executes new Jest spec from T005 after implementation
 ```
-# Backend engineer
-T013 → T014 → T015
 
-# Frontend engineer (in parallel)
-T021 + T022 + T023  (distinct files)
-```
+---
 
 ## Implementation Strategy
 
-1. **MVP (US1)**: Complete Phases 1–3 to deliver start + stream functionality. Demo once T025 passes manual test.
-2. **Incremental Expansion**: Layer User Story 2 to introduce safe shutdown without breaking US1. Validate cycle tests.
-3. **Resilience & Observability**: Implement User Story 3 for error handling, then finish polish tasks to document and verify localhost boundaries.
-4. **Continuous Validation**: After each phase checkpoint, run `scripts/run-local.sh`, verify acceptance criteria, and commit.
-
-## Notes
-
-- Keep backend services bound to `127.0.0.1` per constitution.
-- Regenerate ws-scrcpy tokens on each run and redact them in logs.
-- Force Stop actions must log escalations for postmortem analysis.
-- Ensure scripts clean up emulator processes to prevent orphaned instances.
+1. Land Phase 1–2 foundations to stabilize state + tooling.
+2. Deliver User Story 1 as the MVP (stream working end-to-end) before touching stop/error flows.
+3. Layer User Story 2 stop controls, then User Story 3 error surfaces.
+4. Finish with documentation and lint/test verification to lock regression safety.
