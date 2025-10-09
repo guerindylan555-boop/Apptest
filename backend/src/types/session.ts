@@ -12,6 +12,13 @@ export interface SessionError {
   occurredAt: string;
 }
 
+export interface StreamTicket {
+  token: string;
+  url: string;
+  expiresAt: string;
+  emulatorSerial: string;
+}
+
 export interface SessionPorts {
   console: number;
   adb: number;
@@ -27,4 +34,6 @@ export interface EmulatorSession {
   lastError?: SessionError;
   streamToken?: string;
   forceStopRequired?: boolean;
+  streamBridgeUrl?: string;
+  streamTicketExpiresAt?: string;
 }

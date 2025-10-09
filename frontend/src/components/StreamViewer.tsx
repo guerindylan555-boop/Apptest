@@ -15,7 +15,10 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
   const setGlobalState = useAppStore((state) => state.setState);
   const activeTicket = streamTicket ?? localTicket;
 
+  console.log('[StreamViewer] Render:', { state, hasStreamTicket: !!streamTicket, hasLocalTicket: !!localTicket, hasActiveTicket: !!activeTicket });
+
   useEffect(() => {
+    console.log('[StreamViewer] Effect running:', { state, hasStreamTicket: !!streamTicket });
     if (state !== 'Running') {
       setLocalTicket(undefined);
       return;
@@ -26,9 +29,11 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
       return;
     }
 
+    console.log('[StreamViewer] Fetching stream URL...');
     let cancelled = false;
     fetchStreamUrl()
       .then((ticket) => {
+        console.log('[StreamViewer] Fetched stream ticket:', ticket);
         if (!cancelled) {
           setLocalTicket(ticket);
           setGlobalState({ streamTicket: ticket });
@@ -55,14 +60,6 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
       title="Emulator Stream"
       src={activeTicket.url}
       className="stream-viewer"
-      style={{
-        width: '100%',
-        maxWidth: '420px',
-        aspectRatio: '9 / 16',
-        background: '#000',
-        border: 'none',
-        borderRadius: '16px'
-      }}
       allow="autoplay; fullscreen"
     />
   );

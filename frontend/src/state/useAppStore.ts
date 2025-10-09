@@ -1,11 +1,12 @@
 import { create } from 'zustand';
+import type { StreamTicket } from '../services/backendClient';
 
 type EmulatorState = 'Stopped' | 'Booting' | 'Running' | 'Stopping' | 'Error';
 
 interface AppState {
   emulatorState: EmulatorState;
   isTransitioning: boolean;
-  streamUrl?: string;
+  streamTicket?: StreamTicket;
   lastError?: { code: string; message: string; hint?: string };
   forceStopRequired: boolean;
   pid?: number;
@@ -19,7 +20,7 @@ interface AppState {
 export const useAppStore = create<AppState>((set) => ({
   emulatorState: 'Stopped',
   isTransitioning: false,
-  streamUrl: undefined,
+  streamTicket: undefined,
   lastError: undefined,
   forceStopRequired: false,
   pid: undefined,
@@ -31,7 +32,7 @@ export const useAppStore = create<AppState>((set) => ({
     set({
       emulatorState: 'Stopped',
       isTransitioning: false,
-      streamUrl: undefined,
+      streamTicket: undefined,
       lastError: undefined,
       forceStopRequired: false,
       pid: undefined,

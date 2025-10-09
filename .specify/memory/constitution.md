@@ -1,121 +1,198 @@
 <!--
-Sync Impact Report:
-- Version change: N/A → 1.0.0
-- Modified principles: N/A (initial ratification)
-- Added sections: Core Principles; Scope & Boundaries; Architecture & Runtime Constraints; Quality & Reliability Standards; Security & Privacy Posture; Data & Artifact Management; UX Principles; Governance; Acceptance Criteria (v1); Future Evolution
-- Templates requiring updates:
-  ✅ .specify/templates/plan-template.md (reviewed, no changes needed)
-  ✅ .specify/templates/spec-template.md (reviewed, no changes needed)
-  ✅ .specify/templates/tasks-template.md (reviewed, no changes needed)
-  ✅ .codex/prompts/speckit.constitution.md (reviewed, no changes needed)
-- Follow-up TODOs: none
+SYNC IMPACT REPORT
+==================
+Version Change: [1.0.0 → 1.1.0]
+Change Type: MINOR (Expanded guidance for Principle VIII)
+
+Modified Principles:
+- [AMENDED] VIII. Zero External Security Tooling in v1 → VIII. External Security Tooling (Opt-In)
+  - Now permits Frida, MobSF, and mitmproxy as opt-in features with strict localhost/safety requirements
+  - Added decision log with rationale and revisit date
+
+Added Sections:
+- Out of Scope (v1)
+- Architecture Constraints & Defaults
+- Quality & Reliability Standards
+- Security & Privacy Posture
+- Data & Artifacts
+- UX Principles (v1)
+- Governance & Workflow
+- Acceptance Criteria (v1)
+- Future Evolution
+
+Templates Requiring Updates:
+- ✅ .specify/templates/plan-template.md (Constitution Check section validated)
+- ✅ .specify/templates/spec-template.md (Requirements aligned with principles)
+- ✅ .specify/templates/tasks-template.md (Task organization aligns with principles)
+- ✅ .claude/commands/speckit.*.md (No agent-specific naming conflicts)
+
+Follow-up TODOs: None
 -->
-# Android Emulation & Automation Platform (Local-Only v1) Constitution
 
-## Core Principles
+# Android Emulation & Automation Platform Constitution (Local-Only v1)
 
-### Local-Only Networking
-- All services MUST bind exclusively to 127.0.0.1; no WAN or LAN exposure is permitted.
-- Runs MUST avoid telemetry or third-party calls; every network interaction stays on the host.
-- System configuration MUST disable assumptions about public access (e.g., no implicit CORS relaxations).
-Rationale: The platform exists for local, authorized testing and must remain isolated to limit risk.
+## Purpose & Scope
 
-### Rooted Emulator Access
-- The Android 14 emulator image MUST remain rooted for test tooling flexibility.
-- ADB MUST accept connections only from localhost, with debugging ports never exposed externally.
-Rationale: Root access is required for deep inspection, but confinement to localhost prevents misuse.
+Build a local-only Android emulation and automation platform for authorized security testing. v1 targets single user, single rooted emulator, and a one-page web UI that lets you: (a) install an APK, (b) interact with the emulator in the browser, (c) record element-aware flows, and (d) replay them deterministically.
 
-### Single Device Focus
-- The stack MUST operate exactly one virtual device at a time in v1.
-- Lifecycle tooling MUST enforce exclusive ownership (create, reset, destroy) of that emulator instance.
-Rationale: Simplifying to a single device keeps automation deterministic and resource usage predictable.
+## Core Principles (Non-Negotiable)
 
-### Element-Aware Automation
-- Recording and replay MUST rely on UIAutomator selectors (resource-id, content-desc, class).
-- Coordinate-based interactions MAY only be used as a last resort and MUST be documented when chosen.
-- Selector storage MUST prefer resilient strategies (fallback chain rather than brittle single value).
-Rationale: Element semantics survive UI shifts better than coordinates, preserving replay stability.
+### I. Local-Only Networking
 
-### Stable Replay Discipline
-- Every action MUST wait for target readiness (visible, clickable, enabled) before execution.
-- Replay routines MUST support bounded retries and abort fast with clear failure reasons.
-- On failure, the system MUST capture a screenshot, UI dump, and final action log entry.
-Rationale: Deterministic, observable runs build trust in recorded scripts and highlight regressions quickly.
+All services bind to 127.0.0.1. No WAN/LAN exposure; no telemetry; no third-party calls during runs.
 
-### Project Isolation
-- Each APK MUST map to its own project directory for artifacts, preventing cross-contamination.
-- Shared resources (emulator images, base configs) MAY only store read-only templates common to all projects.
-Rationale: Isolation protects sensitive data and keeps investigation trails auditable per app.
+**Rationale**: Security testing environments must not leak data externally. Localhost-only operation ensures controlled, auditable network boundaries and prevents accidental exposure of potentially sensitive test artifacts or application data.
 
-### Data Lifecycle Stewardship
-- APKs, UI dumps, scripts, screenshots, and logs MUST be retained for 30 days by default.
-- Users MUST be able to pin artifacts to exempt them from automated cleanup.
-- Cleanup routines MUST run deterministically and log deletions for traceability.
-Rationale: Defined retention balances storage constraints with repeatability needs for security reviews.
+### II. Rooted Emulator (Single Device v1)
 
-### No AI in Runtime
-- v1 MUST exclude LLM-based analysis or assistants from recording and replay flows.
-- Any future AI augmentation MUST be explicitly ratified as a constitution change before implementation.
-Rationale: Deterministic, explainable behavior is required during early validation and auditing.
+The Android device image MUST be rooted; ADB is localhost-only. Exactly one virtual device at a time.
 
-### Zero External Security Tooling
-- The runtime MUST NOT integrate Frida, MobSF, or similar third-party introspection tools in v1.
-- Manual use of such tools outside the platform MUST remain clearly out of scope for support and automation.
-Rationale: Limiting bundled tooling keeps the surface area manageable and respects licensing and ethics.
+**Rationale**: Security testing and automation require root access for comprehensive instrumentation. Single-device constraint in v1 reduces complexity and ensures stable, predictable resource allocation.
 
-## Scope & Boundaries
-- Purpose: deliver a local-only Android emulation and automation platform for authorized security testing with a single rooted emulator, web UI, recording, and deterministic replay.
-- Scope covers APK installation, emulator interaction in browser, element-aware recording, and replay management.
-- Out of scope: device farms, remote access, ARM-only slow targets, advanced security suites, and multi-tenant auth.
-Rationale: Tight scope enables a reliable v1 foundation before expanding breadth.
+### III. Element-Aware Automation
 
-## Architecture & Runtime Constraints
-- Host baseline: Ubuntu 25.04 with ≥6 vCPU and ≥12 GB RAM dedicated to the stack.
-- Runtime mix MUST use host processes and containers with all internal communications on localhost.
-- Emulator profile: Android 14 (API 34), 1080×1920, ~420 dpi, allocated ~4 vCPU and 4–6 GB RAM.
-- Control plane MUST leverage scrcpy-web (or equivalent) for live streaming and input relays.
-- Automation engine MUST use ADB + UIAutomator for control and instrumentation.
+Recording and replay use UIAutomator view hierarchy (resource-id/content-desc/class) with resilient selectors; raw coordinates are last resort.
+
+**Rationale**: Coordinate-based automation is brittle and fails with minor UI changes. Semantic selectors provide deterministic, maintainable test scripts that survive app updates and screen size variations.
+
+### IV. Stable Replay
+
+Each action waits for readiness (visible/clickable), supports retries, and fails fast with screenshots and a clear reason.
+
+**Rationale**: Deterministic replay is essential for reliable automation. Explicit waits eliminate race conditions; fast failure with evidence (screenshots, UI dumps) accelerates debugging.
+
+### V. Project Separation
+
+Every APK maps to its own "project" area for artifacts; no cross-contamination.
+
+**Rationale**: Clean separation prevents test interference, simplifies artifact management, and supports concurrent testing of multiple applications without namespace collisions.
+
+### VI. Data Lifecycle
+
+Keep APKs, UI dumps, scripts, screenshots, and run logs for 30 days; allow pinning to exempt from cleanup.
+
+**Rationale**: Automated retention prevents unbounded disk growth while preserving recent evidence. Pinning mechanism supports long-term regression test retention without manual intervention.
+
+### VII. No AI in v1
+
+Do not include LLM-based analysis or assistants in the runtime path.
+
+**Rationale**: Focus v1 on deterministic, reproducible automation. AI features introduce non-determinism and complexity; defer until core platform is stable.
+
+### VIII. External Security Tooling (Opt-In)
+
+Frida, MobSF, and mitmproxy integrations are permitted as **opt-in features** with safe defaults. Each tool MUST:
+
+- Run strictly localhost-only
+- Provide clear enable/disable controls in the UI
+- Include version/arch compatibility checks (Frida)
+- Never send data externally (MobSF local-only mode enforced)
+- Surface clear status and errors to the user
+
+**Rationale**: Security testing workflows require instrumentation and traffic analysis. Opt-in design preserves simplicity while enabling essential capabilities. Frida/proxy tools are industry-standard for Android security research.
+
+**Decision Log**: Amended 2025-10-09 to support core security testing workflows in v1. Original principle deferred these to v2, but user requirements demonstrate they are foundational to the platform's value proposition. Revisit before v2 planning to evaluate complexity impact and consider whether any tools should remain opt-in or become defaults.
+
+## Out of Scope (v1)
+
+The following features are explicitly excluded from v1 to maintain focus and reduce complexity:
+
+- Multiple devices, device farms, or remote access
+- ARM-only targets requiring slow emulation (x86/x86_64 images preferred for v1)
+- AI-driven analysis or cloud storage
+- Multi-tenant auth, RBAC, or SSO
+- Advanced Frida scripting/gadgets or app repackaging (basic instrumentation via opt-in Frida server is permitted per Principle VIII)
+
+## Architecture Constraints & Defaults
+
+**Host Environment**: Ubuntu 25.04 with at least 6 vCPU / 12 GB RAM reserved for the stack.
+
+**Runtime Mix**: Combination of host and containers; keep internal comms on localhost.
+
+**Device Profile**: Android 14 (API 34), phone 1080×1920 ~420 dpi.
+
+**Control Plane**: scrcpy-web for live stream + input from the browser.
+
+**Automation Engine**: ADB + UIAutomator (record/replay with selectors, not coordinates).
+
+**Resource Targets**: Allocate ~4 vCPU / 4–6 GB RAM to the emulator to keep interactive latency acceptable under typical test flows.
 
 ## Quality & Reliability Standards
-- Replays MUST produce consistent UI state transitions when inputs and device profile are unchanged.
-- Wait logic MUST prefer presence/visibility/clickable checks; fixed sleeps are limited to bounded backoff.
-- Smoke checks MUST confirm device boot, ADB connectivity, and app install/launch before recording or replay.
-- Failure handling MUST emit screenshot, UI dump, and last action log line for every abort.
+
+**Determinism**: Replays MUST produce the same UI state transitions given unchanged inputs and device profile.
+
+**Robust Selectors**: Prefer resource-id and content-desc; backstop with class+index and a minimized XPath-lite only if necessary.
+
+**Waits & Timing**: Use presence/visibility/clickable waits; never rely on arbitrary fixed sleeps except as bounded backoff.
+
+**Failure Evidence**: On any failure, capture the current UI dump, a screenshot, and the last action log line.
+
+**Smoke Checks**: Before recording or replay, verify device booted, ADB connected, app installed/launchable.
 
 ## Security & Privacy Posture
-- Network boundary MUST remain localhost-only; no telemetry or diagnostic calls to third parties.
-- Secrets SHOULD stay out of scripts; unavoidable credentials MUST live inside the project’s private area and be redacted in logs.
-- Platform use MUST stay within legal/ethical permission for analyzed apps.
 
-## Data & Artifact Management
-- Artifacts live under per-project directories keyed by APK name and hash.
-- Every replay MUST create a new run folder containing scripts, logs, UI dumps, and screenshots.
-- Retention automation MUST enforce the 30-day policy while respecting pinned exemptions.
+**Network Boundary**: All services listen only on 127.0.0.1; disable CORS/auth assumptions since not exposed.
 
-## UX Principles
-- Provide a single-page UI with emulator stream on the left and controls/artifacts on the right.
-- Essential controls include: Upload/Install/Launch APK, Start/Pause/Stop Recording, Save/Rename Script, Replay Script, and artifact viewers.
-- Input mapping MUST translate mouse/touch to taps, Enter to IME enter, Esc to back, and expose shortcuts for home/app-switch.
-- Evidence (screenshots, dumps, logs) MUST remain one click away from any run for rapid diagnosis.
+**No Telemetry**: Do not emit analytics or diagnostics to third parties.
+
+**Secrets**: Avoid storing credentials in scripts; if unavoidable for test data, store inside the project's private area and redact in logs.
+
+**Legal/Ethical Use**: The platform is for testing apps you are authorized to analyze.
+
+## Data & Artifacts
+
+**Persist**: Uploaded APKs (deduped), recording scripts, per-run event logs, UI dumps (pre/post per step), screenshots, and automation logs.
+
+**Retention**: 30-day rolling deletion for unpinned artifacts; pinned items are exempt.
+
+**Organization**: Artifacts live under a per-project directory keyed by APK name and hash; every replay produces a new run folder.
+
+## UX Principles (v1)
+
+**Single Page**: Emulator stream on the left; controls and artifacts on the right.
+
+**Essential Controls**: Upload/Install/Launch APK, Start/Pause/Stop Recording, Save/Rename Script, Replay Script, view run status and artifacts.
+
+**Input Mapping**: Mouse/touch → taps; Enter → IME enter; Esc → back; include shortcuts for home/app-switch.
+
+**Clarity Over Density**: Evidence (screenshots, dumps, logs) is one click away from any run.
+
+## Governance & Workflow
+
+**Constitution Authority**: This constitution supersedes all other development practices. All feature specifications, plans, and tasks created via Spec Kit MUST comply with these principles.
+
+**Spec Kit Workflow**:
+1. `/speckit.constitution` → Establish/update governing principles
+2. `/speckit.specify` → Define functional "what/why" requirements
+3. `/speckit.clarify` → Resolve specification ambiguities
+4. `/speckit.plan` → Create technical architecture and approach
+5. `/speckit.tasks` → Generate work breakdown
+6. `/speckit.implement` → Execute implementation
+7. `/speckit.analyze` → Cross-artifact consistency validation before shipping
+
+**Decision Log**: Record any principle exceptions or tech-debt acceptances with rationale and expiry/revisit dates before implementation begins.
+
+**Change Control**: If a proposed feature conflicts with "Core Principles," either (a) revise the feature, or (b) explicitly amend this constitution with a decision log entry and version increment.
+
+**Compliance Review**: All PRs/reviews must verify compliance with this constitution. Complexity must be justified against simpler alternatives. Violations require explicit governance approval.
 
 ## Acceptance Criteria (v1)
-- From a clean machine, operators MUST launch the stack locally and open a single local webpage.
-- Users MUST upload, install, and launch an APK successfully through the UI.
-- Emulator stream MUST stay responsive and interactive in the browser.
-- Recorder MUST capture ≥10 steps (taps and text), save scripts, and replay to completion without manual edits.
-- Artifacts MUST surface under the project directory and obey the 30-day retention with pinning support.
 
-## Future Evolution
-- Target future features include multi-device orchestration, device farm UI, and optional Frida/MobSF integrations.
-- Consider local-only AI summarization of runs and diffs after governance approval.
-- Plan for adaptive selectors to support cross-device tolerant replays and varying screen sizes in later versions.
+From a clean machine, the platform MUST support the following end-to-end workflow:
 
-## Governance
-- This constitution supersedes other practice guides for the platform; teams MUST validate compliance during reviews and test runs.
-- Workflow order: `/speckit.constitution` → `/speckit.specify` → `/speckit.clarify` → `/speckit.plan` → `/speckit.tasks` → `/speckit.implement` → `/speckit.analyze`.
-- Decision log entries MUST capture any principle exceptions or tech-debt acceptances with rationale and revisit dates before implementation begins.
-- Features conflicting with non-negotiable principles MUST be revised or accompany a ratified constitution amendment.
-- Constitution versions MUST follow semantic versioning (MAJOR for conflicting changes, MINOR for new principles/sections, PATCH for clarifications).
-- Compliance reviews MUST verify localhost boundaries, single-device enforcement, artifact isolation, and automation selector quality before sign-off.
+1. Bring up the stack locally and open a single local webpage
+2. Upload an APK, install, and launch it successfully
+3. See a responsive, interactive emulator stream
+4. Record ≥10 steps (taps + text), save the script, and replay to completion with no manual tweaks
+5. All artifacts appear under the project and are automatically handled by the 30-day retention (with pinning support)
 
-**Version**: 1.0.0 | **Ratified**: 2025-10-08 | **Last Amended**: 2025-10-08
+## Future Evolution (Beyond v1)
+
+The following features are deferred to post-v1 releases:
+
+- Multi-device orchestration; device farm UI
+- Advanced Frida scripting, gadgets, and app repackaging (v1 supports basic instrumentation server)
+- Optional local-only AI summarization of runs and diffs
+- Cross-device tolerant replays (adaptive selectors; screen-size strategies)
+
+**Version**: 1.1.0 | **Ratified**: 2025-10-09 | **Last Amended**: 2025-10-09

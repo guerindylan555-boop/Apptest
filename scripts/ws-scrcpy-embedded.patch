@@ -3,11 +3,14 @@ index 29e8f9c..5c83e57 100644
 --- a/src/app/googDevice/client/StreamClientScrcpy.ts
 +++ b/src/app/googDevice/client/StreamClientScrcpy.ts
 @@ -293,6 +293,9 @@ export class StreamClientScrcpy
- 
+
          const deviceView = document.createElement('div');
          deviceView.className = 'device-view';
-+        if (document.body.classList.contains('embedded')) {
++        const isBodyEmbedded = document.body.classList.contains('embedded');
++        console.log('[StreamClientScrcpy] Body has embedded class:', isBodyEmbedded);
++        if (isBodyEmbedded) {
 +            deviceView.classList.add('embedded-view');
++            console.log('[StreamClientScrcpy] Added embedded-view class to device-view');
 +        }
          const stop = (ev?: string | Event) => {
              if (ev && ev instanceof Event && ev.type === 'error') {
@@ -25,18 +28,45 @@ index 29e8f9c..5c83e57 100644
          const logger = new DragAndPushLogger(element);
          this.filePushHandler = new FilePushHandler(element, new ScrcpyFilePushStream(this.streamReceiver));
          this.filePushHandler.addEventListener(logger);
+diff --git a/src/app/player/BasePlayer.ts b/src/app/player/BasePlayer.ts
+index abc123..def456 100644
+--- a/src/app/player/BasePlayer.ts
++++ b/src/app/player/BasePlayer.ts
+@@ -385,9 +385,12 @@ export abstract class BasePlayer extends TypedEmitter<PlayerEvents> {
+         const { width, height } = screenInfo.videoSize;
+         this.touchableCanvas.width = width;
+         this.touchableCanvas.height = height;
+-        if (this.parentElement) {
++        // Skip setting inline styles in embedded mode to allow CSS to take control
++        const isEmbedded = document.body.classList.contains('embedded');
++        if (this.parentElement && !isEmbedded) {
+             this.parentElement.style.height = `${height}px`;
+             this.parentElement.style.width = `${width}px`;
+         }
+         const size = new Size(width, height);
+         this.emit('video-view-resize', size);
+     }
 diff --git a/src/app/index.ts b/src/app/index.ts
 index cbc7a28..e3da2e3 100644
 --- a/src/app/index.ts
 +++ b/src/app/index.ts
-@@ -6,6 +6,10 @@ import { Tool } from './client/Tool';
+@@ -3,9 +3,18 @@ import { StreamClientScrcpy } from './googDevice/client/StreamClientScrcpy';
+ import { HostTracker } from './client/HostTracker';
+ import { Tool } from './client/Tool';
+
++// Apply embedded mode IMMEDIATELY before anything else
++const hash = location.hash.replace(/^#!/, '');
++const parsedQuery = new URLSearchParams(hash);
++const isEmbedded = parsedQuery.get('embedded') === '1';
++console.log('[ws-scrcpy] Embedded mode check:', { hash, isEmbedded });
++if (isEmbedded) {
++    document.body.classList.add('embedded');
++    console.log('[ws-scrcpy] Added embedded class to body');
++}
++
  window.onload = async function (): Promise<void> {
-     const hash = location.hash.replace(/^#!/, '');
-     const parsedQuery = new URLSearchParams(hash);
-+    const isEmbedded = parsedQuery.get('embedded') === '1';
-+    if (isEmbedded) {
-+        document.body.classList.add('embedded');
-+    }
+-    const hash = location.hash.replace(/^#!/, '');
+-    const parsedQuery = new URLSearchParams(hash);
      const action = parsedQuery.get('action');
  
      /// #if USE_BROADWAY
@@ -48,25 +78,35 @@ index e13218c..d92ce46 100644
      background-color: var(--stream-bg-color);
  }
  
++html, body.embedded {
++    width: 100%;
++    height: 100%;
++    margin: 0;
++    padding: 0;
++    overflow: hidden;
++}
++
 +body.embedded {
 +    background: transparent;
-+    display: flex;
-+    align-items: center;
-+    justify-content: center;
-+    padding: 0;
++    position: relative;
 +}
 +
 +body.embedded .device-view.embedded-view {
-+    float: none;
-+    width: 100%;
-+    max-width: 420px;
-+    aspect-ratio: 9 / 16;
-+    border-radius: 16px;
++    float: none !important;
++    display: block !important;
++    position: absolute !important;
++    inset: 0 !important;
++    top: 0 !important;
++    left: 0 !important;
++    right: 0 !important;
++    bottom: 0 !important;
++    width: 100% !important;
++    height: 100% !important;
++    margin: 0 !important;
++    border-radius: 0;
 +    overflow: hidden;
-+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.45);
-+    background: rgba(0, 0, 0, 0.9);
-+    display: flex;
-+    flex-direction: column;
++    box-shadow: none;
++    background: #000;
 +}
 +
 +body.embedded .device-view.embedded-view .control-buttons-list,
@@ -78,19 +118,34 @@ index e13218c..d92ce46 100644
 +}
 +
 +body.embedded .device-view.embedded-view .video {
-+    float: none;
-+    width: 100%;
-+    height: 100%;
-+    display: flex;
-+    align-items: center;
-+    justify-content: center;
++    float: none !important;
++    position: absolute !important;
++    top: 0 !important;
++    left: 0 !important;
++    right: 0 !important;
++    bottom: 0 !important;
++    width: 100% !important;
++    height: 100% !important;
++    max-width: none !important;
++    max-height: none !important;
++    margin: 0 !important;
++    display: block !important;
 +    background: #000;
 +}
 +
-+body.embedded .device-view.embedded-view canvas {
++body.embedded .device-view.embedded-view .screen,
++body.embedded .device-view.embedded-view canvas,
++body.embedded .device-view.embedded-view video,
++body.embedded .device-view.embedded-view .webgl,
++body.embedded .device-view.embedded-view .bitmap {
 +    width: 100% !important;
 +    height: 100% !important;
-+    object-fit: contain;
++    max-width: none !important;
++    max-height: none !important;
++    transform: none !important;
++    object-fit: contain !important;
++    margin: 0 !important;
++    padding: 0 !important;
 +}
 +
  .terminal-container {

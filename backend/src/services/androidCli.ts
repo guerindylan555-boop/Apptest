@@ -1,5 +1,18 @@
 import { spawn, type ChildProcess, type SpawnOptions } from 'child_process';
 import { logger } from './logger';
+import path from 'path';
+
+// Android SDK paths
+const ANDROID_SDK_ROOT = process.env.ANDROID_SDK_ROOT ?? path.join(process.env.HOME ?? '', 'android-sdk');
+const SDK_TOOLS_PATH = path.join(ANDROID_SDK_ROOT, 'cmdline-tools', 'latest', 'bin');
+const PLATFORM_TOOLS_PATH = path.join(ANDROID_SDK_ROOT, 'platform-tools');
+const EMULATOR_PATH = path.join(ANDROID_SDK_ROOT, 'emulator');
+
+// Full paths to Android SDK tools
+const getFullPath = (tool: string, sdkPath: string = SDK_TOOLS_PATH) => {
+  const ext = process.platform === 'win32' ? '.exe' : '';
+  return path.join(sdkPath, tool + ext);
+};
 
 export interface RunOptions {
   cwd?: string;
@@ -50,25 +63,25 @@ const runCommand = (
 };
 
 export const sdkmanager = (packages: string[]) =>
-  runCommand(process.env.SDKMANAGER ?? 'sdkmanager', packages);
+  runCommand(process.env.SDKMANAGER ?? getFullPath('sdkmanager'), packages);
 
 export const avdmanager = (args: string[]) =>
-  runCommand(process.env.AVDMANAGER ?? 'avdmanager', args);
+  runCommand(process.env.AVDMANAGER ?? getFullPath('avdmanager'), args);
 
 export const emulatorCli = (args: string[], options?: RunOptions) =>
-  runCommand(process.env.EMULATOR ?? 'emulator', args, options);
+  runCommand(process.env.EMULATOR ?? getFullPath('emulator', EMULATOR_PATH), args, options);
 
 export const launchEmulator = (
   args: string[],
   options?: SpawnOptions
 ): ChildProcess =>
-  spawn(process.env.EMULATOR ?? 'emulator', args, {
+  spawn(process.env.EMULATOR ?? getFullPath('emulator', EMULATOR_PATH), args, {
     stdio: ['ignore', 'pipe', 'pipe'],
     ...options
   });
 
 export const adb = (args: string[], options?: RunOptions) =>
-  runCommand(process.env.ADB ?? 'adb', args, options);
+  runCommand(process.env.ADB ?? getFullPath('adb', PLATFORM_TOOLS_PATH), args, options);
 
 export const adbShell = (serial: string, shellArgs: string[], options?: RunOptions) =>
   adb(['-s', serial, 'shell', ...shellArgs], options);

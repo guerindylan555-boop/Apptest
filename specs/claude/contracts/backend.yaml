@@ -1,0 +1,161 @@
+openapi: 3.1.0
+title: AutoApp Emulator Control API
+version: 0.1.0
+servers:
+  - url: http://127.0.0.1:7070/api
+paths:
+  /emulator/start:
+    post:
+      summary: Start the local rooted Android emulator
+      responses:
+        '200':
+          description: Emulator accepted start command
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifecycleResponse'
+        '409':
+          description: Start rejected due to current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /emulator/stop:
+    post:
+      summary: Stop the running emulator
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                force:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: Stop initiated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LifecycleResponse'
+        '409':
+          description: Stop rejected because emulator not running
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /health:
+    get:
+      summary: Current emulator lifecycle status
+      responses:
+        '200':
+          description: Health snapshot
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthPayload'
+  /stream/url:
+    get:
+      summary: Issue a one-time ticket for the websocket video stream
+      responses:
+        '200':
+          description: Ticket issued
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StreamTicket'
+        '409':
+          description: Stream unavailable in current state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    LifecycleResponse:
+      type: object
+      properties:
+        state:
+          $ref: '#/components/schemas/EmulatorState'
+        message:
+          type: string
+      required: [state, message]
+    EmulatorState:
+      type: string
+      enum: [Stopped, Booting, Running, Stopping, Error]
+    HealthPayload:
+      type: object
+      properties:
+        state:
+          $ref: '#/components/schemas/EmulatorState'
+        avd:
+          type: string
+        bootElapsedMs:
+          type: integer
+          minimum: 0
+        pid:
+          type: integer
+        ports:
+          type: object
+          properties:
+            console:
+              type: integer
+            adb:
+              type: integer
+        streamAttached:
+          type: boolean
+        lastError:
+          $ref: '#/components/schemas/SessionError'
+        forceStopRequired:
+          type: boolean
+        timestamps:
+          type: object
+          properties:
+            bootStartedAt:
+              type: string
+              format: date-time
+            bootCompletedAt:
+              type: string
+              format: date-time
+      required: [state, avd, streamAttached, timestamps]
+    StreamTicket:
+      type: object
+      properties:
+        url:
+          type: string
+          format: uri
+        token:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+      required: [url, token, expiresAt]
+    SessionError:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        hint:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+      required: [code, message, occurredAt]
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            hint:
+              type: string
+          required: [code, message]
+      required: [error]
