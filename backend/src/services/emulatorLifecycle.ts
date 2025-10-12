@@ -37,6 +37,18 @@ export const startEmulator = async (): Promise<EmulatorSession> => {
     throw new Error(`Cannot start emulator while in state ${session.state}`);
   }
 
+  // External emulator mode: emulator is already running on host
+  const externalMode = process.env.EXTERNAL_EMULATOR === 'true';
+  if (externalMode) {
+    logger.info('External emulator mode: assuming emulator is already running');
+    sessionStore.transition('Booting');
+    sessionStore.setBootStarted(undefined, { console: CONSOLE_PORT, adb: ADB_PORT });
+    sessionStore.setBootCompleted();
+    sessionStore.transition('Running', { streamToken: undefined });
+    logger.info('External emulator detected as running');
+    return sessionStore.getSession();
+  }
+
   if (emulatorProcess) {
     logger.warn('Emulator process handle exists; attempting restart');
     emulatorProcess.kill('SIGKILL');
@@ -203,6 +215,14 @@ export const stopEmulator = async (force = false): Promise<EmulatorSession> => {
   }
   if (session.state === 'Booting') {
     logger.warn('Stop requested while booting');
+  }
+
+  // External emulator mode: don't actually stop the host emulator
+  const externalMode = process.env.EXTERNAL_EMULATOR === 'true';
+  if (externalMode) {
+    logger.info('External emulator mode: marking as stopped without killing host emulator');
+    sessionStore.reset();
+    return sessionStore.getSession();
   }
 
   sessionStore.markStopping();
