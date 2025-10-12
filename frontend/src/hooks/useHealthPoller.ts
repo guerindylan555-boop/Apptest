@@ -63,7 +63,7 @@ export const useHealthPoller = () => {
             lastError: {
               code: 'HEALTH_UNREACHABLE',
               message: 'Lost contact with backend health endpoint',
-              hint: 'Confirm backend service is running on http://127.0.0.1:3001'
+              hint: 'Confirm the backend service is running and the VITE_BACKEND_URL points to it'
             },
             forceStopRequired: false
           });

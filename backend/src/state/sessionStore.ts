@@ -65,7 +65,7 @@ class SessionStore {
     this.recordError({
       code: 'HEALTH_UNREACHABLE',
       message: 'Health checks failed to confirm emulator availability',
-      hint: 'Verify backend service is running and reachable at http://127.0.0.1:3001/api/health.',
+      hint: 'Verify the backend service is running and reachable at the configured BASE_URL/api/health endpoint.',
       occurredAt: new Date().toISOString()
     });
   }

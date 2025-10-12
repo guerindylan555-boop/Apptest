@@ -6,10 +6,10 @@ BACKEND_DIR="$ROOT_DIR/backend"
 FRONTEND_DIR="$ROOT_DIR/frontend"
 # Export default environment variables for backend/frontend
 export EMULATOR_SERIAL=${EMULATOR_SERIAL:-emulator-5555}
-export PORT=${PORT:-7070}
-export HOST=${HOST:-127.0.0.1}
+export PORT=${PORT:-3001}
+export HOST=${HOST:-0.0.0.0}
 export LOG_LEVEL=${LOG_LEVEL:-info}
-export WS_SCRCPY_HOST=${WS_SCRCPY_HOST:-127.0.0.1}
+export WS_SCRCPY_HOST=${WS_SCRCPY_HOST:-0.0.0.0}
 export WS_SCRCPY_PORT=${WS_SCRCPY_PORT:-8000}
 export WS_SCRCPY_PLAYER=${WS_SCRCPY_PLAYER:-mse}
 

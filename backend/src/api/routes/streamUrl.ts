@@ -14,7 +14,10 @@ export const streamUrlHandler = async (_req: Request, res: Response) => {
   }
 
   try {
-    const ticket = await issueStreamTicket();
+    const forwardedHost = _req.get('x-forwarded-host');
+    const host = forwardedHost ?? _req.get('host') ?? undefined;
+    const protocol = _req.get('x-forwarded-proto') ?? _req.protocol;
+    const ticket = await issueStreamTicket({ requestHost: host, protocol });
     return res.status(200).json(ticket);
   } catch (error) {
     return res.status(500).json({
