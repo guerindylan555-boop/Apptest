@@ -1,0 +1,338 @@
+openapi: 3.0.3
+info:
+  title: Apps Library API
+  version: 0.1.0
+servers:
+  - url: http://127.0.0.1:3001/api
+paths:
+  /apps:
+    get:
+      summary: List APK entries
+      responses:
+        '200':
+          description: Array of APK entries
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApkEntry'
+    post:
+      summary: Upload an APK file
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '202':
+          description: Upload accepted and metadata extraction pending
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApkEntry'
+  /apps/{id}:
+    patch:
+      summary: Update APK display name or pin state
+      parameters:
+        - $ref: '#/components/parameters/AppId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                displayName:
+                  type: string
+                pinned:
+                  type: boolean
+      responses:
+        '200':
+          description: Updated APK entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApkEntry'
+    delete:
+      summary: Remove APK entry and artifacts (if unpinned)
+      parameters:
+        - $ref: '#/components/parameters/AppId'
+      responses:
+        '204':
+          description: Deleted
+  /apps/{id}/install-launch:
+    post:
+      summary: Install and launch selected APK
+      parameters:
+        - $ref: '#/components/parameters/AppId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                allowDowngrade:
+                  type: boolean
+                  default: false
+                autoGrantPermissions:
+                  type: boolean
+                  default: false
+      responses:
+        '200':
+          description: Install/launch result
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstallResult'
+  /frida/server:
+    post:
+      summary: Start or stop frida-server
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum: [start, stop]
+      responses:
+        '200':
+          description: Updated Frida server state
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FridaState'
+  /frida/attach:
+    post:
+      summary: Attach Frida to running process and optionally load script
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                packageName:
+                  type: string
+                scriptPath:
+                  type: string
+      responses:
+        '200':
+          description: Attachment outcome
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FridaAttachResult'
+  /logcat/sessions:
+    post:
+      summary: Start logcat capture
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                packageFilters:
+                  type: array
+                  items:
+                    type: string
+                tagFilters:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Logcat session started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogSession'
+  /logcat/sessions/{id}:
+    patch:
+      summary: Pause or resume logcat capture
+      parameters:
+        - $ref: '#/components/parameters/LogSessionId'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum: [pause, resume, stop]
+      responses:
+        '200':
+          description: Updated log session
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogSession'
+    get:
+      summary: Download finalized logcat capture
+      parameters:
+        - $ref: '#/components/parameters/LogSessionId'
+      responses:
+        '200':
+          description: Logcat text file
+          content:
+            text/plain:
+              schema:
+                type: string
+  /proxy/toggle:
+    post:
+      summary: Toggle emulator HTTP proxy
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                enabled:
+                  type: boolean
+                host:
+                  type: string
+                  default: 127.0.0.1
+                port:
+                  type: integer
+      responses:
+        '200':
+          description: Proxy status
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProxyState'
+
+components:
+  parameters:
+    AppId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+    LogSessionId:
+      name: id
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    ApkEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        sha256:
+          type: string
+        displayName:
+          type: string
+        packageName:
+          type: string
+        versionName:
+          type: string
+          nullable: true
+        versionCode:
+          type: string
+          nullable: true
+        minSdk:
+          type: integer
+          nullable: true
+        targetSdk:
+          type: integer
+          nullable: true
+        launchableActivity:
+          type: string
+          nullable: true
+        signerDigest:
+          type: string
+        sizeBytes:
+          type: integer
+        uploadedAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+          nullable: true
+        pinned:
+          type: boolean
+        metadataWarnings:
+          type: array
+          items:
+            type: string
+    InstallResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [success, failed]
+        launchResolution:
+          type: string
+        message:
+          type: string
+        installLogPath:
+          type: string
+    FridaState:
+      type: object
+      properties:
+        active:
+          type: boolean
+        serverPid:
+          type: integer
+          nullable: true
+        lastOutputLines:
+          type: array
+          items:
+            type: string
+    FridaAttachResult:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [attached, failed]
+        message:
+          type: string
+        scriptPath:
+          type: string
+    LogSession:
+      type: object
+      properties:
+        id:
+          type: string
+        status:
+          type: string
+          enum: [active, paused, stopped]
+        filters:
+          type: object
+        startedAt:
+          type: string
+          format: date-time
+        endedAt:
+          type: string
+          format: date-time
+          nullable: true
+        filePath:
+          type: string
+          nullable: true
+    ProxyState:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+        host:
+          type: string
+        port:
+          type: integer
