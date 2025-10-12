@@ -8,8 +8,17 @@
 
 ## Local Development
 
-To run the app locally on your VPS:
+### Running with Docker Compose
 
+The docker-compose.yml runs the frontend and backend. ws-scrcpy must be run separately on the host.
+
+**Step 1: Start ws-scrcpy on the host**
+```bash
+cd ws-scrcpy
+npm start
+```
+
+**Step 2: Start frontend and backend with Docker**
 ```bash
 docker-compose up --build
 ```
@@ -17,7 +26,7 @@ docker-compose up --build
 Services will be available at:
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:3001
-- ws-scrcpy: http://localhost:8000
+- ws-scrcpy: http://localhost:8000 (running on host)
 
 ## Deploying with Dokploy
 
@@ -29,51 +38,35 @@ Services will be available at:
    - Select "Docker Compose"
    - Connect your Git repository or upload the project
 
-2. **Configure Environment Variables**
-   Add these environment variables in Dokploy:
+2. **Run ws-scrcpy on the host (before deploying)**
+   ws-scrcpy is not included in the Docker Compose and must run on the host:
+   ```bash
+   cd ws-scrcpy
+   npm start
    ```
-   NODE_ENV=production
-   PORT=3001
-   HOST=0.0.0.0
-   LOG_LEVEL=info
-   WS_SCRCPY_HOST=ws-scrcpy
+
+3. **Configure Environment Variables**
+   Add these environment variables in Dokploy (optional, defaults are provided):
+   ```
+   WS_SCRCPY_HOST=localhost  # or your VPS IP
    WS_SCRCPY_PORT=8000
    WS_SCRCPY_PLAYER=mse
    EMULATOR_SERIAL=emulator-5555
    ```
 
-3. **Configure Domains**
+4. **Configure Domains**
    Set up domains for each service:
    - Frontend: `app.yourdomain.com`
    - Backend: `api.yourdomain.com`
-   - ws-scrcpy: `stream.yourdomain.com`
 
-4. **Deploy**
+5. **Deploy**
    - Click "Deploy" in Dokploy
    - Dokploy will build and start your containers
    - SSL certificates will be automatically provisioned
 
-### Method 2: Individual Service Deployment
+### Note about ws-scrcpy
 
-If you prefer to deploy services separately:
-
-1. **Backend Service**
-   - Create a new "Docker" application in Dokploy
-   - Point to `backend/Dockerfile`
-   - Expose port 3001
-   - Add environment variables
-
-2. **Frontend Service**
-   - Create a new "Docker" application
-   - Point to `frontend/Dockerfile`
-   - Expose port 80
-   - No environment variables needed
-
-3. **ws-scrcpy Service**
-   - Use the pre-built image: `ghcr.io/netrisai/ws-scrcpy:latest`
-   - Expose port 8000
-   - Enable privileged mode
-   - Mount `/dev/kvm` device
+ws-scrcpy runs separately on the host machine (not in Docker). The backend connects to it via `host.docker.internal:8000`. Make sure ws-scrcpy is running before starting the Docker services.
 
 ## Accessing from Local Machine
 
