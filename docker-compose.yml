@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: apptest-backend
+    ports:
+      - "3001:3001"
+    environment:
+      - NODE_ENV=production
+      - PORT=3001
+      - HOST=0.0.0.0
+      - LOG_LEVEL=info
+      - WS_SCRCPY_HOST=ws-scrcpy
+      - WS_SCRCPY_PORT=8000
+      - WS_SCRCPY_PLAYER=mse
+      - EMULATOR_SERIAL=emulator-5555
+    volumes:
+      - android-data:/opt/android-sdk
+    networks:
+      - apptest-network
+    restart: unless-stopped
+    depends_on:
+      - ws-scrcpy
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: apptest-frontend
+    ports:
+      - "5173:80"
+    networks:
+      - apptest-network
+    restart: unless-stopped
+    depends_on:
+      - backend
+
+  ws-scrcpy:
+    image: ghcr.io/netrisai/ws-scrcpy:latest
+    container_name: apptest-ws-scrcpy
+    ports:
+      - "8000:8000"
+    environment:
+      - WS_SCRCPY_PORT=8000
+    volumes:
+      - android-data:/opt/android-sdk
+    networks:
+      - apptest-network
+    restart: unless-stopped
+    privileged: true
+    devices:
+      - /dev/kvm
+
+volumes:
+  android-data:
+
+networks:
+  apptest-network:
+    driver: bridge
