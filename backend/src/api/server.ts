@@ -8,18 +8,26 @@ export const createServer = (): Express => {
 
   app.disable('x-powered-by');
 
-  // Enable CORS for local development
-  const allowedOrigins = [
+  const defaultAllowedOrigins = [
     'http://127.0.0.1:5173',
     'http://localhost:5173',
     'http://127.0.0.1:3001',
     'http://localhost:3001'
   ];
 
-  app.use(cors({
-    origin: allowedOrigins,
-    credentials: false
-  }));
+  const envOrigins = process.env.CORS_ALLOWED_ORIGINS?.split(',')
+    .map((value) => value.trim())
+    .filter((value) => value.length > 0);
+
+  const corsOptions =
+    process.env.CORS_ALLOWED_ORIGINS?.trim() === '*'
+      ? { origin: '*', credentials: false }
+      : {
+          origin: envOrigins && envOrigins.length > 0 ? envOrigins : defaultAllowedOrigins,
+          credentials: false
+        };
+
+  app.use(cors(corsOptions));
 
   app.use(express.json());
 
@@ -32,7 +40,7 @@ export const createServer = (): Express => {
   return app;
 };
 
-export const startServer = (port = 3001, host = '127.0.0.1') => {
+export const startServer = (port = 3001, host = '0.0.0.0') => {
   const app = createServer();
   return app.listen(port, host, () => {
     // eslint-disable-next-line no-console
