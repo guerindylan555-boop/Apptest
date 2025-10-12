@@ -29,8 +29,8 @@ export const issueStreamTicket = async () => {
 
   const streamHost = process.env.WS_SCRCPY_HOST ?? streamConfig.host;
   const streamPort = process.env.WS_SCRCPY_PORT ?? '8000';
-  const player = process.env.WS_SCRCPY_PLAYER ?? 'broadway';
-  const remote = process.env.WS_SCRCPY_REMOTE ?? 'tcp:8886';
+  const player = process.env.WS_SCRCPY_PLAYER ?? streamConfig.player;
+  const remote = process.env.WS_SCRCPY_REMOTE ?? streamConfig.remote;
 
   const proxyUrl = new URL(`ws://${streamHost}:${streamPort}/`);
   proxyUrl.searchParams.set('action', 'proxy-adb');
@@ -42,7 +42,8 @@ export const issueStreamTicket = async () => {
     udid: emulatorSerial,
     player,
     ws: proxyUrl.toString(),
-    embedded: '1'
+    embedded: '1',
+    autoplay: '1'
   });
 
   const hashString = hashParams.toString().replace(/%253A/g, '%3A');

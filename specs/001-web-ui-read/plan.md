@@ -5,7 +5,7 @@
 
 ## Summary
 
-Deliver a localhost-only experience that lets a solo tester start and stop a single rooted Android 14 emulator, observe its screen through a read-only ws-scrcpy stream, and monitor lifecycle state. The solution pairs a minimal Express-based backend orchestrating Android SDK tooling (emulator, adb, console kill) with a Vite/React single-page UI that consumes local HTTP endpoints and embeds the ws-scrcpy player with input disabled. Research confirms the use of deterministic headless emulator flags, robust boot/readiness gating, and safe shutdown fallbacks aligned with v1 constitutional constraints.
+Deliver a localhost-only experience that lets a solo tester start and stop a single rooted Android 14 emulator, observe its screen through a read-only ws-scrcpy stream, and monitor lifecycle state. The solution pairs a minimal Express-based backend orchestrating Android SDK tooling (emulator, adb, console kill) with a Vite/React single-page UI that consumes local HTTP endpoints and embeds the ws-scrcpy player (defaulting to WebCodecs) inside an iframe with input disabled. Research confirms the use of deterministic headless emulator flags, robust boot/readiness gating, and safe shutdown fallbacks aligned with v1 constitutional constraints. A convenience launcher script (`scripts/run-everything.sh`) handles process orchestration and cleanup during local development.
 
 ## Technical Context
 
@@ -61,7 +61,7 @@ backend/
 frontend/
 ├── src/
 │   ├── components/   # StreamViewer, StateBadge, ControlButton, DiagnosticsDrawer
-│   ├── hooks/        # useHealthPoller, useStream
+│   ├── hooks/        # useHealthPoller, other polling utilities
 │   ├── services/     # REST clients (fetch wrappers)
 │   └── styles/
 └── tests/
@@ -70,7 +70,8 @@ frontend/
 
 scripts/
 ├── setup-avd.sh      # Idempotent Android SDK/AVD provisioning
-└── run-local.sh      # Orchestrates backend, streamer, frontend dev servers
+├── run-local.sh      # Legacy per-service launcher (kept for granular debugging)
+└── run-everything.sh # Primary orchestration script that cleans stale processes and starts ws-scrcpy + backend + frontend
 ```
 
 **Structure Decision**: Adopt a two-project layout (`backend/`, `frontend/`) to separate Express orchestration logic from the SPA. Supporting scripts live under `scripts/` for repeatable setup and dev workflows.

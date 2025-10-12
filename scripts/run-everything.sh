@@ -25,9 +25,14 @@ kill_if_running() {
 }
 
 stop_all() {
+  # Kill ws-scrcpy processes (including node instances in ws-scrcpy/dist)
   kill_if_running "ws-scrcpy"
+  # Also kill any node process running ws-scrcpy dist entrypoint
+  pgrep -f "$WS_SCRCPY_DIR/dist/index.js" | xargs -r kill -9 2>/dev/null || true
+  # Kill backend and frontend
   kill_if_running "ts-node-dev --respawn --transpile-only src/index.ts"
   kill_if_running "vite --host"
+  sleep 1
 }
 
 start_ws_scrcpy() {
@@ -50,8 +55,12 @@ start_ws_scrcpy() {
     fi
   fi
 
-  echo "[run-everything] Starting ws-scrcpy"
-  nohup npm start > "$WS_SCRCPY_LOG" 2>&1 &
+  echo "[run-everything] Starting ws-scrcpy on port 8000"
+  export WS_SCRCPY_PORT=8000
+  export ANDROID_SDK_ROOT=~/Android
+  export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+  export PATH=/usr/bin:$PATH:~/Android/cmdline-tools/latest/bin:~/Android/platform-tools:~/Android/emulator
+  cd dist && nohup node ./index.js > "$WS_SCRCPY_LOG" 2>&1 &
   WS_PID=$!
   popd >/dev/null
 }
@@ -59,6 +68,13 @@ start_ws_scrcpy() {
 start_backend() {
   pushd "$BACKEND_DIR" >/dev/null
   echo "[run-everything] Starting backend"
+  export WS_SCRCPY_PORT=8000
+  export ANDROID_SDK_ROOT=~/Android
+  export JAVA_HOME=/usr/lib/jvm/java-17-openjdk-amd64
+  export PATH=/usr/bin:$PATH:~/Android/cmdline-tools/latest/bin:~/Android/platform-tools:~/Android/emulator
+  export ADB=~/Android/platform-tools/adb
+  export EMULATOR=~/Android/emulator/emulator
+  export AVDMANAGER=~/Android/cmdline-tools/latest/bin/avdmanager
   nohup npm run dev > "$BACKEND_LOG" 2>&1 &
   BACKEND_PID=$!
   popd >/dev/null

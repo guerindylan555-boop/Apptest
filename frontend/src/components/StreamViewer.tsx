@@ -44,7 +44,7 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
     return () => {
       cancelled = true;
     };
-  }, [state, streamTicket?.token, setGlobalState]);
+  }, [state, streamTicket, setGlobalState]);
 
   if (state !== 'Running' || !activeTicket) {
     return <StreamPlaceholder />;

@@ -1,7 +1,7 @@
 import { startServer } from './api/server';
 import { logger } from './services/logger';
 
-const PORT = Number.parseInt(process.env.PORT ?? '8080', 10);
+const PORT = Number.parseInt(process.env.PORT ?? '3001', 10);
 const HOST = process.env.HOST ?? '127.0.0.1';
 
 const server = startServer(PORT, HOST);

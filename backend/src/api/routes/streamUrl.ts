@@ -2,7 +2,7 @@ import type { Request, Response } from 'express';
 import { sessionStore } from '../../state/sessionStore';
 import { issueStreamTicket } from '../../services/streamerService';
 
-export const streamUrlHandler = (_req: Request, res: Response) => {
+export const streamUrlHandler = async (_req: Request, res: Response) => {
   const session = sessionStore.getSession();
   if (session.state !== 'Running') {
     return res.status(409).json({
@@ -14,7 +14,7 @@ export const streamUrlHandler = (_req: Request, res: Response) => {
   }
 
   try {
-    const ticket = issueStreamTicket();
+    const ticket = await issueStreamTicket();
     return res.status(200).json(ticket);
   } catch (error) {
     return res.status(500).json({

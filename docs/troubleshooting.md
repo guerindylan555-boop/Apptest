@@ -2,7 +2,9 @@
 
 ## Log Locations
 - Backend orchestrator: `var/log/autoapp/backend.log`
-- ws-scrcpy streamer: run with `--log-level debug` to stdout (captured in terminal)
+- Backend dev server (when launched via script): `var/log/autoapp/backend-dev.log`
+- ws-scrcpy streamer: `var/log/autoapp/ws-scrcpy.log`
+- Frontend dev server: `var/log/autoapp/frontend-dev.log`
 - Emulator: `${ANDROID_SDK_ROOT}/emulator/logs/` and `~/.android/avd/autoapp-local.avd/*.log`
 
 ## Common Issues
@@ -20,28 +22,19 @@
 **Symptoms**: Banner shows "Stream unavailable; retrying…" while emulator reports Running.
 
 **Checks**
-1. Run the standalone ws-scrcpy bridge locally:
-   ```bash
-   # once per machine
-   git clone https://github.com/NetrisTV/ws-scrcpy
-   cd ws-scrcpy
-   npm install
-
-   # start the bridge (listens on http://127.0.0.1:8000)
-   npm start
-   ```
-2. In the ws-scrcpy UI (gear icon → Interfaces) pick **proxy over adb** when targeting Android emulators.
-3. Ensure the stream endpoint responds: `curl -I http://127.0.0.1:8000/?action=stream&udid=emulator-5555` should return `200`.
-4. Reload the AutoApp UI; the iframe should display the ws-scrcpy player once the bridge reports "Connected".
+1. Re-run `./scripts/run-everything.sh` to recycle all streamer/backend/frontend processes and free port 8000.
+2. Inspect `var/log/autoapp/ws-scrcpy.log` for `EADDRINUSE` or decoder errors; resolve port conflicts (kill stray `node ./index.js` processes) before retrying.
+3. Confirm the backend is issuing WebCodecs tickets: `curl http://127.0.0.1:3001/api/stream/url` should return a URL containing `player=webcodecs` when the emulator is Running.
+4. Open `http://127.0.0.1:8000/` only for diagnostics; the embedded iframe should attach automatically without manually selecting a player.
 
 ### Health endpoint unreachable
 **Symptoms**: UI switches to Error with hint to check backend service.
 
 **Checks**
 1. Backend dev server running? `npm run dev` inside `backend/`.
-2. Confirm port binding: `ss -ltn sport = :8080` should show `127.0.0.1`.
+2. Confirm port binding: `ss -ltn sport = :3001` should show `127.0.0.1`.
 3. Inspect `var/log/autoapp/backend.log` for crash stack traces.
-4. Run `curl http://127.0.0.1:8080/api/health` in terminal; errors indicate backend failure.
+4. Run `curl http://127.0.0.1:3001/api/health` in terminal; errors indicate backend failure.
 
 ### Force stop required
 **Symptoms**: Stop attempt fails; banner exposes Force Stop action.
@@ -50,7 +43,7 @@
 1. Confirm console auth token exists at `~/.emulator_console_auth_token`.
 2. If Force Stop still fails, run `adb -s emulator-5555 emu kill` manually.
 3. Kill emulator process group: `pkill -f "qemu-system"` as last resort.
-4. After cleanup, rerun `scripts/run-local.sh` to restore stack.
+4. After cleanup, rerun `scripts/run-everything.sh` to restore the stack.
 
 ### Missing Android CLI tools
 **Symptoms**: Backend log shows `Required command 'adb' not found`.

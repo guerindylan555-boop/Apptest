@@ -65,7 +65,7 @@ A solo tester encounters a failure (start, stop, or stream attach) and receives 
 
 ### Functional Requirements
 
-- **FR-001**: The web UI MUST be served only via `http://127.0.0.1:8080` (configurable port in local settings) and reject non-localhost access.
+- **FR-001**: The web UI MUST be served only via `http://127.0.0.1:5173` (configurable port in local settings) and reject non-localhost access.
 - **FR-002**: The primary button MUST display Start Emulator when the emulator state is Stopped and Stop Emulator when the state is Running.
 - **FR-003**: During state transitions (Booting…, Stopping…), the primary button MUST disable input and show an inline loading indicator.
 - **FR-004**: The interface MUST present a state badge with values Stopped, Booting…, Running, Stopping…, or Error that always reflects backend-reported truth.
@@ -94,7 +94,7 @@ A solo tester encounters a failure (start, stop, or stream attach) and receives 
 
 ## Assumptions
 
-- localhost port 8080 is available; operators can change it via local configuration if needed.
+- localhost port 5173 is available for frontend; operators can change it via local configuration if needed.
 - The underlying streaming component can provide a read-only feed compatible with the emulator profile.
 - Log files are stored on the same host with read access for the tester.
 - Auto-start on page load remains disabled by default; enabling it requires an explicit local configuration flag.

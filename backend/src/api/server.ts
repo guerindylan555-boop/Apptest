@@ -10,10 +10,10 @@ export const createServer = (): Express => {
 
   // Enable CORS for local development
   const allowedOrigins = [
-    'http://127.0.0.1:8080',
-    'http://localhost:8080',
-    'http://127.0.0.1:8081',
-    'http://localhost:8081'
+    'http://127.0.0.1:5173',
+    'http://localhost:5173',
+    'http://127.0.0.1:3001',
+    'http://localhost:3001'
   ];
 
   app.use(cors({
@@ -32,7 +32,7 @@ export const createServer = (): Express => {
   return app;
 };
 
-export const startServer = (port = 8080, host = '127.0.0.1') => {
+export const startServer = (port = 3001, host = '127.0.0.1') => {
   const app = createServer();
   return app.listen(port, host, () => {
     // eslint-disable-next-line no-console

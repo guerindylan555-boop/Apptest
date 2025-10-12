@@ -34,7 +34,7 @@
 - [X] T007 Implement structured file logger writing to `var/log/autoapp/backend.log` (`backend/src/services/logger.ts`).
 - [X] T008 Build Android CLI wrapper utilities for emulator and adb commands (`backend/src/services/androidCli.ts`).
 - [X] T009 Create singleton session store with token generation and state transitions (`backend/src/state/sessionStore.ts`).
-- [X] T010 Stand up Express server skeleton bound to `127.0.0.1:8080` with empty routers (`backend/src/api/server.ts`, `backend/src/api/routes/index.ts`).
+- [X] T010 Stand up Express server skeleton bound to `127.0.0.1:3001` with empty routers (`backend/src/api/server.ts`, `backend/src/api/routes/index.ts`).
 - [X] T011 Establish frontend app shell + global state store (`frontend/src/state/useAppStore.ts`, `frontend/src/App.tsx`) rendering placeholder layout.
 - [X] T012 [P] Add shared styles and stream placeholder assets (`frontend/src/styles/base.css`, `frontend/src/components/StreamPlaceholder.tsx`).
 
@@ -46,7 +46,7 @@
 
 **Goal**: Tester can start the emulator from the page and view a responsive read-only stream within 45 seconds.
 
-**Independent Test**: From a clean boot, run `scripts/run-local.sh`, load the UI, click Start Emulator, and observe the stream with the badge progressing Stopped → Booting → Running.
+**Independent Test**: From a clean boot, run `./scripts/run-everything.sh`, load the UI, click Start Emulator, and observe the stream with the badge progressing Stopped → Booting → Running.
 
 ### Implementation
 
@@ -57,12 +57,12 @@
 - [X] T017 [US1] Implement GET `/health` to expose session diagnostics (`backend/src/api/routes/health.ts`).
 - [X] T018 [US1] Finalize backend bootstrap exporting Express app and start script (`backend/src/index.ts`, `backend/package.json` scripts).
 - [X] T019 [US1] Create frontend HTTP client helpers (`frontend/src/services/backendClient.ts`).
-- [X] T020 [US1] Build `useHealthPoller` hook with 1s polling and auto stream fetch (`frontend/src/hooks/useHealthPoller.ts`).
+- [X] T020 [US1] Build `useHealthPoller` hook with 1s polling and auto stream ticket fetch (`frontend/src/hooks/useHealthPoller.ts`).
 - [X] T021 [P] [US1] Implement `StateBadge` component with color variants (`frontend/src/components/StateBadge.tsx`).
 - [X] T022 [P] [US1] Implement primary `ControlButton` component handling disabled/loading states (`frontend/src/components/ControlButton.tsx`).
-- [X] T023 [P] [US1] Implement `StreamViewer` rendering `<video>` element with pointer disabled (`frontend/src/components/StreamViewer.tsx`, `frontend/src/styles/stream.css`).
+- [X] T023 [P] [US1] Implement `StreamViewer` embedding the ws-scrcpy iframe with pointer/input disabled (`frontend/src/components/StreamViewer.tsx`, `frontend/src/styles/stream.css`).
 - [X] T024 [US1] Integrate components in `App.tsx` to trigger start flow, bind state, and attach stream.
-- [X] T025 [US1] Create `scripts/run-local.sh` to launch backend, streamer, and frontend on localhost.
+- [X] T025 [US1] Create launcher scripts for local orchestration (`scripts/run-local.sh` legacy per-service helper, `scripts/run-everything.sh` primary orchestrator).
 
 **Checkpoint**: User Story 1 delivers MVP — start flow and read-only stream verified.
 
@@ -148,7 +148,7 @@ T021 + T022 + T023  (distinct files)
 1. **MVP (US1)**: Complete Phases 1–3 to deliver start + stream functionality. Demo once T025 passes manual test.
 2. **Incremental Expansion**: Layer User Story 2 to introduce safe shutdown without breaking US1. Validate cycle tests.
 3. **Resilience & Observability**: Implement User Story 3 for error handling, then finish polish tasks to document and verify localhost boundaries.
-4. **Continuous Validation**: After each phase checkpoint, run `scripts/run-local.sh`, verify acceptance criteria, and commit.
+4. **Continuous Validation**: After each phase checkpoint, run `./scripts/run-everything.sh`, verify acceptance criteria, and commit.
 
 ## Notes
 

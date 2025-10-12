@@ -7,7 +7,7 @@ const POLL_INTERVAL_MS = 1000;
 export const useHealthPoller = () => {
   const setState = useAppStore((state) => state.setState);
   const setTransitioning = useAppStore((state) => state.setTransitioning);
-  const streamUrl = useAppStore((state) => state.streamUrl);
+  const streamTicket = useAppStore((state) => state.streamTicket);
   const forceStopRequired = useAppStore((state) => state.forceStopRequired);
 
   useEffect(() => {
@@ -32,11 +32,11 @@ export const useHealthPoller = () => {
         });
         setTransitioning(payload.state === 'Booting' || payload.state === 'Stopping');
 
-        if (payload.state === 'Running' && !streamUrl) {
+        if (payload.state === 'Running' && !streamTicket) {
           try {
             const ticket = await fetchStreamUrl();
             if (!cancelled) {
-              setState({ streamUrl: ticket.url, lastError: undefined });
+              setState({ streamTicket: ticket, lastError: undefined });
             }
           } catch (error) {
             console.warn('Stream attach failed; retrying', error);
@@ -52,8 +52,8 @@ export const useHealthPoller = () => {
           }
         }
 
-        if (payload.state !== 'Running' && streamUrl) {
-          setState({ streamUrl: undefined });
+        if (payload.state !== 'Running' && streamTicket) {
+          setState({ streamTicket: undefined });
         }
       } catch (error) {
         console.error('Health poll failed', error);
@@ -63,7 +63,7 @@ export const useHealthPoller = () => {
             lastError: {
               code: 'HEALTH_UNREACHABLE',
               message: 'Lost contact with backend health endpoint',
-              hint: 'Confirm backend service is running on http://127.0.0.1:8080'
+              hint: 'Confirm backend service is running on http://127.0.0.1:3001'
             },
             forceStopRequired: false
           });
@@ -79,5 +79,5 @@ export const useHealthPoller = () => {
       cancelled = true;
       clearInterval(interval);
     };
-  }, [forceStopRequired, setState, setTransitioning, streamUrl]);
+  }, [forceStopRequired, setState, setTransitioning, streamTicket]);
 };

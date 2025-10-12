@@ -8,9 +8,9 @@ import type { EmulatorSession } from '../types/session';
 
 const CONSOLE_PORT = Number.parseInt(process.env.EMULATOR_CONSOLE_PORT ?? '5554', 10);
 const ADB_PORT = Number.parseInt(process.env.EMULATOR_ADB_PORT ?? '5555', 10);
-const BOOT_TIMEOUT_MS = Number.parseInt(process.env.EMULATOR_BOOT_TIMEOUT_MS ?? '60000', 10);
+const BOOT_TIMEOUT_MS = Number.parseInt(process.env.EMULATOR_BOOT_TIMEOUT_MS ?? '90000', 10);
 const BOOT_POLL_INTERVAL_MS = 2_000;
-const EMULATOR_SERIAL = `emulator-${ADB_PORT}`;
+const EMULATOR_SERIAL = `emulator-${CONSOLE_PORT}`;
 
 let emulatorProcess: ChildProcess | undefined;
 
