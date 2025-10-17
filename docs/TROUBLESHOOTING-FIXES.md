@@ -303,10 +303,90 @@ EMULATOR_ADB_PORT=5555
 ADB_SERVER_SOCKET=tcp:apptest-backend:5037  # Connect to backend's ADB
 ```
 
+## Additional Fixes Applied (Session 2)
+
+### Issue 8: Missing Volume Mount for App Library ❌ → ✅
+
+**Problem:**
+- XAPK files stored on host were not visible inside Docker container
+- Automation found "0 XAPK files" even though file existed
+
+**Fix:**
+Added volume mount to docker-compose.yml:
+```yaml
+volumes:
+  - ./var/autoapp:/var/autoapp  # Mount app library and logs
+```
+
+**Result:** ✅ Container can access XAPK files and logs directory
+
+---
+
+### Issue 9: Split APK Installation Method ❌ → ✅
+
+**Problem:**
+```
+INSTALL_FAILED_MISSING_SPLIT: Missing split for fr.mayndrive.app
+```
+
+**Root Cause:**
+Split APKs were being installed individually instead of together.
+
+**Fix:**
+Changed from individual `install` to `install-multiple`:
+```typescript
+await execAsync(`adb -s ${serial} install-multiple -r ${apkList}`);
+```
+
+**Result:** ✅ All APK splits install together as required
+
+---
+
+### Issue 10: ADB Server Network Mode ❌ → ✅
+
+**Problem:**
+```
+failed to connect to 'apptest-backend:5037': Connection refused
+```
+
+**Root Cause:**
+ADB server wasn't listening for network connections from ws-scrcpy.
+
+**Fix:**
+Start ADB server in network mode at container startup:
+```dockerfile
+CMD adb -a -P 5037 start-server && npm run start:prod
+```
+
+**Result:** ✅ ws-scrcpy can connect to backend's ADB server
+
+---
+
+### Issue 11: Emulator Architecture Mismatch ❌ → ✅
+
+**Problem:**
+```
+INSTALL_FAILED_NO_MATCHING_ABIS: Failed to extract native libraries
+```
+
+**Root Cause:**
+App contains ARM native libraries but emulator was x86_64.
+
+**Fix:**
+Changed to ARM64 emulator:
+```dockerfile
+sdkmanager "system-images;android-33;google_apis;arm64-v8a"
+avdmanager create avd -n default -k "system-images;android-33;google_apis;arm64-v8a"
+```
+
+**Result:** ✅ Apps with ARM libraries can now install
+
+---
+
 ## Next Steps
 
-1. **Redeploy** in Dokploy (commit: `936e966`)
-2. **Start emulator** via API or frontend
-3. **Watch automation** complete successfully
-4. **Use stream** to interact with app
-5. **Check logs** to verify all steps succeeded
+1. **Wait for Dokploy rebuild** (commit: `6711d92`) with ARM64 emulator
+2. **Start emulator** via API: `POST http://localhost:3001/api/emulator/start`
+3. **Verify app installs** successfully
+4. **Access stream** in browser via frontend
+5. **Test complete automation** workflow
