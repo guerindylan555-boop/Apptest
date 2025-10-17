@@ -12,3 +12,4 @@ var/log/
 ws-scrcpy/node_modules/
 ws-scrcpy/dist/
 ws-scrcpy/build/
+app apk/

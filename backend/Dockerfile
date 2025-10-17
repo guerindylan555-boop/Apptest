@@ -1,11 +1,18 @@
 FROM node:20-slim
 
-# Install Android SDK dependencies
+# Install Android SDK dependencies and automation tools
 RUN apt-get update && apt-get install -y \
     openjdk-17-jdk \
     wget \
     unzip \
+    python3 \
+    python3-pip \
+    openssl \
+    aapt \
     && rm -rf /var/lib/apt/lists/*
+
+# Install mitmproxy for proxy capture
+RUN pip3 install --break-system-packages mitmproxy
 
 # Set up Android SDK
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
