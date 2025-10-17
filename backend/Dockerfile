@@ -52,5 +52,5 @@ RUN echo "no" | avdmanager create avd -n default -k "system-images;android-33;go
 # Expose backend port
 EXPOSE 3001
 
-# Start the application
-CMD ["npm", "run", "start:prod"]
+# Start ADB server in network mode and then start the application
+CMD adb -a -P 5037 start-server && npm run start:prod

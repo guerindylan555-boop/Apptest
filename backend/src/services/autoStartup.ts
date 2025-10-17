@@ -101,11 +101,10 @@ async function installXAPK(xapkPath: string, serial: string): Promise<string | n
 
     await logStartup(`Found ${apkFiles.length} APK file(s) in XAPK`);
 
-    // Install all APKs (base + splits)
-    for (const apkFile of apkFiles) {
-      await logStartup(`Installing ${path.basename(apkFile)}...`);
-      await execAsync(`adb -s ${serial} install -r "${apkFile}"`);
-    }
+    // Install all APKs together using install-multiple (required for split APKs)
+    const apkList = apkFiles.map(f => `"${f}"`).join(' ');
+    await logStartup(`Installing all APKs together...`);
+    await execAsync(`adb -s ${serial} install-multiple -r ${apkList}`);
 
     // Get package name from manifest
     const baseApk = apkFiles.find(f => f.includes('base.apk')) || apkFiles[0];
