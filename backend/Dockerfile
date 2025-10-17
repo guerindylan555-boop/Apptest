@@ -27,7 +27,7 @@ RUN mkdir -p ${ANDROID_SDK_ROOT}/cmdline-tools && \
 
 # Accept licenses and install necessary packages
 RUN yes | sdkmanager --licenses && \
-    sdkmanager "platform-tools" "platforms;android-33" "emulator" "system-images;android-33;google_apis;x86_64"
+    sdkmanager "platform-tools" "platforms;android-33" "emulator" "system-images;android-33;google_apis;arm64-v8a"
 
 WORKDIR /app
 
@@ -47,7 +47,7 @@ RUN npm run build
 RUN npm prune --production
 
 # Create Android Virtual Device (AVD)
-RUN echo "no" | avdmanager create avd -n default -k "system-images;android-33;google_apis;x86_64" -d "pixel_5"
+RUN echo "no" | avdmanager create avd -n default -k "system-images;android-33;google_apis;arm64-v8a" -d "pixel_5"
 
 # Expose backend port
 EXPOSE 3001
