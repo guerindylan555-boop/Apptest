@@ -10,3 +10,4 @@ yarn-error.log*
 pnpm-debug.log*
 var/log/
 ws-scrcpy/
+!ws-scrcpy/Dockerfile
