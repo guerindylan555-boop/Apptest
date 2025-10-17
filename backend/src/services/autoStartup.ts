@@ -5,9 +5,7 @@ import path from 'path';
 import { logger } from './logger';
 import { appPaths } from '../config/appPaths';
 import { getEmulatorSerial } from './emulatorLifecycle';
-import { installFromFile, installService } from './apps/installService';
-import { launchApp } from './apps/launchService';
-import { startProxyCapture } from './apps/proxyService';
+import { enableProxy } from './apps/proxyService';
 
 const execAsync = promisify(exec);
 
@@ -136,8 +134,12 @@ async function startProxyCaptureWithLogging(serial: string): Promise<void> {
   await logStartup('Starting proxy capture...');
 
   try {
-    // Set up proxy on emulator
-    await execAsync(`adb -s ${serial} shell settings put global http_proxy localhost:8080`);
+    // Enable proxy on emulator
+    const result = await enableProxy('localhost', 8080);
+
+    if (!result.success) {
+      throw new Error(result.message);
+    }
 
     // Start mitmproxy with logging
     const mitmproxyCmd = `mitmdump --set block_global=false -w ${PROXY_CAPTURE_LOG} > /dev/null 2>&1 &`;
