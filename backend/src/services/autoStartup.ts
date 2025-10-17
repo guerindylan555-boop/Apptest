@@ -62,11 +62,18 @@ async function installCertificate(serial: string): Promise<void> {
     await execAsync(`cp ${certPath} /tmp/${androidCertName}`);
 
     // Push certificate to emulator
-    await execAsync(`adb -s ${serial} root || true`);
+    await execAsync(`adb -s ${serial} root`);
     await execAsync(`adb -s ${serial} wait-for-device`);
-    await execAsync(`adb -s ${serial} remount || true`);
+
+    // Remount system partition as read-write
+    await execAsync(`adb -s ${serial} shell mount -o rw,remount /system`);
+    await execAsync(`adb -s ${serial} shell mount -o rw,remount /`);
+
+    // Push certificate
     await execAsync(`adb -s ${serial} push /tmp/${androidCertName} /system/etc/security/cacerts/`);
     await execAsync(`adb -s ${serial} shell chmod 644 /system/etc/security/cacerts/${androidCertName}`);
+
+    // Reboot to apply changes
     await execAsync(`adb -s ${serial} reboot`);
 
     // Wait for reboot
