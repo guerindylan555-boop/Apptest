@@ -91,9 +91,9 @@ export const launchEmulator = (
   args: string[],
   options?: SpawnOptions
 ): ChildProcess => {
-  // Use wrapper script to ensure proper environment
-  const wrapperScript = '/home/blhack/project/Apptest/backend/scripts/launch-emulator.sh';
-  return spawn(wrapperScript, args, {
+  // Direct emulator command - no wrapper script needed
+  const emulatorBin = process.env.EMULATOR || 'emulator';
+  return spawn(emulatorBin, args, {
     stdio: ['ignore', 'pipe', 'pipe'],
     ...options,
     env: getAndroidEnv(options?.env)
