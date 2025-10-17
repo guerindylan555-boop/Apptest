@@ -46,6 +46,9 @@ RUN npm run build
 # Remove dev dependencies to reduce image size
 RUN npm prune --production
 
+# Create Android Virtual Device (AVD)
+RUN echo "no" | avdmanager create avd -n default -k "system-images;android-33;google_apis;x86_64" -d "pixel_5"
+
 # Expose backend port
 EXPOSE 3001
 
