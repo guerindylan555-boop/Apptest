@@ -65,6 +65,7 @@ export const startEmulator = async (): Promise<EmulatorSession> => {
     '-gpu',
     'swiftshader_indirect',
     '-no-audio',
+    '-writable-system',  // Allow system partition modifications
     '-ports',
     `${CONSOLE_PORT},${ADB_PORT}`
   ];
