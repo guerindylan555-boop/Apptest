@@ -36,7 +36,7 @@ services:
       - HOST=0.0.0.0
       - LOG_LEVEL=info
       - CORS_ALLOWED_ORIGINS=*
-      - EXTERNAL_EMULATOR=false
+      - EXTERNAL_EMULATOR=true
       - AVD_NAME=default
       - WS_SCRCPY_HOST=${WS_SCRCPY_HOST:-0.0.0.0}
       - WS_SCRCPY_PORT=${WS_SCRCPY_PORT:-8000}
