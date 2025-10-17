@@ -46,6 +46,7 @@ services:
       - EMULATOR_ADB_PORT=5555
     volumes:
       - android-data:/opt/android-sdk
+      - ./var/autoapp:/var/autoapp  # Mount app library and logs
     networks:
       - apptest-network
     extra_hosts:
