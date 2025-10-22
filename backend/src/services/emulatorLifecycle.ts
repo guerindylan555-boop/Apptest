@@ -252,14 +252,6 @@ const waitForEmulatorReady = async () => {
 
   const targetSerial = `emulator-${CONSOLE_PORT}`;
 
-  const waitResult = spawnSync('adb', [...adbPortArgs, '-s', targetSerial, 'wait-for-device'], {
-    encoding: 'utf8'
-  });
-  if (waitResult.status !== 0) {
-    const stderr = waitResult.stderr?.toString().trim();
-    throw new Error(`adb wait-for-device failed: ${stderr || 'unknown error'}`);
-  }
-
   const start = Date.now();
   while (Date.now() - start < BOOT_TIMEOUT_MS) {
     const devicesResult = spawnSync('adb', [...adbPortArgs, 'devices'], { encoding: 'utf8' });
