@@ -1,7 +1,7 @@
-import type { ChildProcess } from 'child_process';
+import { spawnSync, type ChildProcess } from 'child_process';
 import { readFileSync } from 'fs';
 import net from 'net';
-import { launchEmulator, adbWaitForDevice, adbGetProp, adbEmu, adb } from './androidCli';
+import { launchEmulator, adbGetProp, adbEmu, adb } from './androidCli';
 import { logger } from './logger';
 import { sessionStore } from '../state/sessionStore';
 import type { EmulatorSession } from '../types/session';
@@ -12,7 +12,7 @@ import { ensureStreamer, handleEmulatorStopped } from './streamerService';
 const CONSOLE_PORT = Number.parseInt(process.env.EMULATOR_CONSOLE_PORT ?? '5554', 10);
 const ADB_PORT = Number.parseInt(process.env.EMULATOR_ADB_PORT ?? '5555', 10);
 const ADB_SERVER_PORT = Number.parseInt(
-  process.env.ADB_SERVER_PORT ?? process.env.ANDROID_ADB_SERVER_PORT ?? '5555',
+  process.env.ADB_SERVER_PORT ?? process.env.ANDROID_ADB_SERVER_PORT ?? '5037',
   10
 );
 const BOOT_TIMEOUT_MS = Number.parseInt(process.env.EMULATOR_BOOT_TIMEOUT_MS ?? '90000', 10);
@@ -89,7 +89,6 @@ export const startEmulator = async (): Promise<EmulatorSession> => {
     '-gpu',
     'swiftshader_indirect',
     '-no-audio',
-    '-no-modem',
     '-writable-system',  // Allow system partition modifications
     '-ports',
     `${CONSOLE_PORT},${ADB_PORT}`
@@ -108,10 +107,7 @@ export const startEmulator = async (): Promise<EmulatorSession> => {
   emulatorProcess.on('exit', handleProcessExit);
 
   try {
-    const waitResult = await adbWaitForDevice(EMULATOR_SERIAL, { timeoutMs: BOOT_TIMEOUT_MS });
-    if (waitResult.code !== 0) {
-      throw new Error(`adb wait-for-device failed: ${waitResult.stderr}`);
-    }
+    await waitForEmulatorReady();
 
     const bootStart = Date.now();
     let bootCompleted = false;
@@ -216,6 +212,43 @@ const consoleKill = (): Promise<boolean> => {
 
     setTimeout(() => cleanup(false), 3_000);
   });
+};
+
+const waitForEmulatorReady = async () => {
+  const adbPortArgs = ['-P', ADB_SERVER_PORT.toString()];
+
+  await delay(5_000);
+
+  const connectResult = spawnSync('adb', [...adbPortArgs, 'connect', `127.0.0.1:${ADB_PORT}`], {
+    encoding: 'utf8'
+  });
+  if (connectResult.error) {
+    logger.warn('adb connect raised error', { error: connectResult.error.message });
+  } else {
+    const stdout = connectResult.stdout?.trim();
+    if (stdout) {
+      logger.info('adb connect', { stdout });
+    }
+  }
+
+  const waitResult = spawnSync('adb', [...adbPortArgs, 'wait-for-device'], { encoding: 'utf8' });
+  if (waitResult.status !== 0) {
+    const stderr = waitResult.stderr?.toString().trim();
+    throw new Error(`adb wait-for-device failed: ${stderr || 'unknown error'}`);
+  }
+
+  const start = Date.now();
+  while (Date.now() - start < BOOT_TIMEOUT_MS) {
+    const devicesResult = spawnSync('adb', [...adbPortArgs, 'devices'], { encoding: 'utf8' });
+    const stdout = devicesResult.stdout ?? '';
+    if (stdout.includes(`${EMULATOR_SERIAL}\tdevice`) || stdout.includes(`127.0.0.1:${ADB_PORT}\tdevice`)) {
+      logger.info('Emulator reported as online device');
+      return;
+    }
+    await delay(BOOT_POLL_INTERVAL_MS);
+  }
+
+  throw new Error('ADB device did not reach online state in time');
 };
 
 const adbKill = async () => {
