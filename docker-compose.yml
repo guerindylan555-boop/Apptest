@@ -21,6 +21,7 @@ services:
       - LOG_LEVEL=info
       - CORS_ALLOWED_ORIGINS=*
       - AVD_NAME=autoapp-local
+      - WS_SCRCPY_HOST=82.165.175.97
       - WS_SCRCPY_PORT=${WS_SCRCPY_PORT:-8000}
       - WS_SCRCPY_PLAYER=${WS_SCRCPY_PLAYER:-webcodecs}
       - EMULATOR_CONSOLE_PORT=5554
