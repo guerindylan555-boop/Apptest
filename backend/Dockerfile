@@ -63,7 +63,7 @@ RUN yes | sdkmanager --licenses && \
 # Create a default AVD with snapshots disabled
 RUN mkdir -p ${ANDROID_AVD_HOME} && \
     echo "no" | avdmanager create avd -n autoapp-local -k "system-images;android-34;google_apis;x86_64" --device "pixel_6" --force && \
-    printf '\nfastboot.forceColdBoot = yes\nfastboot.forceFastBoot = no\nfirstboot.bootFromDownloadableSnapshot = no\nfirstboot.bootFromLocalSnapshot = no\nfirstboot.saveToLocalSnapshot = no\n' >> ${ANDROID_AVD_HOME}/autoapp-local.avd/config.ini && \
+    printf '\nfastboot.forceColdBoot = yes\nfastboot.forceFastBoot = no\nfirstboot.bootFromDownloadableSnapshot = no\nfirstboot.bootFromLocalSnapshot = no\nfirstboot.saveToLocalSnapshot = no\nhw.ramSize = 4096\n' >> ${ANDROID_AVD_HOME}/autoapp-local.avd/config.ini && \
     rm -rf ${ANDROID_AVD_HOME}/autoapp-local.avd/snapshots
 
 # Bundle ws-scrcpy streamer from local sources
