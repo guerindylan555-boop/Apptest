@@ -36,6 +36,7 @@ const cleanupEmulatorState = (avdName: string) => {
   spawnSync('sh', ['-c', cleanupLocks], { stdio: 'ignore' });
 
   spawnSync('adb', ['-P', ADB_SERVER_PORT.toString(), 'kill-server'], { stdio: 'ignore' });
+  spawnSync('adb', ['disconnect'], { stdio: 'ignore' });
 };
 
 const handleProcessExit = (code: number | null, signal: NodeJS.Signals | null) => {
@@ -240,19 +241,11 @@ const waitForEmulatorReady = async () => {
 
   await delay(5_000);
 
-  const connectResult = spawnSync('adb', [...adbPortArgs, 'connect', `127.0.0.1:${ADB_PORT}`], {
+  const targetSerial = `emulator-${CONSOLE_PORT}`;
+
+  const waitResult = spawnSync('adb', [...adbPortArgs, '-s', targetSerial, 'wait-for-device'], {
     encoding: 'utf8'
   });
-  if (connectResult.error) {
-    logger.warn('adb connect raised error', { error: connectResult.error.message });
-  } else {
-    const stdout = connectResult.stdout?.trim();
-    if (stdout) {
-      logger.info('adb connect', { stdout });
-    }
-  }
-
-  const waitResult = spawnSync('adb', [...adbPortArgs, 'wait-for-device'], { encoding: 'utf8' });
   if (waitResult.status !== 0) {
     const stderr = waitResult.stderr?.toString().trim();
     throw new Error(`adb wait-for-device failed: ${stderr || 'unknown error'}`);
@@ -262,7 +255,7 @@ const waitForEmulatorReady = async () => {
   while (Date.now() - start < BOOT_TIMEOUT_MS) {
     const devicesResult = spawnSync('adb', [...adbPortArgs, 'devices'], { encoding: 'utf8' });
     const stdout = devicesResult.stdout ?? '';
-    if (stdout.includes(`${EMULATOR_SERIAL}\tdevice`) || stdout.includes(`127.0.0.1:${ADB_PORT}\tdevice`)) {
+    if (stdout.includes(`${targetSerial}\tdevice`)) {
       logger.info('Emulator reported as online device');
       return;
     }
