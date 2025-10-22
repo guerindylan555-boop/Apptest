@@ -25,9 +25,6 @@ services:
       - WS_SCRCPY_PLAYER=${WS_SCRCPY_PLAYER:-webcodecs}
       - EMULATOR_CONSOLE_PORT=5554
       - EMULATOR_ADB_PORT=5555
-      - ADB_SERVER_PORT=5555
-      - ANDROID_ADB_SERVER_PORT=5555
-      - ADB_SERVER_SOCKET=tcp:0.0.0.0:5555
     volumes:
       - android-avd:/opt/android-sdk/avd
       - ./var/autoapp:/var/autoapp  # Mount app library and logs
