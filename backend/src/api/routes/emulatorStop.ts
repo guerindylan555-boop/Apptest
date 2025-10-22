@@ -2,7 +2,6 @@ import type { Request, Response } from 'express';
 import { stopEmulator } from '../../services/emulatorLifecycle';
 import { sessionStore } from '../../state/sessionStore';
 import { logger } from '../../services/logger';
-import { handleEmulatorStopped } from '../../services/streamerService';
 
 export const emulatorStopHandler = async (req: Request, res: Response) => {
   const session = sessionStore.getSession();
@@ -13,7 +12,6 @@ export const emulatorStopHandler = async (req: Request, res: Response) => {
 
   try {
     await stopEmulator(force);
-    handleEmulatorStopped();
     return res.status(202).json({ state: 'Stopping', message: force ? 'Force stop executed' : 'Stop sequence initiated' });
   } catch (error) {
     const message = (error as Error).message;

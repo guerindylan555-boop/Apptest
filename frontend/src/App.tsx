@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import NavSidebar from './components/NavSidebar';
 import EmulatorPage from './pages/EmulatorPage';
-import AppsPage from './pages/AppsPage';
 
 /**
  * App Root Component
@@ -23,7 +22,7 @@ const App = () => {
         <main style={{ flex: 1, overflow: 'auto' }}>
           <Routes>
             <Route path="/" element={<EmulatorPage />} />
-            <Route path="/apps" element={<AppsPage />} />
+            <Route path="*" element={<EmulatorPage />} />
           </Routes>
         </main>
       </div>

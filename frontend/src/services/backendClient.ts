@@ -27,6 +27,7 @@ export interface HealthPayload {
   pid?: number;
   ports?: { console: number; adb: number };
   streamAttached: boolean;
+  streamerActive?: boolean;
   lastError?: { code: string; message: string; hint?: string; occurredAt: string };
   forceStopRequired?: boolean;
   timestamps: {
@@ -70,6 +71,18 @@ export const stopEmulator = (force = false) =>
     body: JSON.stringify({ force })
   });
 
+export const restartEmulator = () =>
+  request<{ state: EmulatorState; message: string }>('/emulator/restart', {
+    method: 'POST'
+  });
+
 export const fetchHealth = () => request<HealthPayload>('/health', { method: 'GET' });
 
 export const fetchStreamUrl = () => request<StreamTicket>('/stream/url', { method: 'GET' });
+
+export const fetchLogs = (target: 'emulator' | 'streamer', limit?: number) => {
+  const query = limit ? `?limit=${limit}` : '';
+  return request<{ target: string; lines: string[] }>(`/logs/${target}${query}`, {
+    method: 'GET'
+  });
+};

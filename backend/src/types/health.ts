@@ -7,6 +7,7 @@ export interface HealthResponse {
   pid?: number;
   ports?: SessionPorts;
   streamAttached: boolean;
+  streamerActive?: boolean;
   lastError?: SessionError;
   forceStopRequired?: boolean;
   timestamps: {

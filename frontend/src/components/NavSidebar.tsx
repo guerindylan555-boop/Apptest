@@ -9,10 +9,7 @@ import { Link, useLocation } from 'react-router-dom';
 const NavSidebar = () => {
   const location = useLocation();
 
-  const navItems = [
-    { path: '/', label: 'Emulator', icon: '📱' },
-    { path: '/apps', label: 'Apps', icon: '📦' }
-  ];
+  const navItems = [{ path: '/', label: 'Emulator', icon: '📱' }];
 
   const isActive = (path: string) => {
     if (path === '/') {

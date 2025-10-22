@@ -208,7 +208,7 @@ async function main() {
   await captureWithoutCrash('credentials_filled');
 
   console.log('[step] Submitting login');
-  await tap(540, 1015, "Tap 'Login'");
+  await tap(540, 1085, "Tap 'Login'");
   await sleep(4000);
 
   console.log('[step] Clearing post-login dialog');

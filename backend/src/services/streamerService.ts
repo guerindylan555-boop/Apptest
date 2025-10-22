@@ -1,7 +1,9 @@
+import { spawn, type ChildProcess } from 'child_process';
 import { logger } from './logger';
 import { sessionStore } from '../state/sessionStore';
-import { getEmulatorSerial } from './emulatorLifecycle';
 import { streamConfig } from '../config/stream';
+import { streamerLogBuffer } from './logStreams';
+import { attachProcessLoggers } from './logBuffer';
 
 type StreamTicketOptions = {
   requestHost?: string;
@@ -11,6 +13,17 @@ type StreamTicketOptions = {
 const PLACEHOLDER_HOSTS = new Set(['127.0.0.1', '0.0.0.0', 'localhost', 'host.docker.internal']);
 const DEFAULT_HTTP_PORT = 80;
 const DEFAULT_HTTPS_PORT = 443;
+
+const CONSOLE_PORT = Number.parseInt(process.env.EMULATOR_CONSOLE_PORT ?? '5554', 10);
+const EMULATOR_SERIAL = `emulator-${CONSOLE_PORT}`;
+const STREAM_PORT = Number.parseInt(process.env.WS_SCRCPY_PORT ?? streamConfig.port.toString(), 10);
+const STREAMER_BIN = process.env.WS_SCRCPY_BIN ?? 'ws-scrcpy';
+const STREAMER_CWD = process.env.WS_SCRCPY_CWD;
+const ADB_SERVER_PORT = process.env.ADB_SERVER_PORT ?? process.env.ANDROID_ADB_SERVER_PORT ?? '5555';
+const ADB_SERVER_HOST = process.env.ADB_SERVER_HOST ?? '127.0.0.1';
+
+let streamerProcess: ChildProcess | undefined;
+let startPromise: Promise<void> | null = null;
 
 const parseHostHeader = (value?: string) => {
   if (!value) {
@@ -43,13 +56,7 @@ const resolveStreamHost = (requestHost?: string) => {
   return configuredHost;
 };
 
-const resolveStreamPort = () => {
-  const envPort = process.env.WS_SCRCPY_PORT;
-  if (envPort && envPort.trim().length > 0) {
-    return envPort.trim();
-  }
-  return streamConfig.port.toString();
-};
+const resolveStreamPort = () => STREAM_PORT.toString();
 
 const normaliseProtocol = (value?: string) => {
   if (!value) {
@@ -93,20 +100,72 @@ const resolvePlayer = (protocol: string, host: string) => {
   return configured;
 };
 
-export const ensureStreamer = async (serial?: string, options?: StreamTicketOptions) => {
-  const emulatorSerial = serial || (await getEmulatorSerial());
-  const protocol = normaliseProtocol(options?.protocol);
-  const host = resolveStreamHost(options?.requestHost);
-  const port = resolveStreamPort();
+const spawnStreamer = () =>
+  new Promise<void>((resolve, reject) => {
+    if (streamerProcess && !streamerProcess.killed) {
+      resolve();
+      return;
+    }
 
-  logger.info('Stream available via ws-scrcpy server', {
-    httpUrl: buildHttpUrl(protocol, host, port, ''),
-    serial: emulatorSerial
+    logger.info('Starting ws-scrcpy streamer', {
+      bin: STREAMER_BIN,
+      port: STREAM_PORT,
+      adbPort: ADB_SERVER_PORT
+    });
+
+    const env = {
+      ...process.env,
+      WS_SCRCPY_PORT: STREAM_PORT.toString(),
+      ADB_SERVER_SOCKET: `tcp:${ADB_SERVER_HOST}:${ADB_SERVER_PORT}`,
+      ANDROID_ADB_SERVER_PORT: ADB_SERVER_PORT,
+      ADB_SERVER_PORT: ADB_SERVER_PORT
+    };
+
+    const child = spawn(STREAMER_BIN, [], {
+      cwd: STREAMER_CWD,
+      env,
+      stdio: ['ignore', 'pipe', 'pipe']
+    });
+
+    streamerProcess = child;
+    attachProcessLoggers(child, streamerLogBuffer, 'ws-scrcpy');
+
+    child.once('error', (error) => {
+      streamerProcess = undefined;
+      logger.error('ws-scrcpy failed to start', { error: (error as Error).message });
+      startPromise = null;
+      reject(error);
+    });
+
+    child.once('exit', (code, signal) => {
+      streamerProcess = undefined;
+      logger.warn('ws-scrcpy exited', { code, signal });
+      startPromise = null;
+    });
+
+    // Give the process a moment to bind
+    setTimeout(resolve, 1500);
   });
+
+export const ensureStreamer = async () => {
+  if (streamerProcess && !streamerProcess.killed) {
+    return;
+  }
+  if (!startPromise) {
+    startPromise = spawnStreamer();
+  }
+  return startPromise;
 };
 
 export const stopStreamer = async () => {
-  logger.info('Streamer managed externally (ws-scrcpy); nothing to stop');
+  if (!streamerProcess) {
+    return;
+  }
+  logger.info('Stopping ws-scrcpy streamer');
+  streamerProcess.removeAllListeners('exit');
+  streamerProcess.kill('SIGTERM');
+  streamerProcess = undefined;
+  startPromise = null;
 };
 
 export const handleEmulatorStopped = async () => {
@@ -118,8 +177,8 @@ export const issueStreamTicket = async (options?: StreamTicketOptions) => {
   if (session.state !== 'Running') {
     throw new Error('Stream tickets available only in Running state');
   }
-  await ensureStreamer(undefined, options);
-  const emulatorSerial = await getEmulatorSerial();
+
+  await ensureStreamer();
 
   const protocol = normaliseProtocol(options?.protocol);
   const streamHost = resolveStreamHost(options?.requestHost);
@@ -130,11 +189,11 @@ export const issueStreamTicket = async (options?: StreamTicketOptions) => {
   const proxyUrl = buildWsUrl(protocol, streamHost, streamPort);
   proxyUrl.searchParams.set('action', 'proxy-adb');
   proxyUrl.searchParams.set('remote', remote);
-  proxyUrl.searchParams.set('udid', emulatorSerial);
+  proxyUrl.searchParams.set('udid', EMULATOR_SERIAL);
 
   const hashParams = new URLSearchParams({
     action: 'stream',
-    udid: emulatorSerial,
+    udid: EMULATOR_SERIAL,
     player,
     ws: proxyUrl.toString(),
     embedded: '1',
@@ -144,7 +203,7 @@ export const issueStreamTicket = async (options?: StreamTicketOptions) => {
   const hashString = hashParams.toString().replace(/%253A/g, '%3A');
   const httpUrl = buildHttpUrl(protocol, streamHost, streamPort, hashString);
 
-  const record = sessionStore.generateStreamTicket(emulatorSerial);
+  const record = sessionStore.generateStreamTicket(EMULATOR_SERIAL);
   return {
     token: record.token,
     url: httpUrl,
@@ -152,4 +211,6 @@ export const issueStreamTicket = async (options?: StreamTicketOptions) => {
   };
 };
 
-export const isStreamerActive = () => true;
+export const isStreamerActive = () => Boolean(streamerProcess && !streamerProcess.killed);
+
+export const getStreamerProcess = () => streamerProcess;

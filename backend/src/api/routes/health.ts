@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { sessionStore } from '../../state/sessionStore';
 import type { HealthResponse } from '../../types/health';
+import { isStreamerActive } from '../../services/streamerService';
 
 const buildHealthPayload = (): HealthResponse => {
   const session = sessionStore.getSession();
@@ -15,6 +16,7 @@ const buildHealthPayload = (): HealthResponse => {
     pid: session.pid,
     ports: session.ports,
     streamAttached: Boolean(session.streamToken),
+    streamerActive: isStreamerActive(),
     lastError: session.lastError,
     forceStopRequired: session.forceStopRequired,
     timestamps: {
