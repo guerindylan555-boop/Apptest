@@ -4,7 +4,7 @@
 
 - Docker and Docker Compose installed on your VPS
 - Dokploy installed and running on your VPS
-- Port forwarding configured (ports 3001, 5173, 8000)
+- Port forwarding configured (ports 3001, 5037, 5173, 8000)
 
 ## Local Development
 
@@ -48,7 +48,7 @@ Services will be available at:
 3. **Configure Environment Variables**
    Add these environment variables in Dokploy (optional, defaults are provided):
    ```
-   WS_SCRCPY_HOST=localhost  # or your VPS IP
+   WS_SCRCPY_HOST=localhost  # or the public hostname/IP where ws-scrcpy runs
    WS_SCRCPY_PORT=8000
    WS_SCRCPY_PLAYER=mse
    EMULATOR_SERIAL=emulator-5555
@@ -66,7 +66,7 @@ Services will be available at:
 
 ### Note about ws-scrcpy
 
-ws-scrcpy runs separately on the host machine (not in Docker). The backend connects to it via `host.docker.internal:8000`. Make sure ws-scrcpy is running before starting the Docker services.
+ws-scrcpy runs separately on the host machine (not in Docker). Provide a reachable address via `WS_SCRCPY_HOST` (for example your VPS IP) so the backend can mint stream tickets that point to the external streamer. Ensure ws-scrcpy is running and that it can reach the backend's exposed ADB server on port 5037 before starting the Docker services.
 
 ## Accessing from Local Machine
 
@@ -115,6 +115,7 @@ sudo ufw allow 443/tcp
 
 # Allow application ports (if not using reverse proxy)
 sudo ufw allow 3001/tcp
+sudo ufw allow 5037/tcp
 sudo ufw allow 5173/tcp
 sudo ufw allow 8000/tcp
 
@@ -149,25 +150,17 @@ docker-compose up --build -d
 
 ### Check if ports are listening
 ```bash
-netstat -tuln | grep -E '3001|5173|8000'
+netstat -tuln | grep -E '3001|5037|5173|8000'
 ```
 
 ## Android Emulator Notes
 
-The backend includes Android SDK and emulator support. To use:
+The backend Docker image now ships with just the Android platform-tools so it can talk to an externally managed emulator. To stream successfully:
 
-1. Create an AVD (Android Virtual Device):
-```bash
-docker exec -it apptest-backend bash
-avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64"
-```
-
-2. Start the emulator:
-```bash
-emulator -avd test -no-window -no-audio
-```
-
-3. The ws-scrcpy service will stream the emulator screen to the frontend.
+1. Start your Android emulator on a host or VM that has network access to the backend container.
+2. Run `ws-scrcpy` on the same host and point it at the backend's ADB server (`ADB_SERVER_SOCKET=tcp:<backend-host>:5037`).
+3. Set `WS_SCRCPY_HOST`, `WS_SCRCPY_PORT`, and `EMULATOR_SERIAL` in the backend environment so stream tickets point to the external streamer.
+4. From the host running ws-scrcpy, verify connectivity: `adb connect <backend-host>:5555` (if needed) and `nc -zv <backend-host> 5037`.
 
 ## Production Considerations
 

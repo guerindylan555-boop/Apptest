@@ -1,24 +1,4 @@
 services:
-  ws-scrcpy:
-    build:
-      context: ./ws-scrcpy
-      dockerfile: Dockerfile
-    container_name: apptest-ws-scrcpy
-    ports:
-      - "8000:8000"
-    privileged: true
-    environment:
-      - ADB_SERVER_SOCKET=tcp:apptest-backend:5037
-    volumes:
-      - android-data:/opt/android-sdk
-    networks:
-      - apptest-network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    restart: unless-stopped
-    depends_on:
-      - backend
-
   backend:
     build:
       context: ./backend
@@ -26,10 +6,7 @@ services:
     container_name: apptest-backend
     ports:
       - "3001:3001"
-      # Note: ADB server port 5037 is internal-only for ws-scrcpy to connect
-      - "5554:5554"  # Emulator console
-      - "5555:5555"  # Emulator ADB
-    privileged: true
+      - "5037:5037"  # Expose adb server for external ws-scrcpy connection
     environment:
       - NODE_ENV=production
       - PORT=3001
@@ -38,7 +15,7 @@ services:
       - CORS_ALLOWED_ORIGINS=*
       - EXTERNAL_EMULATOR=true
       - AVD_NAME=default
-      - WS_SCRCPY_HOST=${WS_SCRCPY_HOST:-0.0.0.0}
+      - WS_SCRCPY_HOST=${WS_SCRCPY_HOST:-host.docker.internal}
       - WS_SCRCPY_PORT=${WS_SCRCPY_PORT:-8000}
       - WS_SCRCPY_PLAYER=${WS_SCRCPY_PLAYER:-mse}
       - EMULATOR_SERIAL=${EMULATOR_SERIAL:-emulator-5554}

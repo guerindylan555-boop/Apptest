@@ -16,18 +16,18 @@ RUN pip3 install --break-system-packages mitmproxy
 
 # Set up Android SDK
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
-ENV PATH="${PATH}:${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/emulator"
+ENV PATH="${PATH}:${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools"
 
-# Install Android SDK
+# Install Android SDK command line tools (adb only, emulator managed externally)
 RUN mkdir -p ${ANDROID_SDK_ROOT}/cmdline-tools && \
     wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip && \
     unzip -q commandlinetools-linux-9477386_latest.zip -d ${ANDROID_SDK_ROOT}/cmdline-tools && \
     mv ${ANDROID_SDK_ROOT}/cmdline-tools/cmdline-tools ${ANDROID_SDK_ROOT}/cmdline-tools/latest && \
     rm commandlinetools-linux-9477386_latest.zip
 
-# Accept licenses and install necessary packages
+# Accept licenses and install only the components needed for adb connectivity
 RUN yes | sdkmanager --licenses && \
-    sdkmanager "platform-tools" "platforms;android-33" "emulator" "system-images;android-33;google_apis;x86_64"
+    sdkmanager "platform-tools" "platforms;android-33"
 
 WORKDIR /app
 
@@ -46,8 +46,8 @@ RUN npm run build
 # Remove dev dependencies to reduce image size
 RUN npm prune --production
 
-# Create Android Virtual Device (AVD)
-RUN echo "no" | avdmanager create avd -n default -k "system-images;android-33;google_apis;x86_64" -d "pixel_5"
+# Default to external emulator/streamer integration
+ENV EXTERNAL_EMULATOR=true
 
 # Expose backend port
 EXPOSE 3001

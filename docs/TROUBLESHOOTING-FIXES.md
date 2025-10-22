@@ -2,6 +2,8 @@
 
 This document details all the root issues found and how they were fixed.
 
+> **Note:** ws-scrcpy now runs outside the Docker stack. Any references to the `apptest-ws-scrcpy` container apply only when running the optional local helper container; on Dokploy or other remote deployments, start ws-scrcpy on the host and connect it to the backend's exposed ADB port (5037).
+
 ## Root Cause Analysis
 
 ### Issue 1: Modern Android Emulator Compatibility ❌ → ✅
