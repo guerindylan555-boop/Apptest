@@ -66,8 +66,14 @@ RUN mkdir -p ${ANDROID_AVD_HOME} && \
     printf '\nfastboot.forceColdBoot = yes\nfastboot.forceFastBoot = no\nfirstboot.bootFromDownloadableSnapshot = no\nfirstboot.bootFromLocalSnapshot = no\nfirstboot.saveToLocalSnapshot = no\n' >> ${ANDROID_AVD_HOME}/autoapp-local.avd/config.ini && \
     rm -rf ${ANDROID_AVD_HOME}/autoapp-local.avd/snapshots
 
-# Install ws-scrcpy globally for streaming
-RUN npm install -g ws-scrcpy
+# Bundle ws-scrcpy streamer from local sources
+WORKDIR /opt/ws-scrcpy
+COPY ws-scrcpy/package*.json ./
+RUN npm ci
+COPY ws-scrcpy ./
+RUN npm run dist
+RUN printf '#!/usr/bin/env bash\ncd /opt/ws-scrcpy\nexec node dist/index.js \"$@\"\n' > /usr/local/bin/ws-scrcpy && \
+    chmod +x /usr/local/bin/ws-scrcpy
 
 WORKDIR /app
 
