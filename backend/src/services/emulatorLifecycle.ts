@@ -84,7 +84,6 @@ export const startEmulator = async (): Promise<EmulatorSession> => {
     '-no-boot-anim',
     '-no-snapshot',
     '-no-snapshot-load',
-    '-no-metrics-collection',
     '-memory',
     '4096',
     '-gpu',
