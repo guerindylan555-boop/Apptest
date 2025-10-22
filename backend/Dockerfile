@@ -77,16 +77,16 @@ RUN printf '#!/usr/bin/env bash\ncd /opt/ws-scrcpy\nexec node dist/index.js \"$@
 
 WORKDIR /app
 
-# Copy package files and install dependencies
-COPY package*.json ./
+# Copy backend package files and install dependencies
+COPY backend/package*.json ./
 RUN npm ci
 
-# Copy source and build
-COPY . .
+# Copy backend source and build
+COPY backend/ ./
 RUN npm run build && npm prune --production
 
 # Entrypoint script to start adb server before the app
-COPY scripts/entrypoint.sh /usr/local/bin/backend-entrypoint.sh
+COPY backend/scripts/entrypoint.sh /usr/local/bin/backend-entrypoint.sh
 RUN chmod +x /usr/local/bin/backend-entrypoint.sh
 
 ENV EXTERNAL_EMULATOR=false \
