@@ -12,25 +12,23 @@ if ! grep -qE '^::1\s' /etc/hosts; then
   echo '::1 localhost ip6-localhost ip6-loopback' >> /etc/hosts
 fi
 
-# Start adb server with retry logic
-echo "[entrypoint] Starting ADB server..."
+echo "[entrypoint] Starting ADB server as background daemon..."
+# Kill any stale server
 "$ADB_BIN" kill-server 2>&1 || true
+sleep 1
 
-MAX_RETRIES=5
-for i in $(seq 1 $MAX_RETRIES); do
-  if "$ADB_BIN" start-server 2>&1; then
-    echo "[entrypoint] ADB server started successfully"
-    break
-  fi
-  echo "[entrypoint] ADB server start attempt $i failed, retrying..."
-  sleep 1
-done
+# Start ADB server in background using fork mode
+"$ADB_BIN" -L tcp:5037 fork-server server --reply-fd 3 3>&1 >/dev/null 2>&1 &
+ADB_PID=$!
 
-# Verify ADB server is responding
-if "$ADB_BIN" devices > /dev/null 2>&1; then
-  echo "[entrypoint] ADB server verified and responding"
+# Give it a moment to bind to the port
+sleep 2
+
+# Verify it's running
+if kill -0 $ADB_PID 2>/dev/null; then
+  echo "[entrypoint] ADB server started successfully (PID: $ADB_PID)"
 else
-  echo "[entrypoint] WARNING: ADB server may not be fully ready"
+  echo "[entrypoint] WARNING: ADB server process died immediately"
 fi
 
 exec npm run start:prod
