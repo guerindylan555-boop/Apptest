@@ -252,10 +252,21 @@ const waitForEmulatorReady = async () => {
 
   const targetSerial = `emulator-${CONSOLE_PORT}`;
 
+  const waitResult = spawnSync('adb', [...adbPortArgs, '-s', targetSerial, 'wait-for-device'], {
+    encoding: 'utf8'
+  });
+  if (waitResult.status !== 0) {
+    logger.warn('adb wait-for-device returned non-zero status', {
+      status: waitResult.status,
+      stderr: waitResult.stderr?.toString().trim()
+    });
+  }
+
   const start = Date.now();
   while (Date.now() - start < BOOT_TIMEOUT_MS) {
     const devicesResult = spawnSync('adb', [...adbPortArgs, 'devices'], { encoding: 'utf8' });
     const stdout = devicesResult.stdout ?? '';
+    logger.debug('adb devices output', { stdout });
     if (stdout.includes(`${targetSerial}\toffline`)) {
       logger.info('Emulator reported offline; issuing adb reconnect');
       spawnSync('adb', [...adbPortArgs, '-s', targetSerial, 'reconnect', 'offline'], { stdio: 'ignore' });
