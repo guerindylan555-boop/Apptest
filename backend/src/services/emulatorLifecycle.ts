@@ -256,9 +256,16 @@ const waitForEmulatorReady = async () => {
   while (Date.now() - start < BOOT_TIMEOUT_MS) {
     const devicesResult = spawnSync('adb', [...adbPortArgs, 'devices'], { encoding: 'utf8' });
     const stdout = devicesResult.stdout ?? '';
+    if (stdout.includes(`${targetSerial}\toffline`)) {
+      logger.info('Emulator reported offline; issuing adb reconnect');
+      spawnSync('adb', [...adbPortArgs, '-s', targetSerial, 'reconnect', 'offline'], { stdio: 'ignore' });
+      await delay(BOOT_POLL_INTERVAL_MS);
+      continue;
+    }
     if (stdout.includes(`${targetSerial}\tdevice`)) {
       logger.info('Emulator reported as online device');
       spawnSync('adb', [...adbPortArgs, '-s', targetSerial, 'shell', 'settings', 'put', 'system', 'screen_off_timeout', '2147483647'], { stdio: 'ignore' });
+      spawnSync('adb', [...adbPortArgs, '-s', targetSerial, 'shell', 'logcat', '-G', '2M'], { stdio: 'ignore' });
       return;
     }
     await delay(BOOT_POLL_INTERVAL_MS);
