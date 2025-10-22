@@ -253,16 +253,6 @@ const waitForEmulatorReady = async () => {
   const emulatorSerial = `emulator-${CONSOLE_PORT}`;
   const tcpSerial = `127.0.0.1:${ADB_PORT}`;
 
-  const connectResult = spawnSync('adb', [...adbPortArgs, 'connect', tcpSerial], {
-    encoding: 'utf8'
-  });
-  if (connectResult.stdout?.trim()) {
-    logger.info('adb connect stdout', { stdout: connectResult.stdout.trim() });
-  }
-  if (connectResult.stderr?.trim()) {
-    logger.info('adb connect stderr', { stderr: connectResult.stderr.trim() });
-  }
-
   const start = Date.now();
   while (Date.now() - start < BOOT_TIMEOUT_MS) {
     const devicesResult = spawnSync('adb', [...adbPortArgs, 'devices'], { encoding: 'utf8' });
