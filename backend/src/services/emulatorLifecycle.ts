@@ -29,14 +29,23 @@ const cleanupEmulatorState = (avdName: string) => {
   logger.info('Performing pre-launch emulator cleanup');
 
   spawnSync('pkill', ['-f', 'emulator'], { stdio: 'ignore' });
+  spawnSync('pkill', ['-9', '-f', 'emulator'], { stdio: 'ignore' });
   spawnSync('pkill', ['-f', 'qemu-system'], { stdio: 'ignore' });
+  spawnSync('pkill', ['-9', '-f', 'qemu-system'], { stdio: 'ignore' });
 
   const avdDir = `${ANDROID_AVD_HOME}/${avdName}.avd`;
-  const cleanupLocks = `rm -f ${avdDir}/*.lock ${avdDir}/snapshots/*.lock ${avdDir}/cache.img.lock 2>/dev/null`;
+  const cleanupLocks = [
+    `rm -f ${avdDir}/*.lock`,
+    `rm -f ${avdDir}/hardware-qemu.ini.lock`,
+    `rm -f ${avdDir}/snapshots/*.lock`,
+    `rm -f ${avdDir}/cache.img.lock`,
+    `rm -f ${avdDir}/multiinstance.lock`
+  ].join(' && ');
   spawnSync('sh', ['-c', cleanupLocks], { stdio: 'ignore' });
 
   spawnSync('adb', ['-P', ADB_SERVER_PORT.toString(), 'kill-server'], { stdio: 'ignore' });
   spawnSync('adb', ['disconnect'], { stdio: 'ignore' });
+  process.env.ANDROID_SERIAL = `emulator-${CONSOLE_PORT}`;
 };
 
 const handleProcessExit = (code: number | null, signal: NodeJS.Signals | null) => {
@@ -257,6 +266,7 @@ const waitForEmulatorReady = async () => {
     const stdout = devicesResult.stdout ?? '';
     if (stdout.includes(`${targetSerial}\tdevice`)) {
       logger.info('Emulator reported as online device');
+      spawnSync('adb', [...adbPortArgs, '-s', targetSerial, 'shell', 'settings', 'put', 'system', 'screen_off_timeout', '2147483647'], { stdio: 'ignore' });
       return;
     }
     await delay(BOOT_POLL_INTERVAL_MS);
