@@ -23,7 +23,6 @@ services:
       - AVD_NAME=autoapp-local
       - WS_SCRCPY_HOST=82.165.175.97
       - WS_SCRCPY_PORT=${WS_SCRCPY_PORT:-8000}
-      - WS_SCRCPY_PLAYER=${WS_SCRCPY_PLAYER:-webcodecs}
       - EMULATOR_CONSOLE_PORT=5554
       - EMULATOR_ADB_PORT=5555
     volumes:
