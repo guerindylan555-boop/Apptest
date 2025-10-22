@@ -250,16 +250,17 @@ const waitForEmulatorReady = async () => {
 
   await delay(5_000);
 
-  const targetSerial = `emulator-${CONSOLE_PORT}`;
+  const emulatorSerial = `emulator-${CONSOLE_PORT}`;
+  const tcpSerial = `127.0.0.1:${ADB_PORT}`;
 
-  const waitResult = spawnSync('adb', [...adbPortArgs, '-s', targetSerial, 'wait-for-device'], {
+  const connectResult = spawnSync('adb', [...adbPortArgs, 'connect', tcpSerial], {
     encoding: 'utf8'
   });
-  if (waitResult.status !== 0) {
-    logger.warn('adb wait-for-device returned non-zero status', {
-      status: waitResult.status,
-      stderr: waitResult.stderr?.toString().trim()
-    });
+  if (connectResult.stdout?.trim()) {
+    logger.info('adb connect stdout', { stdout: connectResult.stdout.trim() });
+  }
+  if (connectResult.stderr?.trim()) {
+    logger.info('adb connect stderr', { stderr: connectResult.stderr.trim() });
   }
 
   const start = Date.now();
@@ -267,18 +268,25 @@ const waitForEmulatorReady = async () => {
     const devicesResult = spawnSync('adb', [...adbPortArgs, 'devices'], { encoding: 'utf8' });
     const stdout = devicesResult.stdout ?? '';
     logger.debug('adb devices output', { stdout });
-    if (stdout.includes(`${targetSerial}\toffline`)) {
-      logger.info('Emulator reported offline; issuing adb reconnect');
-      spawnSync('adb', [...adbPortArgs, '-s', targetSerial, 'reconnect', 'offline'], { stdio: 'ignore' });
+
+    const hasOffline = stdout.includes(`${emulatorSerial}\toffline`) || stdout.includes(`${tcpSerial}\toffline`);
+    if (hasOffline) {
+      logger.info('ADB reports emulator offline; attempting reconnection');
+      spawnSync('adb', [...adbPortArgs, 'reconnect'], { stdio: 'ignore' });
+      spawnSync('adb', [...adbPortArgs, '-s', emulatorSerial, 'reconnect', 'offline'], { stdio: 'ignore' });
       await delay(BOOT_POLL_INTERVAL_MS);
       continue;
     }
-    if (stdout.includes(`${targetSerial}\tdevice`)) {
-      logger.info('Emulator reported as online device');
-      spawnSync('adb', [...adbPortArgs, '-s', targetSerial, 'shell', 'settings', 'put', 'system', 'screen_off_timeout', '2147483647'], { stdio: 'ignore' });
-      spawnSync('adb', [...adbPortArgs, '-s', targetSerial, 'shell', 'logcat', '-G', '2M'], { stdio: 'ignore' });
+
+    const hasDevice = stdout.includes(`${emulatorSerial}\tdevice`) || stdout.includes(`${tcpSerial}\tdevice`);
+    if (hasDevice) {
+      const activeSerial = stdout.includes(`${emulatorSerial}\tdevice`) ? emulatorSerial : tcpSerial;
+      logger.info('Emulator reported as online device', { serial: activeSerial });
+      spawnSync('adb', [...adbPortArgs, '-s', activeSerial, 'shell', 'settings', 'put', 'system', 'screen_off_timeout', '2147483647'], { stdio: 'ignore' });
+      spawnSync('adb', [...adbPortArgs, '-s', activeSerial, 'shell', 'logcat', '-G', '2M'], { stdio: 'ignore' });
       return;
     }
+
     await delay(BOOT_POLL_INTERVAL_MS);
   }
 
