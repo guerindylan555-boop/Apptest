@@ -18,6 +18,30 @@ static_resources:
                       domains: ["*"]
                       routes:
                         - match:
+                            prefix: "/"
+                            headers:
+                              - name: ":method"
+                                string_match:
+                                  exact: "OPTIONS"
+                          direct_response:
+                            status: 204
+                          response_headers_to_add:
+                            - header:
+                                key: "access-control-allow-origin"
+                                value: "*"
+                            - header:
+                                key: "access-control-allow-methods"
+                                value: "GET, PUT, DELETE, POST, OPTIONS"
+                            - header:
+                                key: "access-control-allow-headers"
+                                value: "x-grpc-web,content-type,x-user-agent,grpc-timeout,authorization,keep-alive,origin,accept"
+                            - header:
+                                key: "access-control-expose-headers"
+                                value: "grpc-status,grpc-message"
+                            - header:
+                                key: "access-control-max-age"
+                                value: "86400"
+                        - match:
                             prefix: "/android.emulation.control.Rtc"
                           route:
                             cluster: emulator_grpc
@@ -37,14 +61,6 @@ static_resources:
                             status: 200
                             body:
                               inline_string: "ok"
-                        - match:
-                            prefix: "/"
-                            headers:
-                              - name: ":method"
-                                string_match:
-                                  exact: "OPTIONS"
-                          direct_response:
-                            status: 204
                         - match:
                             prefix: "/"
                           direct_response:
