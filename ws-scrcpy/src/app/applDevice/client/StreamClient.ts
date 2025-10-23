@@ -229,7 +229,7 @@ export abstract class StreamClient<T extends ParamsStream> extends BaseClient<T,
         const deviceView = document.createElement('div');
         deviceView.className = 'device-view';
         if (this.useStreamLayout) {
-            deviceView.classList.add('fit-container');
+            deviceView.classList.add('stream-layout');
         }
 
         const applMoreBox = this.createMoreBox(udid, player);
