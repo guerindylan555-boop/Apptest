@@ -30,19 +30,15 @@ services:
   emulator:
     image: us-docker.pkg.dev/android-emulator-268719/images/30-google-x64:30.1.2
     container_name: apptest-emulator
+    network_mode: host
     devices:
       - /dev/kvm:/dev/kvm
     environment:
       - AVD_CONFIG=hw.cpu.ncore=4
       - ADBKEY=${ADBKEY:-}  # ADB key will be read from shared volume
-    ports:
-      - "5555:5555"
-      - "8554:8554"
     volumes:
       - adb-keys:/root/.android  # Share ADB keys with backend
     shm_size: 1g
-    networks:
-      - apptest-network
     restart: unless-stopped
 
   envoy:
