@@ -102,7 +102,6 @@ export abstract class StreamClient<T extends ParamsStream> extends BaseClient<T,
     protected deviceView?: HTMLDivElement;
     protected moreBox?: HTMLElement;
     protected player?: BasePlayer;
-    protected useStreamLayout = false;
 
     protected constructor(params: T) {
         super(params);
@@ -112,12 +111,9 @@ export abstract class StreamClient<T extends ParamsStream> extends BaseClient<T,
         this.videoWrapper = document.createElement('div');
         this.videoWrapper.className = `video`;
         const body = document.body;
-        const isStreamLayout = !!body && body.classList.contains('stream');
-        const isEmbeddedLayout = !!body && body.classList.contains('embedded');
-        if (isStreamLayout || isEmbeddedLayout) {
+        if (body && (body.classList.contains('stream') || body.classList.contains('embedded'))) {
             this.videoWrapper.dataset.fitContainer = 'true';
         }
-        this.useStreamLayout = isStreamLayout;
         this.setWdaStatusNotification(WdaStatus.STARTING);
     }
 
@@ -229,9 +225,6 @@ export abstract class StreamClient<T extends ParamsStream> extends BaseClient<T,
 
         const deviceView = document.createElement('div');
         deviceView.className = 'device-view';
-        if (this.useStreamLayout) {
-            deviceView.classList.add('fit-container');
-        }
 
         const applMoreBox = this.createMoreBox(udid, player);
         applMoreBox.setOnStop(this);

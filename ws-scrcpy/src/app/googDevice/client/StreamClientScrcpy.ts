@@ -266,6 +266,7 @@ export class StreamClientScrcpy
             throw Error(`Invalid udid value: "${udid}"`);
         }
 
+        this.fitToScreen = fitToScreen;
         if (!player) {
             if (typeof playerName !== 'string') {
                 throw Error('Must provide BasePlayer instance or playerName');
@@ -292,14 +293,8 @@ export class StreamClientScrcpy
 
         const deviceView = document.createElement('div');
         deviceView.className = 'device-view';
-        const body = document.body;
-        const isEmbeddedLayout = body.classList.contains('embedded');
-        const isStreamLayout = body.classList.contains('stream');
-        if (isEmbeddedLayout) {
+        if (document.body.classList.contains('embedded')) {
             deviceView.classList.add('embedded-view');
-        }
-        if (isStreamLayout) {
-            deviceView.classList.add('fit-container');
         }
         const stop = (ev?: string | Event) => {
             if (ev && ev instanceof Event && ev.type === 'error') {
@@ -328,7 +323,10 @@ export class StreamClientScrcpy
         deviceView.appendChild(this.controlButtons);
         const video = document.createElement('div');
         video.className = 'video';
-        const shouldFillContainer = isStreamLayout || deviceView.classList.contains('embedded-view');
+        const shouldFillContainer =
+            document.body.classList.contains('stream') ||
+            document.body.classList.contains('embedded') ||
+            deviceView.classList.contains('embedded-view');
         if (shouldFillContainer) {
             video.dataset.fitContainer = 'true';
         }
@@ -338,10 +336,6 @@ export class StreamClientScrcpy
         player.pause();
 
         document.body.appendChild(deviceView);
-        if (isStreamLayout && typeof fitToScreen !== 'boolean') {
-            fitToScreen = true;
-        }
-        this.fitToScreen = fitToScreen;
         if (fitToScreen) {
             const newBounds = this.getMaxSize();
             if (newBounds) {
