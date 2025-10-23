@@ -269,11 +269,11 @@ export class StreamClientScrcpy
         }
 
         this.fitToScreen = fitToScreen;
+        let displayInfo: DisplayInfo | undefined;
         if (!player) {
             if (typeof playerName !== 'string') {
                 throw Error('Must provide BasePlayer instance or playerName');
             }
-            let displayInfo: DisplayInfo | undefined;
             if (this.streamReceiver && videoSettings) {
                 displayInfo = this.streamReceiver.getDisplayInfo(videoSettings.displayId);
             }
