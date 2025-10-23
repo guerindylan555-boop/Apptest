@@ -286,12 +286,12 @@ export class StreamClientScrcpy
             throw Error(`Invalid udid value: "${udid}"`);
         }
 
-        let displayInfo: DisplayInfo | undefined;
         this.fitToScreen = fitToScreen;
         if (!player) {
             if (typeof playerName !== 'string') {
                 throw Error('Must provide BasePlayer instance or playerName');
             }
+            let displayInfo: DisplayInfo | undefined;
             if (this.streamReceiver && videoSettings) {
                 displayInfo = this.streamReceiver.getDisplayInfo(videoSettings.displayId);
             }
@@ -310,54 +310,10 @@ export class StreamClientScrcpy
         if (!videoSettings) {
             videoSettings = player.getVideoSettings();
         }
-        if (!displayInfo && this.streamReceiver && videoSettings) {
-            displayInfo = this.streamReceiver.getDisplayInfo(videoSettings.displayId);
-        }
-
-        const isEmbeddedLayout = document.body.classList.contains('embedded');
-        let persistAdjustedSettings = false;
-
-        if (isEmbeddedLayout) {
-            const currentBounds = videoSettings.bounds;
-            const hasUsefulBounds =
-                !!currentBounds &&
-                currentBounds.width > 0 &&
-                currentBounds.height > 0 &&
-                currentBounds.width !== currentBounds.height;
-
-            if (!hasUsefulBounds) {
-                const hostElement =
-                    (document.querySelector('.device-view') as HTMLElement | null)?.parentElement ?? document.body;
-                const rect = hostElement.getBoundingClientRect();
-                const cssWidth = Math.max(1, Math.floor(rect.width));
-                const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
-
-                const deviceWidth = displayInfo?.size?.width ?? 1080;
-                const deviceHeight = displayInfo?.size?.height ?? 2400;
-                const aspect = deviceWidth > 0 && deviceHeight > 0 ? deviceWidth / deviceHeight : 9 / 20;
-
-                const maxWidth = Math.min(cssWidth * dpr, deviceWidth, 1280);
-                let targetWidth = Math.max(StreamClientScrcpy.EMBEDDED_DEFAULT_BOUNDS.width, Math.floor(maxWidth));
-                let targetHeight = Math.floor(targetWidth / aspect);
-
-                targetWidth -= targetWidth % 16;
-                targetHeight -= targetHeight % 16;
-
-                if (targetWidth < 16 || targetHeight < 16) {
-                    targetWidth = StreamClientScrcpy.EMBEDDED_DEFAULT_BOUNDS.width;
-                    targetHeight = StreamClientScrcpy.EMBEDDED_DEFAULT_BOUNDS.height;
-                }
-
-                const desiredBounds = new Size(targetWidth, targetHeight);
-                videoSettings = StreamClientScrcpy.createVideoSettingsWithBounds(videoSettings, desiredBounds);
-                this.requestedVideoSettings = videoSettings;
-                persistAdjustedSettings = true;
-            }
-        }
 
         const deviceView = document.createElement('div');
         deviceView.className = 'device-view';
-        if (isEmbeddedLayout) {
+        if (document.body.classList.contains('embedded')) {
             deviceView.classList.add('embedded-view');
         }
         const stop = (ev?: string | Event) => {
@@ -397,10 +353,9 @@ export class StreamClientScrcpy
             const newBounds = this.getMaxSize();
             if (newBounds) {
                 videoSettings = StreamClientScrcpy.createVideoSettingsWithBounds(videoSettings, newBounds);
-                persistAdjustedSettings = true;
             }
         }
-        this.applyNewVideoSettings(videoSettings, persistAdjustedSettings);
+        this.applyNewVideoSettings(videoSettings, false);
         const element = player.getTouchableElement();
         const logger = new DragAndPushLogger(element);
         this.filePushHandler = new FilePushHandler(element, new ScrcpyFilePushStream(this.streamReceiver));
