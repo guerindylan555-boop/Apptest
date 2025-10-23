@@ -46,6 +46,7 @@ export class StreamClientScrcpy
     implements KeyEventListener, InteractionHandlerListener
 {
     public static ACTION = 'stream';
+    private static readonly EMBEDDED_DEFAULT_BOUNDS = new Size(720, 1280);
     private static players: Map<string, PlayerClass> = new Map<string, PlayerClass>();
 
     private controlButtons?: HTMLElement;
@@ -191,6 +192,21 @@ export class StreamClientScrcpy
             return;
         }
         let currentSettings = this.player.getVideoSettings();
+        let persistAdjustedSettings = false;
+        const isEmbeddedLayout = document.body.classList.contains('embedded');
+        if (isEmbeddedLayout) {
+            const desiredBounds = StreamClientScrcpy.EMBEDDED_DEFAULT_BOUNDS;
+            const currentBounds = currentSettings.bounds;
+            if (
+                !currentBounds ||
+                currentBounds.width < desiredBounds.width ||
+                currentBounds.height < desiredBounds.height
+            ) {
+                currentSettings = StreamClientScrcpy.createVideoSettingsWithBounds(currentSettings, desiredBounds);
+                this.requestedVideoSettings = currentSettings;
+                persistAdjustedSettings = true;
+            }
+        }
         const displayId = currentSettings.displayId;
         const info = infoArray.find((value) => {
             return value.displayInfo.displayId === displayId;
@@ -210,8 +226,12 @@ export class StreamClientScrcpy
             const newBounds = this.getMaxSize();
             if (newBounds) {
                 currentSettings = StreamClientScrcpy.createVideoSettingsWithBounds(currentSettings, newBounds);
-                this.player.setVideoSettings(currentSettings, this.fitToScreen, false);
+                this.player.setVideoSettings(currentSettings, this.fitToScreen, persistAdjustedSettings);
+            } else if (persistAdjustedSettings) {
+                this.player.setVideoSettings(currentSettings, false, true);
             }
+        } else if (persistAdjustedSettings) {
+            this.player.setVideoSettings(currentSettings, false, true);
         }
         if (!videoSettings || !screenInfo) {
             this.joinedStream = true;
