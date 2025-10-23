@@ -7,7 +7,6 @@ import { sessionStore } from '../state/sessionStore';
 import type { EmulatorSession } from '../types/session';
 import { emulatorLogBuffer } from './logStreams';
 import { attachProcessLoggers } from './logBuffer';
-import { ensureStreamer, handleEmulatorStopped } from './streamerService';
 
 const CONSOLE_PORT = Number.parseInt(process.env.EMULATOR_CONSOLE_PORT ?? '5554', 10);
 const ADB_PORT = Number.parseInt(process.env.EMULATOR_ADB_PORT ?? '5555', 10);
@@ -19,7 +18,19 @@ const ANDROID_SDK_ROOT = process.env.ANDROID_SDK_ROOT ?? '/opt/android-sdk';
 const ANDROID_AVD_HOME = process.env.ANDROID_AVD_HOME ?? `${ANDROID_SDK_ROOT}/avd`;
 const BOOT_TIMEOUT_MS = Number.parseInt(process.env.EMULATOR_BOOT_TIMEOUT_MS ?? '90000', 10);
 const BOOT_POLL_INTERVAL_MS = 2_000;
-const EMULATOR_SERIAL = `emulator-${CONSOLE_PORT}`;
+const EXTERNAL_MODE = process.env.EXTERNAL_EMULATOR === 'true';
+const EMULATOR_SERIAL = EXTERNAL_MODE
+  ? `${process.env.EXTERNAL_EMULATOR_HOST ?? 'emulator'}:${process.env.EXTERNAL_EMULATOR_ADB_PORT ?? `${ADB_PORT}`}`
+  : `emulator-${CONSOLE_PORT}`;
+const EXTERNAL_EMULATOR_HOST = process.env.EXTERNAL_EMULATOR_HOST ?? 'emulator';
+const EXTERNAL_EMULATOR_ADB_PORT = Number.parseInt(
+  process.env.EXTERNAL_EMULATOR_ADB_PORT ?? `${ADB_PORT}`,
+  10
+);
+const EXTERNAL_EMULATOR_CONSOLE_PORT = Number.parseInt(
+  process.env.EXTERNAL_EMULATOR_CONSOLE_PORT ?? `${CONSOLE_PORT}`,
+  10
+);
 
 let emulatorProcess: ChildProcess | undefined;
 
@@ -49,13 +60,72 @@ const cleanupEmulatorState = (avdName: string) => {
   process.env.ANDROID_SERIAL = `emulator-${CONSOLE_PORT}`;
 };
 
+const ensureAdbServer = async () => {
+  logger.info('Ensuring ADB server is running');
+  const startServer = spawnSync('adb', ['start-server'], {
+    encoding: 'utf8'
+  });
+  if (startServer.status !== 0) {
+    logger.warn('adb start-server exited with non-zero code', {
+      status: startServer.status,
+      stderr: startServer.stderr?.toString().trim()
+    });
+  }
+
+  await delay(2000);
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const checkDevices = spawnSync('adb', ['devices'], { encoding: 'utf8' });
+    if (checkDevices.status === 0) {
+      logger.info('ADB server verified and responsive');
+      return;
+    }
+    logger.warn(`ADB server not responding, retry ${attempt + 1}/5`);
+    await delay(1000);
+  }
+
+  throw new Error('ADB server failed to start');
+};
+
+const connectToExternalEmulator = async () => {
+  const target = `${EXTERNAL_EMULATOR_HOST}:${EXTERNAL_EMULATOR_ADB_PORT}`;
+  logger.info('Connecting to external emulator', { target });
+
+  await ensureAdbServer();
+
+  const connectResult = spawnSync('adb', ['connect', target], {
+    encoding: 'utf8',
+    stdio: 'pipe'
+  });
+  if (connectResult.status === 0) {
+    logger.info('adb connect succeeded', { output: connectResult.stdout?.trim() });
+  } else {
+    logger.warn('adb connect failed', {
+      status: connectResult.status,
+      stdout: connectResult.stdout?.trim(),
+      stderr: connectResult.stderr?.trim()
+    });
+  }
+
+  const start = Date.now();
+  const deadline = 15_000;
+  while (Date.now() - start < deadline) {
+    const devices = spawnSync('adb', ['devices'], { encoding: 'utf8' });
+    const stdout = devices.stdout ?? '';
+    if (stdout.includes(`${target}\tdevice`)) {
+      logger.info('External emulator reported as device', { serial: target });
+      process.env.ANDROID_SERIAL = target;
+      return;
+    }
+    await delay(1_000);
+  }
+
+  throw new Error(`External emulator at ${target} did not appear in adb devices`);
+};
+
 const handleProcessExit = (code: number | null, signal: NodeJS.Signals | null) => {
   logger.warn('Emulator process exited', { code, signal });
   emulatorProcess = undefined;
   emulatorLogBuffer.flushRemainder('[emulator]');
-  handleEmulatorStopped().catch((error) => {
-    logger.error('Failed to stop streamer after emulator exit', { error: (error as Error).message });
-  });
   const current = sessionStore.getSession();
   if (current.state === 'Running' || current.state === 'Booting') {
     sessionStore.recordError({
@@ -75,48 +145,26 @@ export const startEmulator = async (): Promise<EmulatorSession> => {
   }
 
   // External emulator mode: emulator is already running on host
-  const externalMode = process.env.EXTERNAL_EMULATOR === 'true';
-  if (externalMode) {
-    logger.info('External emulator mode: assuming emulator is already running');
+  if (EXTERNAL_MODE) {
+    logger.info('External emulator mode enabled — connecting to existing instance', {
+      host: EXTERNAL_EMULATOR_HOST,
+      adbPort: EXTERNAL_EMULATOR_ADB_PORT
+    });
     sessionStore.transition('Booting');
-    sessionStore.setBootStarted(undefined, { console: CONSOLE_PORT, adb: ADB_PORT });
+    sessionStore.setBootStarted(undefined, {
+      console: EXTERNAL_EMULATOR_CONSOLE_PORT,
+      adb: EXTERNAL_EMULATOR_ADB_PORT
+    });
+    await connectToExternalEmulator();
     sessionStore.setBootCompleted();
     sessionStore.transition('Running', { streamToken: undefined });
-    logger.info('External emulator detected as running');
+    logger.info('External emulator connection established');
     return sessionStore.getSession();
   }
 
   cleanupEmulatorState(session.avdName);
 
-  // Start ADB server and verify it's running
-  logger.info('Starting ADB server');
-  const startServer = spawnSync('adb', ['start-server'], {
-    encoding: 'utf8'
-  });
-  if (startServer.status !== 0) {
-    logger.warn('adb start-server exited with non-zero code', {
-      status: startServer.status,
-      stderr: startServer.stderr?.toString().trim()
-    });
-  }
-
-  // Wait for ADB server to be responsive
-  await delay(2000);
-  let adbReady = false;
-  for (let i = 0; i < 5; i++) {
-    const checkDevices = spawnSync('adb', ['devices'], { encoding: 'utf8' });
-    if (checkDevices.status === 0) {
-      logger.info('ADB server verified and responsive');
-      adbReady = true;
-      break;
-    }
-    logger.warn(`ADB server not responding, retry ${i + 1}/5`);
-    await delay(1000);
-  }
-
-  if (!adbReady) {
-    throw new Error('ADB server failed to start');
-  }
+  await ensureAdbServer();
 
   if (emulatorProcess) {
     logger.warn('Emulator process handle exists; attempting restart');
@@ -184,12 +232,9 @@ export const startEmulator = async (): Promise<EmulatorSession> => {
     });
     sessionStore.transition('Running', { streamToken: undefined });
     logger.info('Emulator boot completed');
-    await ensureStreamer().catch((error) => {
-      logger.error('Failed to start streamer', { error: (error as Error).message });
-    });
 
     // Run startup automation in background
-    if (!externalMode) {
+    if (!EXTERNAL_MODE) {
       import('./autoStartup').then(({ runStartupAutomation }) => {
         logger.info('Starting auto-startup automation...');
         runStartupAutomation().catch(error => {
@@ -206,7 +251,6 @@ export const startEmulator = async (): Promise<EmulatorSession> => {
     emulatorProcess?.kill('SIGKILL');
     emulatorProcess = undefined;
     emulatorLogBuffer.flushRemainder('[emulator]');
-    await handleEmulatorStopped().catch(() => undefined);
     sessionStore.recordError({
       code: 'BOOT_FAILED',
       message: (error as Error).message,
@@ -355,13 +399,11 @@ export const stopEmulator = async (force = false): Promise<EmulatorSession> => {
   }
 
   // External emulator mode: don't actually stop the host emulator
-  const externalMode = process.env.EXTERNAL_EMULATOR === 'true';
-  if (externalMode) {
-    logger.info('External emulator mode: marking as stopped without killing host emulator');
+  if (EXTERNAL_MODE) {
+    const target = `${EXTERNAL_EMULATOR_HOST}:${EXTERNAL_EMULATOR_ADB_PORT}`;
+    logger.info('External emulator mode: disconnecting adb and marking session stopped', { target });
+    spawnSync('adb', ['disconnect', target], { stdio: 'ignore' });
     sessionStore.reset();
-    await handleEmulatorStopped().catch((error) => {
-      logger.error('Failed to stop streamer', { error: (error as Error).message });
-    });
     return sessionStore.getSession();
   }
 
@@ -388,9 +430,6 @@ export const stopEmulator = async (force = false): Promise<EmulatorSession> => {
     sessionStore.clearForceStopFlag();
     logger.info('Emulator stopped');
     cleanupEmulatorState(avdName);
-    await handleEmulatorStopped().catch((error) => {
-      logger.error('Failed to stop streamer', { error: (error as Error).message });
-    });
     return sessionStore.getSession();
   }
 

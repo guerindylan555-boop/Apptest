@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { Emulator } from 'android-emulator-webrtc';
 import StreamPlaceholder from './StreamPlaceholder';
 import type { StreamTicket } from '../services/backendClient';
 import { fetchStreamUrl } from '../services/backendClient';
@@ -12,21 +13,29 @@ interface StreamViewerProps {
 
 const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
   const [localTicket, setLocalTicket] = useState<StreamTicket | undefined>(streamTicket);
+  const [connectionState, setConnectionState] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
+  const [lastError, setLastError] = useState<string | undefined>();
   const setGlobalState = useAppStore((state) => state.setState);
   const activeTicket = streamTicket ?? localTicket;
 
   useEffect(() => {
     if (state !== 'Running') {
       setLocalTicket(undefined);
+      setConnectionState('idle');
+      setLastError(undefined);
       return;
     }
 
     if (streamTicket) {
       setLocalTicket(streamTicket);
+      setConnectionState('connecting');
+      setLastError(undefined);
       return;
     }
 
     let cancelled = false;
+    setConnectionState('connecting');
+    setLastError(undefined);
     fetchStreamUrl()
       .then((ticket) => {
         if (!cancelled) {
@@ -38,6 +47,8 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
         if (!cancelled) {
           console.error('[StreamViewer] Failed to fetch stream ticket', error);
           setLocalTicket(undefined);
+          setConnectionState('error');
+          setLastError(error instanceof Error ? error.message : String(error));
         }
       });
 
@@ -46,36 +57,56 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
     };
   }, [state, streamTicket, setGlobalState]);
 
-  if (state !== 'Running' || !activeTicket) {
+  const handleStateChange = useCallback((value: 'connecting' | 'connected' | 'disconnected') => {
+    if (value === 'connected') {
+      setConnectionState('connected');
+      return;
+    }
+    if (value === 'disconnected') {
+      setConnectionState('error');
+      return;
+    }
+    setConnectionState('connecting');
+  }, []);
+
+  const handleError = useCallback((error: unknown) => {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('[StreamViewer] WebRTC error', message);
+    setLastError(message);
+    setConnectionState('error');
+  }, []);
+
+  const resolvedEndpoint = activeTicket?.grpcUrl ?? activeTicket?.url;
+
+  if (state !== 'Running' || !activeTicket || !resolvedEndpoint) {
     return <StreamPlaceholder />;
   }
 
+  if (connectionState === 'error') {
+    return (
+      <div className="stream-viewer-error">
+        <p>WebRTC stream unavailable</p>
+        {lastError && <p>{lastError}</p>}
+      </div>
+    );
+  }
+
   return (
-    <div
-      style={{
-        width: '100%',
-        maxWidth: '420px',
-        aspectRatio: '9 / 16',
-        position: 'relative',
-        overflow: 'hidden',
-        borderRadius: '16px',
-        background: '#000'
-      }}
-    >
-      <iframe
-        title="Emulator Stream"
-        src={activeTicket.url}
-        className="stream-viewer"
-        style={{
-          position: 'absolute',
-          top: 0,
-          left: 0,
-          width: '100%',
-          height: '100%',
-          border: 'none'
-        }}
-        allow="autoplay; fullscreen"
+    <div className="stream-viewer">
+      <Emulator
+        key={resolvedEndpoint}
+        uri={resolvedEndpoint}
+        view="webrtc"
+        muted
+        poll={false}
+        onStateChange={handleStateChange}
+        onError={handleError}
       />
+      {connectionState !== 'connected' && (
+        <div className="stream-viewer-status">
+          {connectionState === 'connecting' ? 'Connecting Stream…' : 'Initialising Stream…'}
+        </div>
+      )}
     </div>
   );
 };

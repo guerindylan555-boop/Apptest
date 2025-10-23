@@ -2,7 +2,7 @@ FROM node:20-slim
 
 ENV DEBIAN_FRONTEND=noninteractive
 
-# Install Android emulator dependencies and useful tooling
+# Install Android tooling dependencies and useful tooling
 RUN apt-get update && apt-get install -y \
     curl \
     wget \
@@ -10,27 +10,6 @@ RUN apt-get update && apt-get install -y \
     openjdk-17-jdk \
     python3 \
     python3-pip \
-    qemu-kvm \
-    libvirt-daemon-system \
-    libvirt-clients \
-    libglu1-mesa \
-    libgl1-mesa-dev \
-    libx11-6 \
-    libxcb1 \
-    libnss3 \
-    libxcursor1 \
-    libxrandr2 \
-    libxi6 \
-    libxrender1 \
-    libxfixes3 \
-    libxdamage1 \
-    libxtst6 \
-    libxcomposite1 \
-    libasound2 \
-    libpulse0 \
-    libsdl2-2.0-0 \
-    libdbus-glib-1-2 \
-    libnotify4 \
     socat \
     net-tools \
     aapt \
@@ -42,8 +21,7 @@ RUN pip3 install --break-system-packages mitmproxy
 # Android SDK environment configuration
 ENV ANDROID_SDK_ROOT=/opt/android-sdk
 ENV ANDROID_HOME=${ANDROID_SDK_ROOT}
-ENV ANDROID_AVD_HOME=${ANDROID_SDK_ROOT}/avd
-ENV PATH=$PATH:${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools:${ANDROID_SDK_ROOT}/emulator
+ENV PATH=$PATH:${ANDROID_SDK_ROOT}/cmdline-tools/latest/bin:${ANDROID_SDK_ROOT}/platform-tools
 
 # Install Android command line tools
 RUN mkdir -p ${ANDROID_SDK_ROOT}/cmdline-tools && \
@@ -52,32 +30,13 @@ RUN mkdir -p ${ANDROID_SDK_ROOT}/cmdline-tools && \
     mv ${ANDROID_SDK_ROOT}/cmdline-tools/cmdline-tools ${ANDROID_SDK_ROOT}/cmdline-tools/latest && \
     rm /tmp/cmdline-tools.zip
 
-# Accept licenses and install emulator + system image
+# Accept licenses and install platform tools (adb, fastboot)
 RUN yes | sdkmanager --licenses && \
     sdkmanager \
-      "platform-tools" \
-      "emulator" \
-      "platforms;android-34" \
-      "system-images;android-34;google_apis;x86_64"
-
-# Create a default AVD with snapshots disabled
-RUN mkdir -p ${ANDROID_AVD_HOME} && \
-    echo "no" | avdmanager create avd -n autoapp-local -k "system-images;android-34;google_apis;x86_64" --device "pixel_6" --force && \
-    printf '\nfastboot.forceColdBoot = yes\nfastboot.forceFastBoot = no\nfirstboot.bootFromDownloadableSnapshot = no\nfirstboot.bootFromLocalSnapshot = no\nfirstboot.saveToLocalSnapshot = no\nhw.ramSize = 4096\n' >> ${ANDROID_AVD_HOME}/autoapp-local.avd/config.ini && \
-    rm -rf ${ANDROID_AVD_HOME}/autoapp-local.avd/snapshots
-
-# Bundle ws-scrcpy streamer from local sources
-WORKDIR /opt/ws-scrcpy
-COPY ws-scrcpy/package*.json ./
-RUN npm ci
-COPY ws-scrcpy ./
-RUN npm run dist
-RUN printf '#!/usr/bin/env bash\ncd /opt/ws-scrcpy\nexec node dist/index.js \"$@\"\n' > /usr/local/bin/ws-scrcpy && \
-    chmod +x /usr/local/bin/ws-scrcpy
-
-WORKDIR /app
+      "platform-tools"
 
 # Copy backend package files and install dependencies
+WORKDIR /app
 COPY backend/package*.json ./
 RUN npm ci
 
@@ -90,12 +49,11 @@ COPY backend/scripts/entrypoint.sh /usr/local/bin/backend-entrypoint.sh
 RUN chmod +x /usr/local/bin/backend-entrypoint.sh
 
 ENV EXTERNAL_EMULATOR=false \
-    AVD_NAME=autoapp-local \
-    EMULATOR_CONSOLE_PORT=5554 \
+    AVD_NAME=autoapp-external \
     EMULATOR_ADB_PORT=5555 \
-    WS_SCRCPY_PORT=8000 \
-    WS_SCRCPY_BIN=/usr/local/bin/ws-scrcpy
+    EMULATOR_GRPC_ENDPOINT=http://envoy:8080 \
+    EMULATOR_WEBRTC_PUBLIC_URL=http://127.0.0.1:9000
 
-EXPOSE 3001 8000 5037
+EXPOSE 3001
 
 ENTRYPOINT ["/usr/local/bin/backend-entrypoint.sh"]

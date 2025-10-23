@@ -40,6 +40,8 @@ export interface StreamTicket {
   url: string;
   token: string;
   expiresAt: string;
+  grpcUrl?: string;
+  iceServers?: string[];
 }
 
 const request = async <T>(path: string, options?: RequestInit): Promise<T> => {

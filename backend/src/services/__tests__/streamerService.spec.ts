@@ -1,73 +1,75 @@
-import { sessionStore } from '../../state/sessionStore';
-import { issueStreamTicket } from '../streamerService';
-import type { EmulatorSession } from '../../types/session';
+const mockSessionStore = {
+  getSession: jest.fn(),
+  generateStreamTicket: jest.fn()
+};
 
-// Mock the sessionStore
-jest.mock('../../state/sessionStore');
-
-// Mock the emulatorLifecycle
-jest.mock('../emulatorLifecycle', () => ({
-  findRunningEmulator: jest.fn().mockResolvedValue(null),
-  getEmulatorSerial: jest.fn().mockResolvedValue('emulator-5554'),
-  // Add other exported functions if needed by the streamerService
-  __esModule: true
+jest.mock('../../state/sessionStore', () => ({
+  sessionStore: mockSessionStore
 }));
 
-// Mock the streamerService's ensureStreamer function
-jest.mock('../streamerService', () => {
-  const originalModule = jest.requireActual('../streamerService');
-  return {
-    ...originalModule,
-    ensureStreamer: jest.fn().mockResolvedValue(undefined)
-  };
-});
+import type { EmulatorSession } from '../../types/session';
 
-const mockSessionStore = sessionStore as jest.Mocked<typeof sessionStore>;
+const loadStreamerService = async () => {
+  jest.resetModules();
+  return import('../streamerService');
+};
 
 describe('streamerService', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    jest.resetAllMocks();
+    delete process.env.EMULATOR_WEBRTC_PUBLIC_URL;
   });
 
-  describe('issueStreamTicket', () => {
-    it('should issue ticket when session state is Running', async () => {
-      const mockSession: EmulatorSession = { state: 'Running', avdName: 'test-avd' };
-      const streamUrl = 'http://127.0.0.1:8000/#!action=stream&udid=emulator-5554&player=broadway&ws=ws%3A%2F%2F127.0.0.1%3A8000%2F%3Faction%3Dproxy-adb%26remote%3Dtcp%3A8886%26udid%3Demulator-5554&embedded=1';
-      const mockTicket = {
-        token: 'test-token' as `${string}-${string}-${string}-${string}-${string}`,
-        expiresAt: Date.now() + 60000,
-        emulatorSerial: 'emulator-5554',
-        bridgeUrl: streamUrl
-      };
+  it('returns stream configuration when session is running', async () => {
+    const mockSession: EmulatorSession = { state: 'Running', avdName: 'test-avd' };
+    const mockTicket = {
+      token: 'mock-token',
+      emulatorSerial: 'external-emulator',
+      expiresAt: Date.now() + 60_000
+    };
 
-      mockSessionStore.getSession.mockReturnValue(mockSession);
-      mockSessionStore.generateStreamTicket.mockReturnValue(mockTicket);
+    mockSessionStore.getSession.mockReturnValue(mockSession);
+    mockSessionStore.generateStreamTicket.mockReturnValue(mockTicket);
 
-      const result = await issueStreamTicket();
+    const { issueStreamTicket } = await loadStreamerService();
+    const result = await issueStreamTicket({ requestHost: 'example.com:443', protocol: 'https' });
 
-      expect(mockSessionStore.getSession).toHaveBeenCalled();
-      expect(mockSessionStore.generateStreamTicket).toHaveBeenCalledWith('emulator-5554', streamUrl);
-      expect(result).toEqual({
-        token: 'test-token',
-        url: streamUrl,
-        expiresAt: expect.any(String)
-      });
-    });
+    expect(mockSessionStore.getSession).toHaveBeenCalledTimes(1);
+    expect(mockSessionStore.generateStreamTicket).toHaveBeenCalledWith('external-emulator');
+    expect(result.token).toBe(mockTicket.token);
+    expect(result.url).toBe('https://example.com/');
+    expect(result.grpcUrl).toBe(result.url);
+    expect(result.expiresAt).toEqual(new Date(mockTicket.expiresAt).toISOString());
+    expect(result.iceServers).toEqual([]);
+  });
 
-    it('should throw error when session state is not Running', async () => {
-      const mockSession: EmulatorSession = { state: 'Stopped', avdName: 'test-avd' };
-      mockSessionStore.getSession.mockReturnValue(mockSession);
+  it('honours configured public url when provided', async () => {
+    process.env.EMULATOR_WEBRTC_PUBLIC_URL = 'http://public-host:9000/webrtc';
+    const mockSession: EmulatorSession = { state: 'Running', avdName: 'test-avd' };
+    const mockTicket = {
+      token: 'mock-token',
+      emulatorSerial: 'external-emulator',
+      expiresAt: Date.now() + 60_000
+    };
 
-      await expect(issueStreamTicket()).rejects.toThrow('Stream tickets available only in Running state');
-      expect(mockSessionStore.generateStreamTicket).not.toHaveBeenCalled();
-    });
+    mockSessionStore.getSession.mockReturnValue(mockSession);
+    mockSessionStore.generateStreamTicket.mockReturnValue(mockTicket);
 
-    it('should throw error when session state is Error', async () => {
-      const mockSession: EmulatorSession = { state: 'Error', avdName: 'test-avd' };
-      mockSessionStore.getSession.mockReturnValue(mockSession);
+    const { issueStreamTicket } = await loadStreamerService();
+    const result = await issueStreamTicket();
 
-      await expect(issueStreamTicket()).rejects.toThrow('Stream tickets available only in Running state');
-      expect(mockSessionStore.generateStreamTicket).not.toHaveBeenCalled();
-    });
+    expect(result.url).toBe('http://public-host:9000/webrtc/');
+  });
+
+  it('throws when session is not running', async () => {
+    const mockSession: EmulatorSession = { state: 'Stopped', avdName: 'test-avd' };
+    mockSessionStore.getSession.mockReturnValue(mockSession);
+
+    const { issueStreamTicket } = await loadStreamerService();
+
+    await expect(issueStreamTicket()).rejects.toThrow(
+      'Stream configuration is available only when the emulator is running'
+    );
+    expect(mockSessionStore.generateStreamTicket).not.toHaveBeenCalled();
   });
 });

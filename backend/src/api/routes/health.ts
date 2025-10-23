@@ -3,11 +3,12 @@ import { sessionStore } from '../../state/sessionStore';
 import type { HealthResponse } from '../../types/health';
 import { isStreamerActive } from '../../services/streamerService';
 
-const buildHealthPayload = (): HealthResponse => {
+const buildHealthPayload = async (): Promise<HealthResponse> => {
   const session = sessionStore.getSession();
   const bootElapsedMs = session.bootStartedAt
     ? Date.now() - new Date(session.bootStartedAt).getTime()
     : undefined;
+  const streamerActive = await isStreamerActive();
 
   return {
     state: session.state,
@@ -16,7 +17,7 @@ const buildHealthPayload = (): HealthResponse => {
     pid: session.pid,
     ports: session.ports,
     streamAttached: Boolean(session.streamToken),
-    streamerActive: isStreamerActive(),
+    streamerActive,
     lastError: session.lastError,
     forceStopRequired: session.forceStopRequired,
     timestamps: {
@@ -26,7 +27,7 @@ const buildHealthPayload = (): HealthResponse => {
   };
 };
 
-export const healthHandler = (_req: Request, res: Response) => {
-  const payload = buildHealthPayload();
+export const healthHandler = async (_req: Request, res: Response) => {
+  const payload = await buildHealthPayload();
   res.status(200).json(payload);
 };
