@@ -46,6 +46,7 @@ export class StreamClientScrcpy
     implements KeyEventListener, InteractionHandlerListener
 {
     public static ACTION = 'stream';
+    private static readonly EMBEDDED_DEFAULT_BOUNDS = new Size(720, 1280);
     private static players: Map<string, PlayerClass> = new Map<string, PlayerClass>();
 
     private controlButtons?: HTMLElement;
@@ -293,8 +294,23 @@ export class StreamClientScrcpy
 
         const deviceView = document.createElement('div');
         deviceView.className = 'device-view';
-        if (document.body.classList.contains('embedded')) {
+        const isEmbeddedLayout = document.body.classList.contains('embedded');
+        let shouldPersistVideoSettings = false;
+        if (isEmbeddedLayout) {
             deviceView.classList.add('embedded-view');
+            const preferredBounds = player.getPreferredVideoSetting().bounds;
+            const currentBounds = videoSettings.bounds;
+            if (
+                preferredBounds &&
+                preferredBounds.width !== preferredBounds.height &&
+                (!currentBounds || currentBounds.width === currentBounds.height)
+            ) {
+                videoSettings = StreamClientScrcpy.createVideoSettingsWithBounds(
+                    videoSettings,
+                    StreamClientScrcpy.EMBEDDED_DEFAULT_BOUNDS,
+                );
+                shouldPersistVideoSettings = true;
+            }
         }
         const stop = (ev?: string | Event) => {
             if (ev && ev instanceof Event && ev.type === 'error') {
@@ -334,8 +350,9 @@ export class StreamClientScrcpy
             if (newBounds) {
                 videoSettings = StreamClientScrcpy.createVideoSettingsWithBounds(videoSettings, newBounds);
             }
+            shouldPersistVideoSettings = true;
         }
-        this.applyNewVideoSettings(videoSettings, false);
+        this.applyNewVideoSettings(videoSettings, shouldPersistVideoSettings);
         const element = player.getTouchableElement();
         const logger = new DragAndPushLogger(element);
         this.filePushHandler = new FilePushHandler(element, new ScrcpyFilePushStream(this.streamReceiver));
