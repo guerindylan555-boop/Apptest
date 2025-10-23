@@ -36,6 +36,7 @@ services:
     environment:
       - AVD_CONFIG=hw.cpu.ncore=4
       - ADBKEY=${ADBKEY:-}  # ADB key will be read from shared volume
+      - WEBRTC_PORT_RANGE=53000-53100
     volumes:
       - adb-keys:/root/.android  # Share ADB keys with backend
     shm_size: 1g
