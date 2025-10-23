@@ -16,7 +16,7 @@ services:
       - EXTERNAL_EMULATOR_HOST=${EXTERNAL_EMULATOR_HOST:-host.docker.internal}
       - EXTERNAL_EMULATOR_ADB_PORT=${EXTERNAL_EMULATOR_ADB_PORT:-5555}
       - EMULATOR_GRPC_ENDPOINT=${EMULATOR_GRPC_ENDPOINT:-http://envoy:8080}
-      - EMULATOR_WEBRTC_PUBLIC_URL=${EMULATOR_WEBRTC_PUBLIC_URL:-http://127.0.0.1:9000}
+      - EMULATOR_WEBRTC_PUBLIC_URL=${EMULATOR_WEBRTC_PUBLIC_URL:-http://envoy-webrtc:9000}
     volumes:
       - ./var/autoapp:/var/autoapp  # Mount app library and logs
       - adb-keys:/root/.android  # Share ADB keys with emulator
