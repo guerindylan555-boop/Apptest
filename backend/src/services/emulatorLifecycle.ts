@@ -43,7 +43,8 @@ const cleanupEmulatorState = (avdName: string) => {
   ].join(' && ');
   spawnSync('sh', ['-c', cleanupLocks], { stdio: 'ignore' });
 
-  spawnSync('adb', ['kill-server'], { stdio: 'ignore' });
+  // Only disconnect old device connections, don't kill the server
+  // The server will be restarted with verification in startEmulator
   spawnSync('adb', ['disconnect'], { stdio: 'ignore' });
   process.env.ANDROID_SERIAL = `emulator-${CONSOLE_PORT}`;
 };
@@ -87,6 +88,8 @@ export const startEmulator = async (): Promise<EmulatorSession> => {
 
   cleanupEmulatorState(session.avdName);
 
+  // Start ADB server and verify it's running
+  logger.info('Starting ADB server');
   const startServer = spawnSync('adb', ['start-server'], {
     encoding: 'utf8'
   });
@@ -95,6 +98,24 @@ export const startEmulator = async (): Promise<EmulatorSession> => {
       status: startServer.status,
       stderr: startServer.stderr?.toString().trim()
     });
+  }
+
+  // Wait for ADB server to be responsive
+  await delay(2000);
+  let adbReady = false;
+  for (let i = 0; i < 5; i++) {
+    const checkDevices = spawnSync('adb', ['devices'], { encoding: 'utf8' });
+    if (checkDevices.status === 0) {
+      logger.info('ADB server verified and responsive');
+      adbReady = true;
+      break;
+    }
+    logger.warn(`ADB server not responding, retry ${i + 1}/5`);
+    await delay(1000);
+  }
+
+  if (!adbReady) {
+    throw new Error('ADB server failed to start');
   }
 
   if (emulatorProcess) {
