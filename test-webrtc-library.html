@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebRTC Library Test</title>
+    <script src="https://unpkg.com/android-emulator-webrtc@latest/dist/index.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .log { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; font-family: monospace; white-space: pre-wrap; }
+        .error { background: #ffe0e0; }
+        .success { background: #e0ffe0; }
+        button { padding: 10px 20px; margin: 5px; }
+        #emulatorContainer { width: 640px; height: 480px; border: 2px solid #ccc; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <h1>WebRTC Library Test</h1>
+
+    <div>
+        <button onclick="testLibraryLoad()">Test Library Load</button>
+        <button onclick="testWebRTCConnection()">Test WebRTC Connection</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <div id="emulatorContainer"></div>
+    <div id="logContainer"></div>
+
+    <script>
+        let emulator = null;
+
+        function log(message, isError = false) {
+            const logDiv = document.createElement('div');
+            logDiv.className = isError ? 'log error' : 'log';
+            logDiv.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            document.getElementById('logContainer').appendChild(logDiv);
+            console.log(message);
+        }
+
+        function clearLog() {
+            document.getElementById('logContainer').innerHTML = '';
+        }
+
+        function testLibraryLoad() {
+            log('Testing library load...');
+
+            if (typeof Emulator !== 'undefined') {
+                log('✓ android-emulator-webrtc library loaded successfully');
+                log(`Library version: ${Emulator.version || 'unknown'}`);
+            } else {
+                log('✗ android-emulator-webrtc library not loaded', true);
+                log('Make sure the library is included in the page', true);
+            }
+        }
+
+        async function testWebRTCConnection() {
+            log('Testing WebRTC connection...');
+
+            if (typeof Emulator === 'undefined') {
+                log('✗ Library not loaded, cannot test WebRTC', true);
+                return;
+            }
+
+            try {
+                // First get stream ticket from backend
+                log('1. Getting stream ticket from backend...');
+                const response = await fetch('http://127.0.0.1:3001/api/stream/url');
+                if (!response.ok) {
+                    throw new Error(`Backend responded with ${response.status}: ${response.statusText}`);
+                }
+
+                const ticket = await response.json();
+                log(`✓ Got stream ticket: ${JSON.stringify(ticket, null, 2)}`);
+
+                // Clean up previous emulator instance
+                if (emulator) {
+                    try {
+                        emulator.dispose();
+                    } catch (e) {
+                        log(`Warning: Failed to dispose previous emulator: ${e.message}`);
+                    }
+                }
+
+                // Create new emulator instance
+                log('2. Creating emulator instance...');
+                const container = document.getElementById('emulatorContainer');
+                container.innerHTML = ''; // Clear previous content
+
+                emulator = new Emulator({
+                    container: container,
+                    uri: ticket.grpcUrl || ticket.url,
+                    view: 'webrtc',
+                    muted: true,
+                    poll: false
+                });
+
+                log('✓ Emulator instance created');
+
+                // Set up event handlers
+                emulator.on('stateChange', (state) => {
+                    log(`📺 Emulator state changed: ${state}`);
+                });
+
+                emulator.on('error', (error) => {
+                    log(`❌ Emulator error: ${error.message || error}`, true);
+                    if (error.stack) {
+                        log(`Stack trace: ${error.stack}`, true);
+                    }
+                });
+
+                emulator.on('connected', () => {
+                    log('🎉 WebRTC connection established!');
+                });
+
+                emulator.on('disconnected', () => {
+                    log('🔌 WebRTC connection lost');
+                });
+
+                // Start the emulator
+                log('3. Starting emulator...');
+                await emulator.start();
+                log('✓ Emulator started successfully');
+
+            } catch (error) {
+                log(`✗ Error during WebRTC test: ${error.message}`, true);
+                if (error.stack) {
+                    log(`Stack trace: ${error.stack}`, true);
+                }
+
+                // Log additional details for network errors
+                if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                    log('This error typically indicates:', true);
+                    log('- CORS policy blocking the request', true);
+                    log('- Network connectivity issue', true);
+                    log('- Server not responding', true);
+                }
+            }
+        }
+
+        // Auto-test library load on page load
+        window.addEventListener('load', () => {
+            log('WebRTC Library Test loaded');
+            log('Available objects: ' + Object.keys(window).filter(k => k.includes('Emulator') || k.includes('emulator')).join(', '));
+            testLibraryLoad();
+        });
+
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            if (emulator) {
+                try {
+                    emulator.dispose();
+                } catch (e) {
+                    console.error('Failed to dispose emulator:', e);
+                }
+            }
+        });
+    </script>
+</body>
+</html>
