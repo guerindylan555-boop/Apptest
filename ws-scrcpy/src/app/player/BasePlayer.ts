@@ -386,14 +386,8 @@ export abstract class BasePlayer extends TypedEmitter<PlayerEvents> {
         this.touchableCanvas.width = width;
         this.touchableCanvas.height = height;
         if (this.parentElement) {
-            const fitContainer = this.parentElement.dataset.fitContainer === 'true';
-            if (fitContainer) {
-                this.parentElement.style.height = '100%';
-                this.parentElement.style.width = '100%';
-            } else {
-                this.parentElement.style.height = `${height}px`;
-                this.parentElement.style.width = `${width}px`;
-            }
+            this.parentElement.style.height = `${height}px`;
+            this.parentElement.style.width = `${width}px`;
         }
         const size = new Size(width, height);
         this.emit('video-view-resize', size);
