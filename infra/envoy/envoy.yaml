@@ -39,6 +39,14 @@ static_resources:
                               inline_string: "ok"
                         - match:
                             prefix: "/"
+                            headers:
+                              - name: ":method"
+                                string_match:
+                                  exact: "OPTIONS"
+                          direct_response:
+                            status: 204
+                        - match:
+                            prefix: "/"
                           direct_response:
                             status: 404
                       cors:
