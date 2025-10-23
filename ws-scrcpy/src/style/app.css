@@ -133,7 +133,6 @@ body.embedded .device-view.embedded-view canvas {
 }
 
 .video[data-fit-container='true'] {
-    float: right;
     position: relative;
     width: 100%;
     max-width: 100%;
@@ -185,8 +184,7 @@ body.embedded .device-view.embedded-view canvas {
     position: relative;
 }
 
-.device-view.fit-container,
-body.stream .device-view {
+.device-view.fit-container {
     float: none;
     display: flex;
     flex-direction: row-reverse;
@@ -194,8 +192,7 @@ body.stream .device-view {
     width: 100%;
 }
 
-.device-view.fit-container .control-buttons-list,
-body.stream .device-view .control-buttons-list {
+.device-view.fit-container .control-buttons-list {
     float: none;
     flex: 0 0 var(--device-controls-width);
     display: flex;
@@ -203,14 +200,12 @@ body.stream .device-view .control-buttons-list {
     align-items: center;
 }
 
-.device-view.fit-container .video,
-body.stream .device-view .video {
+.device-view.fit-container .video {
     float: none;
     flex: 1 1 auto;
 }
 
-.device-view.fit-container .more-box,
-body.stream .device-view .more-box {
+.device-view.fit-container .more-box {
     left: 0;
     right: var(--device-controls-width);
     top: 0;
