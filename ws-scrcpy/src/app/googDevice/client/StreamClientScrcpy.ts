@@ -293,13 +293,13 @@ export class StreamClientScrcpy
         const deviceView = document.createElement('div');
         deviceView.className = 'device-view';
         const body = document.body;
+        const isEmbeddedLayout = body.classList.contains('embedded');
         const isStreamLayout = body.classList.contains('stream');
-        const isEmbeddedLayout = !isStreamLayout && body.classList.contains('embedded');
         if (isEmbeddedLayout) {
             deviceView.classList.add('embedded-view');
         }
         if (isStreamLayout) {
-            deviceView.classList.add('stream-layout');
+            deviceView.classList.add('fit-container');
         }
         const stop = (ev?: string | Event) => {
             if (ev && ev instanceof Event && ev.type === 'error') {
