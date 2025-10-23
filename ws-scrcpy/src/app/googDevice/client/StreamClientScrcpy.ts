@@ -323,6 +323,13 @@ export class StreamClientScrcpy
         deviceView.appendChild(this.controlButtons);
         const video = document.createElement('div');
         video.className = 'video';
+        const shouldFillContainer =
+            document.body.classList.contains('stream') ||
+            document.body.classList.contains('embedded') ||
+            deviceView.classList.contains('embedded-view');
+        if (shouldFillContainer) {
+            video.dataset.fitContainer = 'true';
+        }
         deviceView.appendChild(video);
         deviceView.appendChild(moreBox);
         player.setParent(video);

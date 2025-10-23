@@ -110,6 +110,10 @@ export abstract class StreamClient<T extends ParamsStream> extends BaseClient<T,
         this.name = `[${TAG}:${this.udid}]`;
         this.videoWrapper = document.createElement('div');
         this.videoWrapper.className = `video`;
+        const body = document.body;
+        if (body && (body.classList.contains('stream') || body.classList.contains('embedded'))) {
+            this.videoWrapper.dataset.fitContainer = 'true';
+        }
         this.setWdaStatusNotification(WdaStatus.STARTING);
     }
 
