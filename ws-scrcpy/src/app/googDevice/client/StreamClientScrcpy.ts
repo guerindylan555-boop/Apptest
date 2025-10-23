@@ -266,7 +266,7 @@ export class StreamClientScrcpy
             throw Error(`Invalid udid value: "${udid}"`);
         }
 
-        let effectiveFitToScreen = fitToScreen;
+        this.fitToScreen = fitToScreen;
         if (!player) {
             if (typeof playerName !== 'string') {
                 throw Error('Must provide BasePlayer instance or playerName');
@@ -280,7 +280,7 @@ export class StreamClientScrcpy
                 throw Error(`Unsupported player: "${playerName}"`);
             }
             if (typeof fitToScreen !== 'boolean') {
-                effectiveFitToScreen = StreamClientScrcpy.getFitToScreen(playerName, udid, displayInfo);
+                fitToScreen = StreamClientScrcpy.getFitToScreen(playerName, udid, displayInfo);
             }
             player = p;
         }
@@ -293,10 +293,8 @@ export class StreamClientScrcpy
 
         const deviceView = document.createElement('div');
         deviceView.className = 'device-view';
-        const isEmbedded = document.body.classList.contains('embedded');
-        if (isEmbedded) {
+        if (document.body.classList.contains('embedded')) {
             deviceView.classList.add('embedded-view');
-            effectiveFitToScreen = true;
         }
         const stop = (ev?: string | Event) => {
             if (ev && ev instanceof Event && ev.type === 'error') {
@@ -331,14 +329,13 @@ export class StreamClientScrcpy
         player.pause();
 
         document.body.appendChild(deviceView);
-        if (effectiveFitToScreen) {
+        if (fitToScreen) {
             const newBounds = this.getMaxSize();
             if (newBounds) {
                 videoSettings = StreamClientScrcpy.createVideoSettingsWithBounds(videoSettings, newBounds);
             }
         }
         this.applyNewVideoSettings(videoSettings, false);
-        this.fitToScreen = effectiveFitToScreen;
         const element = player.getTouchableElement();
         const logger = new DragAndPushLogger(element);
         this.filePushHandler = new FilePushHandler(element, new ScrcpyFilePushStream(this.streamReceiver));
