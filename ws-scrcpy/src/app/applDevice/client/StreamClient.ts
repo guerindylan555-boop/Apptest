@@ -113,8 +113,7 @@ export abstract class StreamClient<T extends ParamsStream> extends BaseClient<T,
         this.videoWrapper.className = `video`;
         const body = document.body;
         const isStreamLayout = !!body && body.classList.contains('stream');
-        const isEmbeddedLayout = !!body && body.classList.contains('embedded');
-        if (isStreamLayout || isEmbeddedLayout) {
+        if (isStreamLayout) {
             this.videoWrapper.dataset.fitContainer = 'true';
         }
         this.useStreamLayout = isStreamLayout;

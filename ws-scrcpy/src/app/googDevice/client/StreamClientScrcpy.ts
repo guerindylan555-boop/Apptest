@@ -328,7 +328,7 @@ export class StreamClientScrcpy
         deviceView.appendChild(this.controlButtons);
         const video = document.createElement('div');
         video.className = 'video';
-        const shouldFillContainer = isStreamLayout || deviceView.classList.contains('embedded-view');
+        const shouldFillContainer = isStreamLayout;
         if (shouldFillContainer) {
             video.dataset.fitContainer = 'true';
         }
