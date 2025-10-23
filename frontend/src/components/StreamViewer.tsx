@@ -51,17 +51,31 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
   }
 
   return (
-    <div style={{ width: '100%', maxWidth: '420px', aspectRatio: '9 / 16' }}>
+    <div
+      style={{
+        width: '100%',
+        maxWidth: '420px',
+        aspectRatio: '9 / 16',
+        overflow: 'hidden',
+        borderRadius: '16px',
+        background: '#000',
+        position: 'relative'
+      }}
+    >
       <iframe
         title="Emulator Stream"
         src={activeTicket.url}
         className="stream-viewer"
         style={{
-          width: '100%',
-          height: '100%',
+          width: '208px',
+          height: '480px',
           background: '#000',
           border: 'none',
-          borderRadius: '16px'
+          transform: 'scale(2.02)',
+          transformOrigin: 'top left',
+          position: 'absolute',
+          top: 0,
+          left: 0
         }}
         allow="autoplay; fullscreen"
       />
