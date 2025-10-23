@@ -4,9 +4,9 @@ set -euo pipefail
 ADB_BIN="${ADB_BIN:-/opt/android-sdk/platform-tools/adb}"
 ANDROID_HOME="${ANDROID_HOME:-/root/.android}"
 
+# DO NOT set ADB_SERVER_SOCKET - let ADB use default local socket
 export ADB_SERVER_PORT=5037
 export ANDROID_ADB_SERVER_PORT=5037
-export ADB_SERVER_SOCKET=tcp:127.0.0.1:5037
 
 # Ensure IPv6 loopback entry exists for emulator services
 if ! grep -qE '^::1\s' /etc/hosts; then
@@ -34,9 +34,14 @@ fi
 echo "[entrypoint] Starting ADB server..."
 # Kill any existing server
 "$ADB_BIN" kill-server 2>&1 || true
+sleep 1
 
-# Start ADB server and wait for it to be ready
-"$ADB_BIN" start-server 2>&1 || echo "[entrypoint] Warning: ADB server may have failed to start"
+# Start ADB server - it will automatically fork to background
+if "$ADB_BIN" start-server 2>&1; then
+  echo "[entrypoint] ADB server start command completed"
+else
+  echo "[entrypoint] WARNING: ADB server start command failed"
+fi
 
 # Verify it's running
 sleep 2
@@ -44,7 +49,7 @@ if "$ADB_BIN" devices >/dev/null 2>&1; then
   ADB_PID=$(pgrep -f "adb.*fork-server" || echo "unknown")
   echo "[entrypoint] ADB server verified and running (PID: $ADB_PID)"
 else
-  echo "[entrypoint] WARNING: ADB server not responding"
+  echo "[entrypoint] WARNING: ADB server not responding, will retry on first emulator start"
 fi
 
 exec npm run start:prod
