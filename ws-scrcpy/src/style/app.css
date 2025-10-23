@@ -20,6 +20,8 @@
     --button-border-color: hsl(0, 0%, 70%);
     --progress-background-color: hsla(225, 100%, 50%, 0.2);
     --progress-background-error-color: hsla(0, 100%, 50%, 0.2);
+    --device-controls-width: 3.715rem;
+    --video-fit-padding: 177.7778%;
     --font-size: 14px;
 }
 
@@ -48,6 +50,8 @@
         --button-border-color: hsl(213, 5%, 39%);
         --progress-background-color: hsla(225, 100%, 50%, 0.2);
         --progress-background-error-color: hsla(0, 100%, 50%, 0.2);
+        --device-controls-width: 3.715rem;
+        --video-fit-padding: 177.7778%;
     }
 }
 
@@ -119,6 +123,7 @@ body.embedded .device-view.embedded-view .video {
     align-items: center;
     justify-content: center;
     background: #000;
+    aspect-ratio: auto;
 }
 
 body.embedded .device-view.embedded-view canvas {
@@ -128,18 +133,27 @@ body.embedded .device-view.embedded-view canvas {
 }
 
 .video[data-fit-container='true'] {
-    float: none;
-    width: 100% !important;
-    height: 100% !important;
     position: relative;
-    display: flex;
-    align-items: center;
-    justify-content: center;
+    width: 100%;
+    max-width: 100%;
     background: #000;
+    box-sizing: border-box;
+    aspect-ratio: var(--video-aspect, 9 / 16);
+}
+
+@supports not (aspect-ratio: 1 / 1) {
+    .video[data-fit-container='true']::before {
+        content: '';
+        display: block;
+        width: 100%;
+        padding-top: var(--video-fit-padding);
+    }
 }
 
 .video[data-fit-container='true'] .video-layer,
 .video[data-fit-container='true'] .touch-layer {
+    position: absolute;
+    inset: 0;
     width: 100% !important;
     height: 100% !important;
 }
@@ -167,6 +181,39 @@ body.embedded .device-view.embedded-view canvas {
     z-index: 1;
     float: right;
     display: inline-block;
+    position: relative;
+}
+
+.device-view.fit-container {
+    float: none;
+    display: flex;
+    flex-direction: row-reverse;
+    align-items: stretch;
+    width: 100%;
+}
+
+.device-view.fit-container .control-buttons-list {
+    float: none;
+    flex: 0 0 var(--device-controls-width);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.device-view.fit-container .video {
+    float: none;
+    flex: 1 1 auto;
+}
+
+.device-view.fit-container .more-box {
+    left: 0;
+    right: var(--device-controls-width);
+    top: 0;
+    max-height: 100%;
+    width: auto;
+    max-width: calc(100% - var(--device-controls-width));
+    box-sizing: border-box;
+    overflow-y: auto;
 }
 
 .video-layer {
@@ -189,7 +236,7 @@ body.embedded .device-view.embedded-view canvas {
 
 .control-buttons-list {
     float: right;
-    width: 3.715rem;
+    width: var(--device-controls-width);
     background-color: var(--control-buttons-bg-color);
 }
 

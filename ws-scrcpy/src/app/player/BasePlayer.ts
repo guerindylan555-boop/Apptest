@@ -388,9 +388,25 @@ export abstract class BasePlayer extends TypedEmitter<PlayerEvents> {
         if (this.parentElement) {
             const fitContainer = this.parentElement.dataset.fitContainer === 'true';
             if (fitContainer) {
-                this.parentElement.style.height = '100%';
+                const hasSize = width > 0 && height > 0;
+                if (hasSize) {
+                    const paddingPercent = (height / width) * 100;
+                    this.parentElement.style.setProperty('--video-fit-padding', `${paddingPercent}%`);
+                    this.parentElement.style.setProperty('--video-aspect', `${width} / ${height}`);
+                    this.parentElement.style.aspectRatio = `${width} / ${height}`;
+                } else {
+                    this.parentElement.style.removeProperty('--video-fit-padding');
+                    this.parentElement.style.removeProperty('--video-aspect');
+                    this.parentElement.style.removeProperty('aspect-ratio');
+                }
                 this.parentElement.style.width = '100%';
+                this.parentElement.style.height = '';
+                this.parentElement.style.maxWidth = '100%';
             } else {
+                this.parentElement.style.removeProperty('--video-fit-padding');
+                this.parentElement.style.removeProperty('--video-aspect');
+                this.parentElement.style.removeProperty('aspect-ratio');
+                this.parentElement.style.maxWidth = '';
                 this.parentElement.style.height = `${height}px`;
                 this.parentElement.style.width = `${width}px`;
             }
