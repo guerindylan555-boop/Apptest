@@ -19,7 +19,7 @@ echo "[entrypoint] Preparing ADB environment..."
 mkdir -p "$ANDROID_HOME"
 chmod 700 "$ANDROID_HOME"
 
-# Generate ADB keys if they don't exist (required for ADB server to start)
+# Generate ADB keys if they don't exist
 if [ ! -f "$ANDROID_HOME/adbkey" ]; then
   echo "[entrypoint] Generating ADB keys..."
   "$ADB_BIN" keygen "$ANDROID_HOME/adbkey"
@@ -34,22 +34,17 @@ fi
 echo "[entrypoint] Starting ADB server..."
 # Kill any existing server
 "$ADB_BIN" kill-server 2>&1 || true
-sleep 1
 
-# Start ADB server in background
-"$ADB_BIN" -L tcp:5037 fork-server server --reply-fd 3 3>&1 >/dev/null 2>&1 &
-ADB_PID=$!
+# Start ADB server and wait for it to be ready
+"$ADB_BIN" start-server 2>&1 || echo "[entrypoint] Warning: ADB server may have failed to start"
 
-# Wait for ADB server to be ready
-for i in {1..10}; do
-  if "$ADB_BIN" devices >/dev/null 2>&1; then
-    echo "[entrypoint] ADB server started successfully (PID: $ADB_PID)"
-    break
-  fi
-  if [ $i -eq 10 ]; then
-    echo "[entrypoint] WARNING: ADB server not responding after 10 attempts"
-  fi
-  sleep 1
-done
+# Verify it's running
+sleep 2
+if "$ADB_BIN" devices >/dev/null 2>&1; then
+  ADB_PID=$(pgrep -f "adb.*fork-server" || echo "unknown")
+  echo "[entrypoint] ADB server verified and running (PID: $ADB_PID)"
+else
+  echo "[entrypoint] WARNING: ADB server not responding"
+fi
 
 exec npm run start:prod
