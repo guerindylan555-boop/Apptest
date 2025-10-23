@@ -13,3 +13,27 @@ ws-scrcpy/node_modules/
 ws-scrcpy/dist/
 ws-scrcpy/build/
 app apk/
+
+# Security testing artifacts
+frida-server*
+*.xapk
+*.apk
+archive_old_logs/
+archive_old_scripts/
+glm/
+bin/jadx*
+lib/
+mayndrive_decompiled/
+mayndrive_*.js
+mayndrive_*.xml
+*.aar
+capture_*.sh
+network_log.txt
+step*.xml
+scripts/working/
+var/autoapp/dumps/
+
+# Documentation (keep select files only)
+CAPTURE_*.md
+MAYNDRIVE_*.md
+MAYN_DRIVE_*.md
