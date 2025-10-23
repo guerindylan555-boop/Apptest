@@ -3,7 +3,17 @@ import { stopEmulator } from '../../services/emulatorLifecycle';
 import { sessionStore } from '../../state/sessionStore';
 import { logger } from '../../services/logger';
 
+const EXTERNAL_MODE = process.env.EXTERNAL_EMULATOR === 'true';
+
 export const emulatorStopHandler = async (req: Request, res: Response) => {
+  if (EXTERNAL_MODE) {
+    return res.status(405).json({
+      error: {
+        code: 'UNSUPPORTED_OPERATION',
+        message: 'Stop is disabled; the external emulator runs continuously.'
+      }
+    });
+  }
   const session = sessionStore.getSession();
   if (session.state === 'Stopped') {
     return res.status(200).json({ state: 'Stopped', message: 'Emulator already stopped' });

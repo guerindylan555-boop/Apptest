@@ -65,7 +65,7 @@ Automation was throwing errors instead of handling failures gracefully.
 
 **Problem:**
 ```typescript
-const wrapperScript = '/home/blhack/project/Apptest/backend/scripts/launch-emulator.sh';
+const wrapperScript = '/home/blhack/project/Apptest/backend/legacy/host-emulator/launch-emulator.sh';
 ```
 
 **Symptoms:**

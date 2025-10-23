@@ -62,17 +62,6 @@ const request = async <T>(path: string, options?: RequestInit): Promise<T> => {
   return payload as T;
 };
 
-export const startEmulator = () =>
-  request<{ state: EmulatorState; message: string }>('/emulator/start', {
-    method: 'POST'
-  });
-
-export const stopEmulator = (force = false) =>
-  request<{ state: EmulatorState; message: string }>('/emulator/stop', {
-    method: 'POST',
-    body: JSON.stringify({ force })
-  });
-
 export const restartEmulator = () =>
   request<{ state: EmulatorState; message: string }>('/emulator/restart', {
     method: 'POST'

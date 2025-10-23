@@ -4,13 +4,7 @@ import StateBadge from '../components/StateBadge';
 import StreamViewer from '../components/StreamViewer';
 import ErrorBanner from '../components/ErrorBanner';
 import DiagnosticsDrawer from '../components/DiagnosticsDrawer';
-import {
-  fetchStreamUrl,
-  fetchLogs,
-  startEmulator as startEmulatorApi,
-  stopEmulator as stopEmulatorApi,
-  restartEmulator as restartEmulatorApi
-} from '../services/backendClient';
+import { fetchStreamUrl, fetchLogs, restartEmulator as restartEmulatorApi } from '../services/backendClient';
 import { useHealthPoller } from '../hooks/useHealthPoller';
 
 const EmulatorPage = () => {
@@ -24,7 +18,6 @@ const EmulatorPage = () => {
   const streamerActive = useAppStore((state) => state.streamerActive);
   const isTransitioning = useAppStore((state) => state.isTransitioning);
   const setTransitioning = useAppStore((state) => state.setTransitioning);
-  const forceStopRequired = useAppStore((state) => state.forceStopRequired);
 
   useHealthPoller();
 
@@ -44,43 +37,6 @@ const EmulatorPage = () => {
       });
     }
   }, [setState]);
-
-  const handleStart = useCallback(async () => {
-    if (isTransitioning) return;
-    setTransitioning(true);
-    try {
-      await startEmulatorApi();
-      await handleRefreshStream();
-    } catch (error) {
-      setState({
-        lastError: {
-          code: 'START_FAILED',
-          message: error instanceof Error ? error.message : 'Failed to start emulator',
-          hint: 'Review backend logs for emulator launch errors.'
-        }
-      });
-    } finally {
-      setTransitioning(false);
-    }
-  }, [handleRefreshStream, isTransitioning, setState, setTransitioning]);
-
-  const handleStop = useCallback(async () => {
-    if (isTransitioning) return;
-    setTransitioning(true);
-    try {
-      await stopEmulatorApi(forceStopRequired);
-    } catch (error) {
-      setState({
-        lastError: {
-          code: 'STOP_FAILED',
-          message: error instanceof Error ? error.message : 'Failed to stop emulator',
-          hint: 'Try forcing a stop or inspect backend logs.'
-        }
-      });
-    } finally {
-      setTransitioning(false);
-    }
-  }, [forceStopRequired, isTransitioning, setState, setTransitioning]);
 
   const handleRestart = useCallback(async () => {
     if (isTransitioning) return;
@@ -181,22 +137,9 @@ const EmulatorPage = () => {
             flexWrap: 'wrap'
           }}
         >
-          <button
-            type="button"
-            onClick={handleStart}
-            disabled={isTransitioning || emulatorState === 'Running'}
-            style={{ padding: '0.5rem 1rem' }}
-          >
-            Start
-          </button>
-          <button
-            type="button"
-            onClick={handleStop}
-            disabled={isTransitioning || emulatorState === 'Stopped'}
-            style={{ padding: '0.5rem 1rem' }}
-          >
-            Stop{forceStopRequired ? ' (force)' : ''}
-          </button>
+          <span style={{ color: '#cbd5f5', fontSize: '0.9rem' }}>
+            Emulator runs continuously; use restart if the stream ever stalls.
+          </span>
           <button
             type="button"
             onClick={handleRestart}

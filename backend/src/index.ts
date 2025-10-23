@@ -3,9 +3,11 @@ import { logger } from './services/logger';
 import { initializeRepository } from './services/apps/appsRepository';
 import { startScheduler, stopScheduler } from './services/apps/retentionScheduler';
 import { initializeActivityLog } from './state/appsStore';
+import { startEmulator } from './services/emulatorLifecycle';
 
 const PORT = Number.parseInt(process.env.PORT ?? '3001', 10);
 const HOST = process.env.HOST ?? '0.0.0.0';
+const EXTERNAL_MODE = process.env.EXTERNAL_EMULATOR === 'true';
 
 // Initialize apps library before starting server
 async function bootstrap() {
@@ -18,6 +20,18 @@ async function bootstrap() {
     // Start retention scheduler
     startScheduler();
     logger.info('Retention scheduler started');
+
+    if (EXTERNAL_MODE) {
+      try {
+        logger.info('External emulator mode detected — initialising connection');
+        await startEmulator();
+        logger.info('External emulator session initialised during bootstrap');
+      } catch (error) {
+        logger.warn('Failed to initialise external emulator during bootstrap', {
+          error: (error as Error).message
+        });
+      }
+    }
   } catch (error) {
     logger.error('Failed to initialize apps library', { error });
     process.exit(1);

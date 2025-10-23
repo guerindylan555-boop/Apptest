@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# LEGACY: retained only for reference. Runtime now uses the Dockploy-managed emulator.
 # Wrapper script to launch Android emulator with proper environment
 
 export ANDROID_SDK_ROOT="${HOME}/Android"
