@@ -270,6 +270,22 @@ const waitForEmulatorReady = async () => {
   await delay(5_000);
   const emulatorSerial = `emulator-${CONSOLE_PORT}`;
 
+  // Connect ADB to the emulator's ADB port
+  logger.info('Connecting ADB to emulator', { host: '127.0.0.1', port: ADB_PORT });
+  const connectResult = spawnSync('adb', ['connect', `127.0.0.1:${ADB_PORT}`], {
+    encoding: 'utf8',
+    stdio: 'pipe'
+  });
+  if (connectResult.status === 0) {
+    logger.info('ADB connect command succeeded', { output: connectResult.stdout?.trim() });
+  } else {
+    logger.warn('ADB connect command failed', {
+      status: connectResult.status,
+      stdout: connectResult.stdout?.trim(),
+      stderr: connectResult.stderr?.trim()
+    });
+  }
+
   const start = Date.now();
   while (Date.now() - start < BOOT_TIMEOUT_MS) {
     const devicesResult = spawnSync('adb', ['devices'], { encoding: 'utf8' });
