@@ -58,9 +58,8 @@ const resolvePublicUrl = (options?: StreamTicketOptions): string => {
       const url = new URL(configured);
       if (requestHost && PLACEHOLDER_HOSTS.has(url.hostname)) {
         url.hostname = requestHost;
-        if (requestPort) {
-          url.port = requestPort;
-        }
+        // Preserve the configured port - don't replace with request port
+        // This ensures WebRTC URL keeps port 9000 even when accessed via port 3001
         url.protocol = `${protocol}:`;
       }
       if (!url.protocol) {
