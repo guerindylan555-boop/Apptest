@@ -53,6 +53,8 @@ services:
       - ./infra/envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
     ports:
       - "9000:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - apptest-network
     restart: unless-stopped
