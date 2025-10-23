@@ -90,10 +90,11 @@ body.embedded {
     padding: 0;
 }
 
+/* Fill the host container by default; host can override --stream-max-width */
 body.embedded .device-view.embedded-view {
     float: none;
     width: 100%;
-    max-width: 420px;
+    max-width: var(--stream-max-width, 100%);
     aspect-ratio: 9 / 16;
     border-radius: 16px;
     overflow: hidden;
