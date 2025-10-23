@@ -19,6 +19,7 @@ services:
       - EMULATOR_WEBRTC_PUBLIC_URL=${EMULATOR_WEBRTC_PUBLIC_URL:-http://127.0.0.1:9000}
     volumes:
       - ./var/autoapp:/var/autoapp  # Mount app library and logs
+      - adb-keys:/root/.android  # Share ADB keys with emulator
     networks:
       - apptest-network
     restart: unless-stopped
@@ -29,11 +30,12 @@ services:
     devices:
       - /dev/kvm:/dev/kvm
     environment:
-      - ADBKEY_PUB=
       - AVD_CONFIG=hw.cpu.ncore=4
     ports:
       - "5555:5555"
       - "8554:8554"
+    volumes:
+      - adb-keys:/root/.android  # Share ADB keys with backend
     shm_size: 1g
     networks:
       - apptest-network
@@ -68,3 +70,6 @@ services:
 networks:
   apptest-network:
     driver: bridge
+
+volumes:
+  adb-keys:  # Shared volume for ADB authentication keys
