@@ -24,7 +24,7 @@ export class TinyH264Player extends BaseCanvasBasedPlayer {
         bitrate: 524288,
         maxFps: 24,
         iFrameInterval: 5,
-        bounds: new Size(720, 1280),
+        bounds: new Size(480, 480),
         sendFrameMeta: false,
     });
 
