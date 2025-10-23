@@ -77,3 +77,51 @@ export const fetchLogs = (target: 'emulator' | 'streamer', limit?: number) => {
     method: 'GET'
   });
 };
+
+export type UiDiscoveryAction = {
+  id: string;
+  label: string;
+  className?: string;
+  text?: string;
+  contentDesc?: string;
+  resourceId?: string;
+  bounds: {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+  };
+  center: { x: number; y: number };
+};
+
+export type UiDiscoveryScreen = {
+  id: string;
+  hash: string;
+  path: string[];
+  xmlPath: string;
+  screenshotPath: string;
+  actions: UiDiscoveryAction[];
+};
+
+export type UiDiscoveryResult = {
+  runId: string;
+  startedAt: string;
+  completedAt: string;
+  deviceSerial: string;
+  screenCount: number;
+  transitionCount: number;
+  runDirectory: string;
+  screens: UiDiscoveryScreen[];
+  transitions: Array<{
+    from: string;
+    to: string;
+    actionId: string;
+    label: string;
+  }>;
+};
+
+export const runUiDiscovery = (payload?: { maxDepth?: number; maxActionsPerScreen?: number; serial?: string }) =>
+  request<UiDiscoveryResult>('/automation/ui-discovery/run', {
+    method: 'POST',
+    body: JSON.stringify(payload ?? {})
+  });
