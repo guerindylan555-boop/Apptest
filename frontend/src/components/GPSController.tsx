@@ -33,16 +33,18 @@ export const GPSController: React.FC<GPSControllerProps> = ({ className }) => {
       const response = await fetch('/api/gps/current');
       if (response.ok) {
         const location = await response.json();
-        setCurrentLocation({
-          lat: location.lat || currentLocation.lat,
-          lng: location.lng || currentLocation.lng,
-          alt: location.alt || currentLocation.alt,
-        });
+        if (location.lat && location.lng) {
+          setCurrentLocation({
+            lat: location.lat,
+            lng: location.lng,
+            alt: location.alt || 120,
+          });
+        }
       }
     } catch (error) {
       console.error('[GPSController] Error fetching current location:', error);
     }
-  }, [currentLocation]);
+  }, []);
 
   // Poll current location every 5 seconds
   useEffect(() => {
@@ -151,7 +153,7 @@ export const GPSController: React.FC<GPSControllerProps> = ({ className }) => {
               min="-90"
               max="90"
               value={newLocation.lat}
-              onChange={(e) => setNewLocation({ ...newLocation, lat: parseFloat(e.target.value) })}
+              onChange={(e) => setNewLocation({ ...newLocation, lat: parseFloat(e.target.value) || 0 })}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isUpdating}
             />
@@ -167,7 +169,7 @@ export const GPSController: React.FC<GPSControllerProps> = ({ className }) => {
               min="-180"
               max="180"
               value={newLocation.lng}
-              onChange={(e) => setNewLocation({ ...newLocation, lng: parseFloat(e.target.value) })}
+              onChange={(e) => setNewLocation({ ...newLocation, lng: parseFloat(e.target.value) || 0 })}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isUpdating}
             />
@@ -181,7 +183,7 @@ export const GPSController: React.FC<GPSControllerProps> = ({ className }) => {
               type="number"
               step="1"
               value={newLocation.alt}
-              onChange={(e) => setNewLocation({ ...newLocation, alt: parseFloat(e.target.value) })}
+              onChange={(e) => setNewLocation({ ...newLocation, alt: parseFloat(e.target.value) || 0 })}
               className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
               disabled={isUpdating}
             />
@@ -197,15 +199,6 @@ export const GPSController: React.FC<GPSControllerProps> = ({ className }) => {
         </button>
       </form>
 
-      {/* Instructions */}
-      <div className="mt-4 p-3 bg-gray-50 rounded-md">
-        <h4 className="text-xs font-semibold text-gray-700 mb-1">Instructions:</h4>
-        <ul className="text-xs text-gray-600 space-y-1">
-          <li>• Current location updates automatically every 5 seconds</li>
-          <li>• Enter custom coordinates and click "Update GPS Location"</li>
-          <li>• Changes are applied in real-time to the emulator</li>
-        </ul>
-      </div>
     </div>
   );
 };
