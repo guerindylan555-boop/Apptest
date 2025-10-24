@@ -9,7 +9,7 @@ SERIAL   = os.getenv("SERIAL", "").strip()
 # Global variables for continuous GPS updates
 gps_thread = None
 gps_running = False
-current_location = {"lat": 48.8566, "lng": 2.3522, "alt": 120}  # Default: Paris
+current_location = {"lat": 47.3878278, "lng": 0.6737631, "alt": 120}  # Default: France
 
 def run_adb(args, timeout=8):
     env = os.environ.copy()
