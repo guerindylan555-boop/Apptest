@@ -7,7 +7,7 @@ import { appsRouter } from './apps';
 import automationRouter from './automation';
 import { emulatorRestartHandler } from './emulatorRestart';
 import { logsRouter } from './logs';
-import gpsRouter from '../gps';
+import gpsRouter from './gps';
 
 const routes = Router();
 

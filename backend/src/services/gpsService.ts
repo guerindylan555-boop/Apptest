@@ -90,12 +90,12 @@ export class GPSService {
       });
 
       if (stderr) {
-        logger.warn('GPS setup script stderr:', stderr);
+        logger.warn('GPS setup script stderr', { stderr });
       }
 
       logger.info('GPS setup completed');
     } catch (error) {
-      logger.error('GPS setup failed:', error);
+      logger.error('GPS setup failed', { error: error instanceof Error ? error.message : String(error) });
       throw error;
     }
   }
@@ -120,7 +120,7 @@ export class GPSService {
         throw new Error(`GPS command failed: ${stderr}`);
       }
     } catch (error) {
-      logger.error('Failed to set initial GPS location:', error);
+      logger.error('Failed to set initial GPS location', { error: error instanceof Error ? error.message : String(error) });
       throw error;
     }
   }
@@ -158,7 +158,7 @@ export class GPSService {
       logger.info('GPS verification completed', verification);
       return verification;
     } catch (error) {
-      logger.error('GPS verification failed:', error);
+      logger.error('GPS verification failed', { error: error instanceof Error ? error.message : String(error) });
       return {
         gpsEnabled: false,
         hasLocation: false,
@@ -193,7 +193,7 @@ export class GPSService {
         return false;
       }
     } catch (error) {
-      logger.error('Error updating GPS location:', error);
+      logger.error('Error updating GPS location', { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
@@ -220,7 +220,7 @@ export class GPSService {
 
       return { error: 'No GPS location available' };
     } catch (error) {
-      logger.error('Error getting GPS location:', error);
+      logger.error('Error getting GPS location', { error: error instanceof Error ? error.message : String(error) });
       return { error: 'Failed to get GPS location' };
     }
   }
