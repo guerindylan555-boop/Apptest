@@ -168,6 +168,8 @@ class H(BaseHTTPRequestHandler):
         self.wfile.write(b)
 
     def do_GET(self):
+        global gps_running, current_location
+
         if self.path == "/health":
             rc, out, err = run_adb(["devices"])
             ok = rc == 0 and "emulator-" in out and "device" in out
@@ -189,7 +191,6 @@ class H(BaseHTTPRequestHandler):
 
         if self.path == "/continuous/start":
             try:
-                global gps_thread, gps_running
                 if not gps_running:
                     gps_running = True
                     gps_thread = threading.Thread(target=continuous_gps_updater, daemon=True)
@@ -202,7 +203,6 @@ class H(BaseHTTPRequestHandler):
 
         if self.path == "/continuous/stop":
             try:
-                global gps_running
                 gps_running = False
                 return self._json(200, {"ok": True, "message": "Continuous GPS stopped"})
             except Exception as e:
@@ -211,6 +211,8 @@ class H(BaseHTTPRequestHandler):
         self._json(404, {"error": "not found"})
 
     def do_POST(self):
+        global current_location
+
         if self.path == "/fix":
             try:
                 s = ensure_serial()
@@ -239,7 +241,6 @@ class H(BaseHTTPRequestHandler):
 
         if self.path == "/continuous/update":
             try:
-                global current_location
                 s = ensure_serial()
                 ln = int(self.headers.get("Content-Length", "0"))
                 body = json.loads(self.rfile.read(ln) or "{}")
