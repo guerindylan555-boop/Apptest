@@ -73,7 +73,7 @@ services:
         python /opt/gpsd/server.py
       "
     depends_on:
-      - apptest-emulator
+      - emulator
 
   frontend:
     build:
