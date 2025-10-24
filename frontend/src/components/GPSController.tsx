@@ -27,6 +27,30 @@ export const GPSController: React.FC<GPSControllerProps> = ({ className }) => {
   const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
   const [status, setStatus] = useState<string>('Ready');
 
+  // Fetch current GPS location from emulator
+  const fetchCurrentLocation = useCallback(async () => {
+    try {
+      const response = await fetch('/api/gps/current');
+      if (response.ok) {
+        const location = await response.json();
+        setCurrentLocation({
+          lat: location.lat || currentLocation.lat,
+          lng: location.lng || currentLocation.lng,
+          alt: location.alt || currentLocation.alt,
+        });
+      }
+    } catch (error) {
+      console.error('[GPSController] Error fetching current location:', error);
+    }
+  }, [currentLocation]);
+
+  // Poll current location every 5 seconds
+  useEffect(() => {
+    fetchCurrentLocation();
+    const interval = setInterval(fetchCurrentLocation, 5000);
+    return () => clearInterval(interval);
+  }, [fetchCurrentLocation]);
+
   const updateGPSLocation = useCallback(async (location: Location) => {
     setIsUpdating(true);
     setStatus('Updating GPS...');
@@ -63,20 +87,6 @@ export const GPSController: React.FC<GPSControllerProps> = ({ className }) => {
     e.preventDefault();
     updateGPSLocation(newLocation);
   };
-
-  const handleQuickLocation = (location: Location) => {
-    setNewLocation(location);
-    updateGPSLocation(location);
-  };
-
-  const presetLocations = [
-    { name: 'Tours (Current)', lat: 47.3878278, lng: 0.6737631, alt: 120 },
-    { name: 'Paris', lat: 48.8566, lng: 2.3522, alt: 100 },
-    { name: 'Lyon', lat: 45.7640, lng: 4.8357, alt: 200 },
-    { name: 'Marseille', lat: 43.2965, lng: 5.3698, alt: 10 },
-    { name: 'Bordeaux', lat: 44.8378, lng: -0.5792, alt: 50 },
-    { name: 'Toulouse', lat: 43.6047, lng: 1.4442, alt: 150 },
-  ];
 
   return (
     <div className={`bg-white rounded-lg shadow-lg p-6 ${className || ''}`}>
@@ -116,7 +126,7 @@ export const GPSController: React.FC<GPSControllerProps> = ({ className }) => {
       </div>
 
       {/* Status */}
-      <div className="mb-4 text-center">
+      <div className="mb-6 text-center">
         <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium ${
           status.includes('✅') ? 'bg-green-100 text-green-800' :
           status.includes('❌') ? 'bg-red-100 text-red-800' :
@@ -124,27 +134,6 @@ export const GPSController: React.FC<GPSControllerProps> = ({ className }) => {
         }`}>
           {status}
         </span>
-      </div>
-
-      {/* Quick Location Buttons */}
-      <div className="mb-6">
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Quick Locations</h3>
-        <div className="grid grid-cols-2 gap-2">
-          {presetLocations.map((preset) => (
-            <button
-              key={preset.name}
-              onClick={() => handleQuickLocation({
-                lat: preset.lat,
-                lng: preset.lng,
-                alt: preset.alt,
-              })}
-              className="px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
-              disabled={isUpdating}
-            >
-              {preset.name}
-            </button>
-          ))}
-        </div>
       </div>
 
       {/* Manual Location Input */}
@@ -212,10 +201,9 @@ export const GPSController: React.FC<GPSControllerProps> = ({ className }) => {
       <div className="mt-4 p-3 bg-gray-50 rounded-md">
         <h4 className="text-xs font-semibold text-gray-700 mb-1">Instructions:</h4>
         <ul className="text-xs text-gray-600 space-y-1">
-          <li>• Click preset locations for quick GPS changes</li>
+          <li>• Current location updates automatically every 5 seconds</li>
           <li>• Enter custom coordinates and click "Update GPS Location"</li>
           <li>• Changes are applied in real-time to the emulator</li>
-          <li>• Coordinates support 7 decimal places (~1cm precision)</li>
         </ul>
       </div>
     </div>
