@@ -15,8 +15,19 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
   const [localTicket, setLocalTicket] = useState<StreamTicket | undefined>(streamTicket);
   const [connectionState, setConnectionState] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
   const [lastError, setLastError] = useState<string | undefined>();
+  const [retryCounter, setRetryCounter] = useState(0);
   const setGlobalState = useAppStore((state) => state.setState);
   const activeTicket = streamTicket ?? localTicket;
+
+  const scheduleReconnect = useCallback(() => {
+    if (state !== 'Running') {
+      return;
+    }
+    setLocalTicket(undefined);
+    setConnectionState('connecting');
+    setGlobalState({ streamTicket: undefined });
+    setRetryCounter((value) => value + 1);
+  }, [setGlobalState, state]);
 
   useEffect(() => {
     if (state !== 'Running') {
@@ -55,32 +66,36 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
     return () => {
       cancelled = true;
     };
-  }, [state, streamTicket, setGlobalState]);
+  }, [state, streamTicket, setGlobalState, retryCounter]);
 
   const handleStateChange = useCallback((value: 'connecting' | 'connected' | 'disconnected') => {
     if (value === 'connected') {
       setConnectionState('connected');
+      setLastError(undefined);
       return;
     }
     if (value === 'disconnected') {
-      setConnectionState('error');
+      console.warn('[StreamViewer] WebRTC session disconnected; attempting to reconnect');
+      scheduleReconnect();
       return;
     }
     setConnectionState('connecting');
-  }, []);
+  }, [scheduleReconnect]);
 
   const handleError = useCallback((error: unknown) => {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[StreamViewer] WebRTC error', message);
     setLastError(message);
-    setConnectionState('error');
-  }, []);
+    scheduleReconnect();
+  }, [scheduleReconnect]);
 
   const resolvedEndpoint = activeTicket?.grpcUrl ?? activeTicket?.url;
 
   if (state !== 'Running' || !activeTicket || !resolvedEndpoint) {
     return <StreamPlaceholder />;
   }
+
+  const connectionKey = `${resolvedEndpoint}::${activeTicket.token}`;
 
   if (connectionState === 'error') {
     return (
@@ -94,7 +109,7 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
   return (
     <div className="stream-viewer">
       <Emulator
-        key={resolvedEndpoint}
+        key={connectionKey}
         uri={resolvedEndpoint}
         view="webrtc"
         muted
