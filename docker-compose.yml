@@ -20,7 +20,7 @@ services:
       - EMULATOR_WEBRTC_ICE_SERVERS=${EMULATOR_WEBRTC_ICE_SERVERS:-stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302}
     volumes:
       - ./var/autoapp:/var/autoapp  # Mount app library and logs
-      - adb-keys:/root/.android  # Share ADB keys with emulator
+      - emulator-home:/root/.android  # Share ADB keys with emulator
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
