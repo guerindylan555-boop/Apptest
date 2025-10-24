@@ -78,21 +78,21 @@ async function setupGPSLocation(serial: string): Promise<void> {
         while true; do
           if [ -f "/tmp/gps_control/update_location.txt" ]; then
             # Read new coordinates
-            source /tmp/gps_control/update_location.txt
+            . /tmp/gps_control/update_location.txt
 
             # Update GPS location
-            docker exec -i ${CONTAINER_ID} bash -lc 'printf "auth %s\\r\\ngeo fix %s %s %s\\r\\nquit\\r\\n" "$(cat ~/.emulator_console_auth_token)" | nc -w 2 localhost 5556' \
-              -- "${AUTH_TOKEN}" "${lng}" "${lat}" "${alt}"
+            docker exec -i ${CONTAINER_ID} bash -lc 'printf "auth %s\\r\\ngeo fix %s %s %s\\r\\nquit\\r\\n" "\$(cat ~/.emulator_console_auth_token)" | nc -w 2 localhost 5556' \
+              -- "${AUTH_TOKEN}" "\${lng}" "\${lat}" "\${alt}"
 
             # Update current location file
-            echo "lat=${lat}" > /tmp/gps_control/current_location.txt
-            echo "lng=${lng}" >> /tmp/gps_control/current_location.txt
-            echo "alt=${alt}" >> /tmp/gps_control/current_location.txt
+            echo "lat=\${lat}" > /tmp/gps_control/current_location.txt
+            echo "lng=\${lng}" >> /tmp/gps_control/current_location.txt
+            echo "alt=\${alt}" >> /tmp/gps_control/current_location.txt
 
             # Remove update file
             rm -f /tmp/gps_control/update_location.txt
 
-            echo "GPS location updated to: ${lat}, ${lng}, ${alt}"
+            echo "GPS location updated to: \${lat}, \${lng}, \${alt}"
           fi
           sleep 1
         done
