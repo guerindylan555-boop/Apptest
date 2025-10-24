@@ -39,8 +39,11 @@ services:
       - WEBRTC_PORT_RANGE=53000-53100
     volumes:
       - adb-keys:/root/.android  # Share ADB keys with backend
+      - ./scripts:/opt/scripts:ro  # Mount scripts directory
+      - gps-service:/opt/gpsd  # Persistent volume for GPS service
     shm_size: 1g
     restart: unless-stopped
+    command: ["/bin/bash", "-c", "/opt/scripts/setup_gps_microservice.sh && tail -f /dev/null"]
 
   envoy:
     image: envoyproxy/envoy:v1.30-latest
@@ -76,3 +79,4 @@ networks:
 
 volumes:
   adb-keys:  # Shared volume for ADB authentication keys
+  gps-service:  # Persistent volume for GPS microservice
