@@ -272,4 +272,14 @@ class H(BaseHTTPRequestHandler):
         self._json(404, {"error": "not found"})
 
 if __name__ == "__main__":
+    # Start continuous GPS updates automatically when server starts
+    print("Starting GPS server with automatic continuous updates...")
+
+    # Start the continuous GPS updater thread
+    gps_running = True
+    gps_thread = threading.Thread(target=continuous_gps_updater, daemon=True)
+    gps_thread.start()
+    print(f"Continuous GPS updates started automatically (every 30s), initial location: {current_location}")
+
+    # Start the HTTP server
     HTTPServer(("0.0.0.0", 8765), H).serve_forever()
