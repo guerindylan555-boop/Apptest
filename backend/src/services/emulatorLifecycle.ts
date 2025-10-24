@@ -44,6 +44,11 @@ const cleanupEmulatorState = (avdName: string) => {
   spawnSync('pkill', ['-f', 'qemu-system'], { stdio: 'ignore' });
   spawnSync('pkill', ['-9', '-f', 'qemu-system'], { stdio: 'ignore' });
 
+  // Clean up GPS-related processes and files
+  spawnSync('pkill', ['-f', 'auto_gps_setup'], { stdio: 'ignore' });
+  spawnSync('pkill', ['-f', 'gps_control'], { stdio: 'ignore' });
+  spawnSync('sh', ['-c', 'rm -rf /tmp/gps_control/*'], { stdio: 'ignore' });
+
   const avdDir = `${ANDROID_AVD_HOME}/${avdName}.avd`;
   const cleanupLocks = [
     `rm -f ${avdDir}/*.lock`,
@@ -414,6 +419,12 @@ export const stopEmulator = async (force = false): Promise<EmulatorSession> => {
     const target = `${EXTERNAL_EMULATOR_HOST}:${EXTERNAL_EMULATOR_ADB_PORT}`;
     logger.info('External emulator mode: disconnecting adb and marking session stopped', { target });
     spawnSync('adb', ['disconnect', target], { stdio: 'ignore' });
+
+    // Clean up GPS-related processes and files even in external mode
+    spawnSync('pkill', ['-f', 'auto_gps_setup'], { stdio: 'ignore' });
+    spawnSync('pkill', ['-f', 'gps_control'], { stdio: 'ignore' });
+    spawnSync('sh', ['-c', 'rm -rf /tmp/gps_control/*'], { stdio: 'ignore' });
+
     sessionStore.reset();
     return sessionStore.getSession();
   }

@@ -1,8 +1,7 @@
 import { Request, Response } from 'express';
 import { exec } from 'child_process';
 import { promisify } from 'util';
-import fs from 'fs/promises';
-import path from 'path';
+import { GPSContainerBridge } from '../services/gpsContainerBridge';
 
 const execAsync = promisify(exec);
 
@@ -11,10 +10,6 @@ interface LocationUpdate {
   lng: number;
   alt: number;
 }
-
-const CONTAINER_ID = "3c75e7304ff6";
-const AUTH_TOKEN = "v0y2z0gSoz7JAyqD";
-const GPS_CONTROL_DIR = "/tmp/gps_control";
 
 class GPSController {
   private static instance: GPSController;
@@ -59,32 +54,26 @@ class GPSController {
 
       console.log(`[GPSController] Updating location to: ${lat}, ${lng}, ${alt}`);
 
-      // Update GPS via emulator console
-      const gpsCommand = `printf "auth ${AUTH_TOKEN}\\r\\ngeo fix ${lng} ${lat} ${alt}\\r\\nquit\\r\\n" | nc -w 2 localhost 5556`;
+      // Update GPS via container bridge
+      const bridge = GPSContainerBridge.getInstance();
+      const success = await bridge.updateLocation(lat, lng, alt);
 
-      const { stdout, stderr } = await execAsync(gpsCommand);
-
-      if (stderr && stderr.includes('OK')) {
-        // GPS command succeeded
+      if (success) {
         this.currentLocation = { lat, lng, alt };
-
-        // Update control file for daemon
-        await this.updateGPSControlFile({ lat, lng, alt });
 
         console.log(`[GPSController] GPS updated successfully: ${lat}, ${lng}, ${alt}`);
 
         return res.json({
           success: true,
           location: this.currentLocation,
-          message: 'GPS location updated successfully',
+          message: 'GPS location updated successfully via container',
           timestamp: new Date().toISOString(),
         });
       } else {
-        console.error(`[GPSController] GPS update failed:`, stderr);
+        console.error(`[GPSController] GPS update failed via container bridge`);
         return res.status(500).json({
           error: 'Failed to update GPS',
-          message: 'Emulator console command failed',
-          details: stderr,
+          message: 'Container bridge failed',
         });
       }
     } catch (error) {
@@ -98,17 +87,14 @@ class GPSController {
 
   async getCurrentLocation(req: Request, res: Response) {
     try {
-      // Get current GPS status from emulator
-      const { stdout } = await execAsync(
-        "adb -s emulator-5556 shell dumpsys location | grep -A5 'gps provider' | head -6"
-      );
-
-      const gpsStatus = this.parseGPSStatus(stdout);
+      // Get current GPS status from container bridge
+      const bridge = GPSContainerBridge.getInstance();
+      const locationData = await bridge.getCurrentLocation();
 
       return res.json({
         success: true,
         location: this.currentLocation,
-        gpsStatus,
+        containerLocation: locationData,
         timestamp: new Date().toISOString(),
       });
     } catch (error) {
@@ -122,19 +108,9 @@ class GPSController {
 
   async verifyGPS(req: Request, res: Response) {
     try {
-      const { stdout } = await execAsync(
-        "adb -s emulator-5556 shell dumpsys location | grep -A5 'gps provider'"
-      );
-
-      const isEnabled = stdout.includes('enabled=true');
-      const hasLocation = stdout.includes('last location=Location[gps');
-
-      const verification = {
-        gpsEnabled: isEnabled,
-        hasLocation: hasLocation,
-        status: isEnabled && hasLocation ? 'working' : 'not_working',
-        details: stdout,
-      };
+      // Use container bridge to verify GPS
+      const bridge = GPSContainerBridge.getInstance();
+      const verification = await bridge.verifyGPS();
 
       return res.json({
         success: true,
@@ -149,65 +125,23 @@ class GPSController {
     }
   }
 
-  private async updateGPSControlFile(location: LocationUpdate) {
-    try {
-      // Ensure control directory exists
-      await fs.mkdir(GPS_CONTROL_DIR, { recursive: true });
-
-      // Create update file for daemon
-      const updateFile = path.join(GPS_CONTROL_DIR, 'update_location.txt');
-      const content = `lat=${location.lat}\nlng=${location.lng}\nalt=${location.alt}\n`;
-      await fs.writeFile(updateFile, content);
-
-      // Update current location file
-      const currentFile = path.join(GPS_CONTROL_DIR, 'current_location.txt');
-      await fs.writeFile(currentFile, content);
-
-      console.log(`[GPSController] GPS control file updated: ${content.trim()}`);
-    } catch (error) {
-      console.error('[GPSController] Error updating GPS control file:', error);
-    }
-  }
-
-  private parseGPSStatus(statusOutput: string) {
-    const lines = statusOutput.split('\n');
-    const result: any = {};
-
-    lines.forEach(line => {
-      if (line.includes('last location=Location[gps')) {
-        const match = line.match(/last location=Location\[gps ([\d.-]+),([\d.-]+).*alt=([\d.]+)/);
-        if (match) {
-          result.lastLocation = {
-            lat: parseFloat(match[1]),
-            lng: parseFloat(match[2]),
-            alt: parseFloat(match[3]),
-          };
-        }
-      } else if (line.includes('enabled=true')) {
-        result.enabled = true;
-      } else if (line.includes('enabled=false')) {
-        result.enabled = false;
-      }
-    });
-
-    return result;
-  }
-
+  
+  
   async setupAutoGPS() {
     try {
-      console.log('[GPSController] Setting up automatic GPS...');
+      console.log('[GPSController] Setting up automatic GPS via container bridge...');
 
-      // Run the auto GPS setup script
-      const { stdout, stderr } = await execAsync(
-        '/home/blhack/project/Apptest/scripts/auto_gps_setup.sh'
-      );
+      // Initialize container bridge
+      const bridge = GPSContainerBridge.getInstance();
+      const success = await bridge.initialize();
 
-      if (stderr) {
-        console.error('[GPSController] Auto GPS setup stderr:', stderr);
+      if (success) {
+        console.log('[GPSController] Container-based GPS system initialized successfully');
+        return { success: true, message: 'GPS system initialized via container bridge' };
+      } else {
+        console.error('[GPSController] Failed to initialize container-based GPS system');
+        return { success: false, error: 'Container bridge initialization failed' };
       }
-
-      console.log('[GPSController] Auto GPS setup completed');
-      return { success: true, output: stdout };
     } catch (error) {
       console.error('[GPSController] Error in auto GPS setup:', error);
       return { success: false, error };

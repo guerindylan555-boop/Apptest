@@ -305,7 +305,22 @@ export async function runStartupAutomation(): Promise<void> {
       await logStartup('Skipping certificate installation (network stability)', { error: (error as Error).message });
     }
 
-    // Step 4: Start proxy capture (OPTIONAL - may affect network, done last)
+    // Step 4: Start container-based GPS system (NO HOST PROCESSES)
+    try {
+      await logStartup('Starting container-based GPS system...');
+      const { exec } = require('child_process');
+
+      // Run GPS setup entirely inside container
+      const gpsSetupProcess = exec('sudo docker exec -i 3c75e7304ff6 bash /home/blhack/project/Apptest/scripts/auto_gps_setup.sh', {
+        env: process.env
+      });
+
+      await logStartup('Container-based GPS system started - no host processes running');
+    } catch (error) {
+      await logStartup('Failed to start container GPS system (non-critical)', { error: (error as Error).message });
+    }
+
+    // Step 5: Start proxy capture (OPTIONAL - may affect network, done last)
     try {
       await startProxyCaptureWithLogging(serial);
     } catch (error) {
