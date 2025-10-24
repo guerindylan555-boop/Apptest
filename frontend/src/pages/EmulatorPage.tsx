@@ -2,6 +2,7 @@ import { useCallback, useMemo, useEffect, useState } from 'react';
 import { useAppStore } from '../state/useAppStore';
 import StateBadge from '../components/StateBadge';
 import StreamViewer from '../components/StreamViewer';
+import { GPSController } from '../components/GPSController';
 import ErrorBanner from '../components/ErrorBanner';
 import DiagnosticsDrawer from '../components/DiagnosticsDrawer';
 import { fetchStreamUrl, fetchLogs, restartEmulator as restartEmulatorApi } from '../services/backendClient';
@@ -125,8 +126,13 @@ const EmulatorPage = () => {
             actions={errorActions}
           />
         )}
-        <section style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-          <StreamViewer state={emulatorState} streamTicket={streamTicket} />
+        <section style={{ width: '100%', display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <StreamViewer state={emulatorState} streamTicket={streamTicket} />
+          </div>
+          <div>
+            <GPSController />
+          </div>
         </section>
 
         <div

@@ -7,6 +7,7 @@ import { appsRouter } from './apps';
 import automationRouter from './automation';
 import { emulatorRestartHandler } from './emulatorRestart';
 import { logsRouter } from './logs';
+import gpsRouter from '../gps';
 
 const routes = Router();
 
@@ -16,6 +17,9 @@ routes.post('/emulator/restart', emulatorRestartHandler);
 routes.get('/health', healthHandler);
 routes.get('/stream/url', streamUrlHandler);
 routes.use('/logs', logsRouter);
+
+// GPS Location Control
+routes.use('/gps', gpsRouter);
 
 // Apps Library & Instrumentation Hub
 routes.use('/apps', appsRouter);
