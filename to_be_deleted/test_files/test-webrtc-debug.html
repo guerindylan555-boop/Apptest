@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebRTC Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .log { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .error { background: #ffe0e0; }
+        .success { background: #e0ffe0; }
+        button { padding: 10px 20px; margin: 5px; }
+        #streamUrl { width: 400px; margin: 5px 0; }
+    </style>
+</head>
+<body>
+    <h1>WebRTC Debug Test</h1>
+
+    <div>
+        <label>Stream URL:</label><br>
+        <input type="text" id="streamUrl" value="http://127.0.0.1:9000/" />
+        <button onclick="testConnection()">Test Connection</button>
+        <button onclick="clearLog()">Clear Log</button>
+    </div>
+
+    <div id="logContainer"></div>
+
+    <script>
+        function log(message, isError = false) {
+            const logDiv = document.createElement('div');
+            logDiv.className = isError ? 'log error' : 'log';
+            logDiv.innerHTML = `[${new Date().toLocaleTimeString()}] ${message}`;
+            document.getElementById('logContainer').appendChild(logDiv);
+            console.log(message);
+        }
+
+        function clearLog() {
+            document.getElementById('logContainer').innerHTML = '';
+        }
+
+        async function testConnection() {
+            const streamUrl = document.getElementById('streamUrl').value;
+            log(`Testing WebRTC connection to: ${streamUrl}`);
+
+            try {
+                // First, test CORS preflight
+                log('1. Testing CORS preflight...');
+                const response = await fetch(`${streamUrl}android.emulation.control.Rtc/requestRtcStream`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Origin': 'http://127.0.0.1:5173',
+                        'Access-Control-Request-Method': 'POST',
+                        'Access-Control-Request-Headers': 'content-type,x-grpc-web'
+                    }
+                });
+
+                if (response.ok) {
+                    log(`✓ CORS preflight successful (${response.status})`, false);
+
+                    // Check for CORS headers
+                    const corsHeaders = [
+                        'access-control-allow-origin',
+                        'access-control-allow-methods',
+                        'access-control-allow-headers'
+                    ];
+
+                    let missingHeaders = [];
+                    corsHeaders.forEach(header => {
+                        if (!response.headers.get(header)) {
+                            missingHeaders.push(header);
+                        }
+                    });
+
+                    if (missingHeaders.length === 0) {
+                        log('✓ All required CORS headers present', false);
+                    } else {
+                        log(`✗ Missing CORS headers: ${missingHeaders.join(', ')}`, true);
+                    }
+                } else {
+                    log(`✗ CORS preflight failed (${response.status})`, true);
+                    return;
+                }
+
+                // Test actual WebRTC request
+                log('2. Testing WebRTC gRPC request...');
+                const grpcResponse = await fetch(`${streamUrl}android.emulation.control.Rtc/requestRtcStream`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/grpc-web+proto',
+                        'x-grpc-web': '1',
+                        'Origin': 'http://127.0.0.1:5173'
+                    },
+                    body: new Uint8Array([0, 0, 0, 0, 0]) // Empty gRPC message
+                });
+
+                log(`gRPC Response Status: ${grpcResponse.status}`);
+                log(`gRPC Headers:`, false);
+                grpcResponse.headers.forEach((value, key) => {
+                    if (key.startsWith('grpc-') || key.startsWith('access-control')) {
+                        log(`  ${key}: ${value}`, false);
+                    }
+                });
+
+                if (grpcResponse.ok) {
+                    log('✓ WebRTC gRPC request successful', false);
+
+                    // Try to read response
+                    const arrayBuffer = await grpcResponse.arrayBuffer();
+                    if (arrayBuffer.byteLength > 0) {
+                        log(`✓ Received ${arrayBuffer.byteLength} bytes of protobuf data`, false);
+                    } else {
+                        log('⚠ Empty response body', false);
+                    }
+                } else {
+                    log(`✗ WebRTC gRPC request failed (${grpcResponse.status})`, true);
+                    const errorText = await grpcResponse.text();
+                    log(`Error response: ${errorText}`, true);
+                }
+
+                // Test backend stream URL
+                log('3. Testing backend stream URL...');
+                const backendResponse = await fetch('http://127.0.0.1:3001/api/stream/url');
+                if (backendResponse.ok) {
+                    const streamData = await backendResponse.json();
+                    log(`✓ Backend stream URL: ${streamData.url}`, false);
+                    log(`✓ Stream token: ${streamData.token}`, false);
+                    log(`✓ Expires at: ${streamData.expiresAt}`, false);
+                } else {
+                    log(`✗ Backend stream URL failed (${backendResponse.status})`, true);
+                }
+
+            } catch (error) {
+                log(`✗ Network error: ${error.message}`, true);
+                if (error.name === 'TypeError' && error.message.includes('Failed to fetch')) {
+                    log('This typically indicates a CORS or network connectivity issue', true);
+                }
+            }
+        }
+
+        // Auto-test on page load
+        window.addEventListener('load', () => {
+            log('WebRTC Debug Test loaded');
+            log('Click "Test Connection" to start diagnostics');
+        });
+    </script>
+</body>
+</html>

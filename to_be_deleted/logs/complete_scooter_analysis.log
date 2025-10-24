@@ -1,0 +1,83 @@
+[+] Starting Mayn Drive Complete Scooter Analysis
+[+] Mayn Drive complete scooter analysis script loaded
+[+] Java environment initialized for complete scooter analysis
+[+] Network hooks installed for comprehensive capture
+[+] UI event hooks installed
+[+] Complete scooter analysis script loaded successfully
+[+] Ready to capture login and unlock requests!
+[+] Please manually: Login → Click + → Start Trip → Wait for unlock success
+[+] Starting automated login and scooter flow...
+[+] Application context obtained
+
+[STEP 1] Starting login automation...
+[+] Entering email: blhackapple@gmail.com
+[+] Entering password: Yolo01610
+[***] LOGIN AUTOMATION WOULD HAPPEN HERE ***
+[***] Please manually login with blhackapple@gmail.com / Yolo01610 ***
+
+[UI] Clickable element found:
+[UI] Class: android.widget.ImageView
+[UI] ID: -1
+[UI] Text: 
+[UI] Description: Open in Google Maps
+[-] Error hooking view: Error: cannot instantiate an interface
+
+[UI] Clickable element found:
+[UI] Class: android.widget.ImageView
+[UI] ID: -1
+[UI] Text: 
+[UI] Description: Get directions
+[-] Error hooking view: Error: cannot instantiate an interface
+
+[UI] Clickable element found:
+[UI] Class: android.widget.ImageView
+[UI] ID: -1
+[UI] Text: 
+[UI] Description: Zoom in
+[-] Error hooking view: Error: cannot instantiate an interface
+
+[UI] Clickable element found:
+[UI] Class: android.widget.ImageView
+[UI] ID: -1
+[UI] Text: 
+[UI] Description: Zoom out
+[-] Error hooking view: Error: cannot instantiate an interface
+
+[=== CAPTURED DATA SUMMARY ===]
+[DATA] Login Requests: 0
+[DATA] Unlock Requests: 0
+[DATA] Tokens Captured: 0
+[DATA] Responses Captured: 0
+
+[UI] Clickable element found:
+[UI] Class: com.google.maps.api.android.lib6.impl.as
+[UI] ID: 5
+[UI] Text: 
+[UI] Description: Compass
+[-] Error hooking view: Error: cannot instantiate an interface
+
+[STEP 2] Looking for scooter controls after login...
+[+] Searching for plus button in top right area...
+[***] PLEASE MANUALLY: ***
+[***] 1. Login with blhackapple@gmail.com / Yolo01610 ***
+[***] 2. Click the + button in top right corner ***
+[***] 3. Click 'Start Trip' button ***
+[***] 4. Wait for unlock success message ***
+
+[UI] Clickable element found:
+[UI] Class: android.widget.ImageView
+[UI] ID: 2
+[UI] Text: 
+[UI] Description: My Location
+
+[=== CAPTURED DATA SUMMARY ===]
+[DATA] Login Requests: 0
+[DATA] Unlock Requests: 0
+[DATA] Tokens Captured: 0
+[DATA] Responses Captured: 0
+
+[=== CAPTURED DATA SUMMARY ===]
+[DATA] Login Requests: 0
+[DATA] Unlock Requests: 0
+[DATA] Tokens Captured: 0
+[DATA] Responses Captured: 0

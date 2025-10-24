@@ -1,0 +1,33 @@
+{
+  "CLEAN_TO_UNLOCK": [
+    "CLEAN",
+    "MAIN_MAP_LOGGED_OUT",
+    "LOGIN_FORM",
+    "MAIN_MAP_LOGGED_IN",
+    "QR_SCANNER",
+    "SELECT_VEHICLE",
+    "UNLOCK"
+  ],
+  "CLEAN_TO_MAP": [
+    "CLEAN",
+    "MAIN_MAP_LOGGED_OUT"
+  ],
+  "LOGOUT_FLOW": [
+    "MAIN_MAP_LOGGED_IN",
+    "NAVIGATION_MENU",
+    "MY_ACCOUNT",
+    "LOGIN_FORM"
+  ],
+  "SIGNUP_FLOW": [
+    "MAIN_MAP_LOGGED_OUT",
+    "LOGIN_FORM",
+    "SIGNUP_FORM",
+    "MAIN_MAP_LOGGED_IN"
+  ],
+  "RENTAL_FLOW": [
+    "MAIN_MAP_LOGGED_IN",
+    "QR_SCANNER",
+    "SELECT_VEHICLE",
+    "UNLOCK"
+  ]
+}

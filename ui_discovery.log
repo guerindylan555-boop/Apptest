@@ -1,0 +1,38 @@
+
+=== Enhanced MaynDrive Automation Session ===
+Session ID: 1761335030751
+Started: 2025-10-24T19:43:50.751Z
+Device: emulator-5556
+
+[2025-10-24T19:43:50.753Z] [INFO] Executing: adb -s emulator-5556 shell uiautomator dump
+[2025-10-24T19:43:52.589Z] [INFO] Executing: adb -s emulator-5556 shell cat /sdcard/window_dump.xml
+[2025-10-24T19:43:52.610Z] [INFO] Executing: adb -s emulator-5556 shell screencap -p /sdcard/state_CONSENT_2025-10-24T19-43-52-610Z_2025-10-24T19-43-52-610Z.png
+[2025-10-24T19:43:53.618Z] [INFO] Executing: adb -s emulator-5556 pull /sdcard/state_CONSENT_2025-10-24T19-43-52-610Z_2025-10-24T19-43-52-610Z.png "ui_discovery_screenshots/state_CONSENT_2025-10-24T19-43-52-610Z_2025-10-24T19-43-52-610Z.png"
+[2025-10-24T19:43:53.697Z] [INFO] Executing: adb -s emulator-5556 shell rm /sdcard/state_CONSENT_2025-10-24T19-43-52-610Z_2025-10-24T19-43-52-610Z.png
+[2025-10-24T19:43:53.819Z] [INFO] 📸 Screenshot saved: ui_discovery_screenshots/state_CONSENT_2025-10-24T19-43-52-610Z_2025-10-24T19-43-52-610Z.png
+[2025-10-24T19:43:53.820Z] [INFO] Executing: adb -s emulator-5556 shell uiautomator dump
+[2025-10-24T19:43:56.313Z] [INFO] Executing: adb -s emulator-5556 pull /sdcard/window_dump.xml "ui_discovery_screenshots/state_CONSENT_2025-10-24T19-43-52-610Z_2025-10-24T19-43-53-820Z.xml"
+[2025-10-24T19:43:56.370Z] [INFO] 📄 UI XML saved: ui_discovery_screenshots/state_CONSENT_2025-10-24T19-43-52-610Z_2025-10-24T19-43-53-820Z.xml
+[2025-10-24T19:43:56.371Z] [INFO] Executing: adb -s emulator-5556 shell uiautomator dump
+[2025-10-24T19:43:57.943Z] [INFO] Executing: adb -s emulator-5556 shell cat /sdcard/window_dump.xml
+[2025-10-24T19:44:00.967Z] [INFO] Executing: adb -s emulator-5556 shell uiautomator dump
+[2025-10-24T19:44:02.563Z] [INFO] Executing: adb -s emulator-5556 shell cat /sdcard/window_dump.xml
+[2025-10-24T19:44:02.582Z] [INFO] Executing: adb -s emulator-5556 shell screencap -p /sdcard/transition_CONSENT_to_CONSENT_2025-10-24T19-44-02-582Z_2025-10-24T19-44-02-582Z.png
+[2025-10-24T19:44:03.493Z] [INFO] Executing: adb -s emulator-5556 pull /sdcard/transition_CONSENT_to_CONSENT_2025-10-24T19-44-02-582Z_2025-10-24T19-44-02-582Z.png "ui_discovery_screenshots/transition_CONSENT_to_CONSENT_2025-10-24T19-44-02-582Z_2025-10-24T19-44-02-582Z.png"
+[2025-10-24T19:44:03.574Z] [INFO] Executing: adb -s emulator-5556 shell rm /sdcard/transition_CONSENT_to_CONSENT_2025-10-24T19-44-02-582Z_2025-10-24T19-44-02-582Z.png
+[2025-10-24T19:44:03.744Z] [INFO] 📸 Screenshot saved: ui_discovery_screenshots/transition_CONSENT_to_CONSENT_2025-10-24T19-44-02-582Z_2025-10-24T19-44-02-582Z.png
+[2025-10-24T19:44:03.745Z] [INFO] Executing: adb -s emulator-5556 shell input keyevent KEYCODE_BACK
+[2025-10-24T19:44:06.235Z] [INFO] Executing: adb -s emulator-5556 shell uiautomator dump
+[2025-10-24T19:44:09.806Z] [INFO] Executing: adb -s emulator-5556 shell cat /sdcard/window_dump.xml
+[2025-10-24T19:44:09.880Z] [INFO] Executing: adb -s emulator-5556 shell input keyevent KEYCODE_BACK
+[2025-10-24T19:44:12.060Z] [INFO] Executing: adb -s emulator-5556 shell uiautomator dump
+[2025-10-24T19:44:14.154Z] [INFO] Executing: adb -s emulator-5556 shell cat /sdcard/window_dump.xml
+[2025-10-24T19:44:14.219Z] [INFO] Executing: adb -s emulator-5556 shell input keyevent KEYCODE_BACK
+[2025-10-24T19:44:16.312Z] [INFO] Executing: adb -s emulator-5556 shell uiautomator dump
+[2025-10-24T19:44:17.941Z] [INFO] Executing: adb -s emulator-5556 shell cat /sdcard/window_dump.xml
+[2025-10-24T19:44:17.964Z] [INFO] Executing: adb -s emulator-5556 shell input keyevent KEYCODE_BACK
+[2025-10-24T19:44:19.506Z] [INFO] Executing: adb -s emulator-5556 shell uiautomator dump
+[2025-10-24T19:44:21.090Z] [INFO] Executing: adb -s emulator-5556 shell cat /sdcard/window_dump.xml
+[2025-10-24T19:44:21.107Z] [INFO] Executing: adb -s emulator-5556 shell input keyevent KEYCODE_BACK
+[2025-10-24T19:44:22.635Z] [INFO] Executing: adb -s emulator-5556 shell uiautomator dump
+[2025-10-24T19:44:24.226Z] [INFO] Executing: adb -s emulator-5556 shell cat /sdcard/window_dump.xml

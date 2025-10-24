@@ -1,0 +1,7 @@
+[2025-10-24T18:51:11.421Z] [INFO] 🚀 Ensuring MaynDrive app is started
+[2025-10-24T18:51:11.421Z] [INFO] Executing: adb -s emulator-5556 shell uiautomator dump
+[2025-10-24T18:51:13.660Z] [INFO] Executing: adb -s emulator-5556 shell cat /sdcard/window_dump.xml
+[2025-10-24T18:51:13.679Z] [INFO] Executing: adb -s emulator-5556 shell am start -n fr.mayndrive.app/.MainActivity
+[2025-10-24T18:51:16.713Z] [INFO] Executing: adb -s emulator-5556 shell uiautomator dump
+[2025-10-24T18:51:18.274Z] [INFO] Executing: adb -s emulator-5556 shell cat /sdcard/window_dump.xml
+[2025-10-24T18:51:18.291Z] [ERROR] ❌ Failed to start MaynDrive app

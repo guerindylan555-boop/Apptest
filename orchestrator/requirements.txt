@@ -1,0 +1,14 @@
+# MaynDrive LLM-Supervised Automation System Requirements
+
+# Core dependencies
+pydantic>=2.0.0
+requests>=2.28.0
+
+# Development and testing dependencies (optional)
+pytest>=7.0.0
+pytest-cov>=4.0.0
+black>=23.0.0
+flake8>=6.0.0
+
+# Note: Android SDK, ADB, and Docker should be installed separately
+# This requirements.txt only covers Python dependencies

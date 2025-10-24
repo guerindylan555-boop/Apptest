@@ -1,0 +1,30 @@
+[2025-10-24T18:40:08.345Z] [INFO] [LOGIN STEP 0] 🔍 Starting Login Discovery Process
+[2025-10-24T18:40:08.346Z] [INFO] [LOGIN STEP 1] 🚀 Starting MaynDrive app to discover login screen
+[2025-10-24T18:40:08.347Z] [INFO] [LOGIN STEP 1] Executing: adb -s emulator-5556 shell am start -n fr.mayndrive.app/.MainActivity
+[2025-10-24T18:40:13.379Z] [INFO] [LOGIN STEP 1] Executing: adb -s emulator-5556 shell uiautomator dump
+[2025-10-24T18:40:15.582Z] [INFO] [LOGIN STEP 1] Executing: adb -s emulator-5556 shell cat /sdcard/window_dump.xml
+[2025-10-24T18:40:15.598Z] [ERROR] [LOGIN STEP 1] ADB Error: Command failed: adb -s emulator-5556 shell cat /sdcard/window_dump.xml
+cat: /sdcard/window_dump.xml: No such file or directory
+
+[2025-10-24T18:40:15.598Z] [ERROR] [LOGIN STEP 1] Screen analysis failed: Command failed: adb -s emulator-5556 shell cat /sdcard/window_dump.xml
+cat: /sdcard/window_dump.xml: No such file or directory
+
+[2025-10-24T18:40:15.598Z] [INFO] [LOGIN STEP 1] Initial screen detected: UNKNOWN
+[2025-10-24T18:40:15.598Z] [INFO] [LOGIN STEP 1] Executing: adb -s emulator-5556 shell screencap -p /sdcard/login_step_1_initial_screen_2025-10-24T18-40-15-598Z.png
+[2025-10-24T18:40:15.637Z] [ERROR] [LOGIN STEP 1] ADB Error: Command failed: adb -s emulator-5556 shell screencap -p /sdcard/login_step_1_initial_screen_2025-10-24T18-40-15-598Z.png
+Error opening file: /sdcard/login_step_1_initial_screen_2025-10-24T18-40-15-598Z.png (No such file or directory)
+
+[2025-10-24T18:40:15.638Z] [ERROR] [LOGIN STEP 1] Screenshot failed: Command failed: adb -s emulator-5556 shell screencap -p /sdcard/login_step_1_initial_screen_2025-10-24T18-40-15-598Z.png
+Error opening file: /sdcard/login_step_1_initial_screen_2025-10-24T18-40-15-598Z.png (No such file or directory)
+
+[2025-10-24T18:40:15.638Z] [INFO] [LOGIN STEP 1] Executing: adb -s emulator-5556 shell uiautomator dump
+[2025-10-24T18:40:17.217Z] [INFO] [LOGIN STEP 1] Executing: adb -s emulator-5556 shell cat /sdcard/window_dump.xml > login_discovery/login_step_1_initial_screen_2025-10-24T18-40-15-638Z.xml
+[2025-10-24T18:40:17.236Z] [ERROR] [LOGIN STEP 1] ADB Error: Command failed: adb -s emulator-5556 shell cat /sdcard/window_dump.xml > login_discovery/login_step_1_initial_screen_2025-10-24T18-40-15-638Z.xml
+cat: /sdcard/window_dump.xml: No such file or directory
+
+[2025-10-24T18:40:17.236Z] [ERROR] [LOGIN STEP 1] UI capture failed: Command failed: adb -s emulator-5556 shell cat /sdcard/window_dump.xml > login_discovery/login_step_1_initial_screen_2025-10-24T18-40-15-638Z.xml
+cat: /sdcard/window_dump.xml: No such file or directory
+
+[2025-10-24T18:40:17.236Z] [ERROR] [LOGIN STEP 1] Unknown initial screen: UNKNOWN
+[2025-10-24T18:40:17.236Z] [INFO] [LOGIN STEP 1] 📊 Generating Login Discovery Report
+[2025-10-24T18:40:17.237Z] [INFO] [LOGIN STEP 1] 📋 Login discovery report saved: login_discovery/login_discovery_report.json

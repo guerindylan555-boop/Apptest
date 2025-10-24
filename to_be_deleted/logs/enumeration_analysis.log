@@ -1,0 +1,60 @@
+[+] Starting Mayn Drive Comprehensive Class Enumeration
+[+] Mayn Drive comprehensive class enumeration script loaded
+[+] Java environment initialized for class enumeration
+[CLASS] Found potential network class: java.io.SerialCallbackContext
+[CLASS] Found 5 methods in java.io.SerialCallbackContext
+[CLASS] Found potential network class: java.net.HttpCookie$CookieAttributeAssignor
+[CLASS] Found 1 methods in java.net.HttpCookie$CookieAttributeAssignor
+[CLASS] Found potential network class: java.lang.invoke.CallSite
+[CLASS] Found 11 methods in java.lang.invoke.CallSite
+[CLASS] Found potential network class: sun.security.provider.certpath.OCSPResponse$ResponseStatus
+[CLASS] Found 3 methods in sun.security.provider.certpath.OCSPResponse$ResponseStatus
+[CLASS] Found potential network class: javax.security.auth.callback.CallbackHandler
+[CLASS] Found 1 methods in javax.security.auth.callback.CallbackHandler
+[CLASS] Found potential network class: sun.security.provider.certpath.OCSPResponse
+[CLASS] Found 8 methods in sun.security.provider.certpath.OCSPResponse
+[CLASS] Found potential network class: sun.security.provider.certpath.OCSPResponse$SingleResponse
+[CLASS] Found 9 methods in sun.security.provider.certpath.OCSPResponse$SingleResponse
+[CLASS] Found potential network class: java.net.HttpURLConnection
+[CLASS] Found 18 methods in java.net.HttpURLConnection
+[CLASS] Found key method: java.net.HttpURLConnection.disconnect
+[HOOK] Successfully hooked: java.net.HttpURLConnection.disconnect
+[CLASS] Found potential network class: [Ljavax.security.auth.callback.Callback;
+[CLASS] Found 0 methods in [Ljavax.security.auth.callback.Callback;
+[CLASS] Found potential network class: javax.security.auth.callback.Callback
+[CLASS] Found 0 methods in javax.security.auth.callback.Callback
+[CLASS] Found potential network class: [Lsun.security.provider.certpath.OCSPResponse$ResponseStatus;
+[CLASS] Found 0 methods in [Lsun.security.provider.certpath.OCSPResponse$ResponseStatus;
+[CLASS] Found potential network class: java.net.HttpRetryException
+[CLASS] Found 3 methods in java.net.HttpRetryException
+[CLASS] Found potential network class: java.net.NetworkInterface
+[CLASS] Found 25 methods in java.net.NetworkInterface
+[CLASS] Found potential network class: java.net.HttpCookie$10
+[CLASS] Found 1 methods in java.net.HttpCookie$10
+[CLASS] Found potential network class: java.net.HttpCookie$11
+[CLASS] Found 1 methods in java.net.HttpCookie$11
+[CLASS] Found potential network class: java.net.NetworkInterface$1checkedAddresses
+[CLASS] Found 3 methods in java.net.NetworkInterface$1checkedAddresses
+[CLASS] Found potential network class: [Ljava.net.NetworkInterface;
+[CLASS] Found 0 methods in [Ljava.net.NetworkInterface;
+[CLASS] Found potential network class: javax.net.ssl.HttpsURLConnection
+[CLASS] Found 14 methods in javax.net.ssl.HttpsURLConnection
+[CLASS] Found potential network class: sun.security.provider.certpath.OCSPResponse$1
+[CLASS] Found 0 methods in sun.security.provider.certpath.OCSPResponse$1
+[CLASS] Found potential network class: javax.security.auth.callback.UnsupportedCallbackException
+[CLASS] Found 1 methods in javax.security.auth.callback.UnsupportedCallbackException
+[CLASS] Found potential network class: java.net.HttpCookie$1
+[CLASS] Found 1 methods in java.net.HttpCookie$1
+[CLASS] Found potential network class: java.net.HttpCookie$2
+[CLASS] Found 1 methods in java.net.HttpCookie$2
+[CLASS] Found potential network class: java.net.HttpCookie$3
+[CLASS] Found 1 methods in java.net.HttpCookie$3
+[CLASS] Found potential network class: java.net.HttpCookie$4
+[CLASS] Found 1 methods in java.net.HttpCookie$4
+[CLASS] Found potential network class: java.net.HttpCookie$5
+[CLASS] Found 1 methods in java.net.HttpCookie$5
+[CLASS] Found potential network class: java.net.HttpCookie$6
+[CLASS] Found 1 methods in java.net.HttpCookie$6
+[CLASS] Found potential network class: java.net.HttpCookie$7
+[CLASS] Found 1 methods in java.net.HttpCookie$7
+[CLASS] Found potential network class: java.net.ResponseCache

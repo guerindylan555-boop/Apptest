@@ -1,0 +1,21 @@
+[2025-10-24T19:01:21.282Z] [INFO] 🚀 Ensuring MaynDrive app is started
+[2025-10-24T19:01:21.283Z] [INFO] Executing: adb -s emulator-5556 shell uiautomator dump
+[2025-10-24T19:01:22.929Z] [INFO] Executing: adb -s emulator-5556 shell cat /sdcard/window_dump.xml
+[2025-10-24T19:01:22.949Z] [INFO] ✅ MaynDrive app is already running
+[2025-10-24T19:01:22.949Z] [INFO] Executing: adb -s emulator-5556 shell uiautomator dump
+[2025-10-24T19:01:24.534Z] [INFO] Executing: adb -s emulator-5556 shell cat /sdcard/window_dump.xml
+[2025-10-24T19:01:24.552Z] [INFO] Executing: adb -s emulator-5556 shell screencap -p /sdcard/initial_state_2025-10-24T19-01-24-551Z.png
+[2025-10-24T19:01:25.705Z] [INFO] Executing: adb -s emulator-5556 pull /sdcard/initial_state_2025-10-24T19-01-24-551Z.png login_test_screenshots/initial_state_2025-10-24T19-01-24-551Z.png
+[2025-10-24T19:01:25.783Z] [INFO] Executing: adb -s emulator-5556 shell rm /sdcard/initial_state_2025-10-24T19-01-24-551Z.png
+[2025-10-24T19:01:25.921Z] [INFO] 📸 Screenshot saved: login_test_screenshots/initial_state_2025-10-24T19-01-24-551Z.png
+[2025-10-24T19:01:25.922Z] [INFO] Executing: adb -s emulator-5556 shell screencap -p /sdcard/already_logged_in_2025-10-24T19-01-25-922Z.png
+[2025-10-24T19:01:27.253Z] [INFO] Executing: adb -s emulator-5556 pull /sdcard/already_logged_in_2025-10-24T19-01-25-922Z.png login_test_screenshots/already_logged_in_2025-10-24T19-01-25-922Z.png
+[2025-10-24T19:01:27.354Z] [INFO] Executing: adb -s emulator-5556 shell rm /sdcard/already_logged_in_2025-10-24T19-01-25-922Z.png
+[2025-10-24T19:01:27.489Z] [INFO] 📸 Screenshot saved: login_test_screenshots/already_logged_in_2025-10-24T19-01-25-922Z.png
+[2025-10-24T20:00:56.588Z] [INFO] 🚀 Ensuring MaynDrive app is started
+[2025-10-24T20:00:56.588Z] [INFO] Executing: adb -s emulator-5556 shell uiautomator dump
+[2025-10-24T20:00:58.129Z] [INFO] Executing: adb -s emulator-5556 shell cat /sdcard/window_dump.xml
+[2025-10-24T20:00:58.147Z] [INFO] Executing: adb -s emulator-5556 shell am start -n fr.mayndrive.app/.MainActivity
+[2025-10-24T20:01:01.180Z] [INFO] Executing: adb -s emulator-5556 shell uiautomator dump
+[2025-10-24T20:01:02.728Z] [INFO] Executing: adb -s emulator-5556 shell cat /sdcard/window_dump.xml
+[2025-10-24T20:01:02.745Z] [ERROR] ❌ Failed to start MaynDrive app
