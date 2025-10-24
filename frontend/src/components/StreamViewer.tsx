@@ -17,7 +17,7 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
   const [lastError, setLastError] = useState<string | undefined>();
   const [retryCounter, setRetryCounter] = useState(0);
   const [reconnectAttempts, setReconnectAttempts] = useState(0);
-  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const reconnectTimeoutRef = useRef<number | null>(null);
   const lastDisconnectTimeRef = useRef<number>(0);
   const setGlobalState = useAppStore((state) => state.setState);
   const activeTicket = streamTicket ?? localTicket;
