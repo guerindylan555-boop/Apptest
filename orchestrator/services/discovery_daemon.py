@@ -11,7 +11,7 @@ import json
 import logging
 from pathlib import Path
 from datetime import datetime
-from typing import Dict, List, Optional, Callable
+from typing import Dict, List, Optional, Callable, Tuple
 import threading
 from dataclasses import dataclass, asdict
 
@@ -479,3 +479,22 @@ class DiscoveryDaemon:
 
         except Exception as e:
             logger.error(f"Failed to load graph: {e}")
+
+    def is_running(self) -> bool:
+        """Check if daemon is currently running"""
+        return self.running and not self.paused
+
+    def ensure_running(self):
+        """Ensure daemon is running (start if stopped, resume if paused)"""
+        if not self.running:
+            self.start()
+            logger.info("Discovery daemon started by watchdog")
+        elif self.paused:
+            self.resume()
+            logger.info("Discovery daemon resumed by watchdog")
+
+    def ensure_paused(self):
+        """Ensure daemon is paused (pause if running)"""
+        if self.running and not self.paused:
+            self.pause()
+            logger.info("Discovery daemon paused by watchdog")

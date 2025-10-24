@@ -18,7 +18,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from ui.socket import socket_manager
+import sys
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from ui.ws_handler import socket_manager
 
 logger = logging.getLogger(__name__)
 
@@ -45,8 +48,6 @@ _automation_controller = None
 def create_app(discovery_daemon=None, automation_controller=None):
     """Create FastAPI application"""
     global _discovery_daemon, _automation_controller
-    _discovery_daemon = discovery_daemon
-    _automation_controller = automation_controller
 
     app = FastAPI(title="MaynDrive Operator Console")
 
@@ -58,6 +59,102 @@ def create_app(discovery_daemon=None, automation_controller=None):
         allow_methods=["*"],
         allow_headers=["*"],
     )
+
+    # Startup: Initialize discovery daemon, watchdog, and logging
+    @app.on_event("startup")
+    async def startup_event():
+        global _discovery_daemon, _automation_controller
+
+        # Import here to avoid circular dependencies
+        from services.discovery_daemon import DiscoveryDaemon
+        from services.app_watchdog import AppWatchdog
+
+        # Initialize discovery daemon if not provided
+        if _discovery_daemon is None:
+            _discovery_daemon = DiscoveryDaemon("emulator-5556")
+            logger.info("Discovery daemon initialized")
+
+        # Store in app state for access from routes
+        app.state.discovery = _discovery_daemon
+        app.state.automation = _automation_controller
+
+        # WebSocket log handler - forwards logs to UI in real-time
+        class WebSocketLogHandler(logging.Handler):
+            def emit(self, record):
+                try:
+                    msg = self.format(record)
+                    asyncio.get_event_loop().call_soon_threadsafe(
+                        lambda: asyncio.create_task(
+                            socket_manager.broadcast_json({
+                                "type": "llm_log",
+                                "level": record.levelname,
+                                "msg": msg,
+                                "logger": record.name
+                            })
+                        )
+                    )
+                except Exception:
+                    pass
+
+        # Attach handler to relevant loggers
+        ws_handler = WebSocketLogHandler()
+        ws_handler.setLevel(logging.INFO)
+        logging.getLogger("planner").addHandler(ws_handler)
+        logging.getLogger("llm").addHandler(ws_handler)
+        logging.getLogger("discovery").addHandler(ws_handler)
+        logging.getLogger("executor").addHandler(ws_handler)
+
+        logger.info("WebSocket log handler attached")
+
+        # Watchdog: auto-start/pause discovery based on app lifecycle
+        def broadcast_sync(data: dict):
+            """Thread-safe broadcast wrapper"""
+            asyncio.get_event_loop().call_soon_threadsafe(
+                lambda: asyncio.create_task(socket_manager.broadcast_json(data))
+            )
+
+        def on_app_started():
+            """Called when MaynDrive app starts"""
+            _discovery_daemon.ensure_running()
+            broadcast_sync({
+                "type": "discovery_status",
+                "running": True,
+                "reason": "app_started"
+            })
+            logger.info("Auto-started discovery: app launched")
+
+        def on_app_stopped():
+            """Called when MaynDrive app stops"""
+            _discovery_daemon.ensure_paused()
+            broadcast_sync({
+                "type": "discovery_status",
+                "running": False,
+                "reason": "app_stopped"
+            })
+            logger.info("Auto-paused discovery: app closed")
+
+        # Create and start watchdog
+        app.state.watchdog = AppWatchdog(
+            package="fr.mayndrive.app",
+            device_serial="emulator-5556",
+            poll_interval=1.0,
+            on_started=on_app_started,
+            on_stopped=on_app_stopped,
+            ws_broadcast=broadcast_sync
+        )
+        app.state.watchdog.start()
+        logger.info("App watchdog started")
+
+    @app.on_event("shutdown")
+    async def shutdown_event():
+        """Cleanup on shutdown"""
+        if hasattr(app.state, "watchdog"):
+            app.state.watchdog.stop()
+            logger.info("App watchdog stopped")
+
+        if _discovery_daemon:
+            _discovery_daemon.stop()
+            logger.info("Discovery daemon stopped")
 
     # Routes
     @app.get("/", response_class=HTMLResponse)
@@ -432,6 +529,15 @@ def create_app(discovery_daemon=None, automation_controller=None):
         if _discovery_daemon:
             return _discovery_daemon.get_coverage_stats()
         return {"total_states": 0, "total_edges": 0, "current_state": None}
+
+    @app.get("/control/status")
+    async def control_status():
+        """Get control panel status (for auto-mode toggle)"""
+        return {
+            "running": _discovery_daemon.is_running() if _discovery_daemon else False,
+            "app_detected": app.state.watchdog.is_app_running if hasattr(app.state, "watchdog") else False,
+            "auto_mode": True  # Auto-mode enabled by default
+        }
 
     return app
 

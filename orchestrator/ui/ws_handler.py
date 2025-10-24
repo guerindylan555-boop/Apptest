@@ -80,6 +80,10 @@ class ConsoleSocket:
             "data": status
         })
 
+    async def broadcast_json(self, message: Dict):
+        """Broadcast raw JSON message (for flexible event types)"""
+        await self.broadcast(message)
+
 
 # Global socket manager
 socket_manager = ConsoleSocket()
