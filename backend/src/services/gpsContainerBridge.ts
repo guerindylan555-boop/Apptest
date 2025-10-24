@@ -6,7 +6,7 @@ const execAsync = promisify(exec);
 
 export class GPSContainerBridge {
   private static instance: GPSContainerBridge;
-  private containerId = '3c75e7304ff6';
+  private containerId = 'apptest-emulator';
   private apiUrl = 'http://localhost:8765';
 
   static getInstance(): GPSContainerBridge {
@@ -18,24 +18,26 @@ export class GPSContainerBridge {
 
   async initialize(): Promise<boolean> {
     try {
-      // Check if GPS microservice is running
+      // Check if GPS service is running
       const response = await fetch(`${this.apiUrl}/health`);
       if (response.ok) {
-        logger.info('GPS Container Bridge initialized successfully - microservice is running');
-        return true;
-      } else {
-        logger.error('GPS microservice health check failed');
-        return false;
+        const result = await response.json();
+        if (result.ok) {
+          logger.info('GPS Container Bridge initialized successfully - service is running');
+          return true;
+        }
       }
+      logger.warn('GPS service not ready yet');
+      return false;
     } catch (error) {
-      logger.error('Failed to initialize GPS Container Bridge - microservice not accessible', { error: error instanceof Error ? error.message : String(error) });
+      logger.warn('GPS service not yet available, will retry', { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
 
   async updateLocation(lat: number, lng: number, alt: number = 120): Promise<boolean> {
     try {
-      // Use GPS microservice /fix endpoint
+      // Use GPS service /fix endpoint
       const response = await fetch(`${this.apiUrl}/fix`, {
         method: 'POST',
         headers: {
@@ -47,49 +49,23 @@ export class GPSContainerBridge {
       if (response.ok) {
         const result = await response.json();
         if (result.ok) {
-          logger.info('GPS location updated successfully via microservice', { lat, lng, alt });
+          logger.info('GPS location updated successfully via ADB emu', { lat, lng, alt });
           return true;
         } else {
-          logger.error('GPS microservice returned error', { error: result.error });
+          logger.error('GPS service returned error', { error: result });
           return false;
         }
       } else {
-        logger.error('GPS microservice returned HTTP error', { status: response.status });
+        logger.error('GPS service returned HTTP error', { status: response.status });
         return false;
       }
     } catch (error) {
-      logger.error('Failed to update GPS location via microservice', { error: error instanceof Error ? error.message : String(error) });
+      logger.error('Failed to update GPS location via service', { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
 
   async getCurrentLocation(): Promise<any> {
-    try {
-      // Use GPS microservice /status endpoint
-      const response = await fetch(`${this.apiUrl}/status`);
-      if (response.ok) {
-        const status = await response.json();
-        if (status.status === 'connected') {
-          // For now, return the last known location from the controller
-          // In the future, the microservice could maintain state
-          return {
-            lat: 47.3878278,
-            lng: 0.6737631,
-            alt: 120,
-            timestamp: new Date().toISOString(),
-            source: 'microservice_status'
-          };
-        } else {
-          logger.warn('GPS microservice not connected to emulator', status);
-          return { error: 'GPS microservice not connected', status };
-        }
-      } else {
-        logger.error('GPS microservice status endpoint failed', { status: response.status });
-      }
-    } catch (error) {
-      logger.warn('Failed to get status from GPS microservice, falling back to ADB', { error: error instanceof Error ? error.message : String(error) });
-    }
-
     // Fallback to direct ADB command
     try {
       const { stdout } = await execAsync('adb -s emulator-5556 shell dumpsys location | grep -A5 "gps provider"');
@@ -114,26 +90,26 @@ export class GPSContainerBridge {
 
   async verifyGPS(): Promise<any> {
     try {
-      // Check microservice health
+      // Check service health
       const healthResponse = await fetch(`${this.apiUrl}/health`);
-      const microserviceHealthy = healthResponse.ok && (await healthResponse.json()).ok;
+      const serviceHealthy = healthResponse.ok && (await healthResponse.json()).ok;
 
       // Check emulator connection status
       const statusResponse = await fetch(`${this.apiUrl}/status`);
       const statusData = statusResponse.ok ? await statusResponse.json() : null;
-      const emulatorConnected = statusData?.status === 'connected';
+      const emulatorConnected = statusData?.ok;
 
       // Get current location
       const current = await this.getCurrentLocation();
 
       return {
         ...current,
-        microserviceHealthy,
+        serviceHealthy,
         emulatorConnected,
-        status: (microserviceHealthy && emulatorConnected && !current.error) ? 'working' : 'not_working',
+        status: (serviceHealthy && emulatorConnected && !current.error) ? 'working' : 'not_working',
         bridgeActive: true,
         details: {
-          microservice: microserviceHealthy ? 'ok' : 'error',
+          service: serviceHealthy ? 'ok' : 'error',
           emulator: emulatorConnected ? 'connected' : 'disconnected',
           location: current.error ? 'error' : 'available'
         }
@@ -144,7 +120,7 @@ export class GPSContainerBridge {
         status: 'not_working',
         bridgeActive: false,
         details: {
-          microservice: 'error',
+          service: 'error',
           emulator: 'unknown',
           location: 'error'
         }
@@ -152,10 +128,10 @@ export class GPSContainerBridge {
     }
   }
 
-  getStatus(): { initialized: boolean; microserviceUrl: string; containerId: string } {
+  getStatus(): { initialized: boolean; serviceUrl: string; containerId: string } {
     return {
       initialized: true,
-      microserviceUrl: this.apiUrl,
+      serviceUrl: this.apiUrl,
       containerId: this.containerId
     };
   }

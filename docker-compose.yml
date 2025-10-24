@@ -39,11 +39,11 @@ services:
       - WEBRTC_PORT_RANGE=53000-53100
     volumes:
       - adb-keys:/root/.android  # Share ADB keys with backend
-      - ./scripts:/opt/scripts  # Mount scripts directory (writable for permissions)
-      - gps-service:/opt/gpsd  # Persistent volume for GPS service
+      - ./scripts/gpsd_server.py:/opt/gpsd/server.py:ro
     shm_size: 1g
     restart: unless-stopped
-    command: ["/bin/bash", "-c", "chmod +x /opt/scripts/setup_gps_microservice.sh && /opt/scripts/setup_gps_microservice.sh & /android/sdk/launch-emulator.sh"]
+    command: ["/bin/bash","-lc",
+      "command -v python3 >/dev/null 2>&1 && nohup python3 /opt/gpsd/server.py >/opt/gpsd.log 2>&1 & true; exec /android/sdk/launch-emulator.sh"]
 
   envoy:
     image: envoyproxy/envoy:v1.30-latest
@@ -79,4 +79,3 @@ networks:
 
 volumes:
   adb-keys:  # Shared volume for ADB authentication keys
-  gps-service:  # Persistent volume for GPS microservice
