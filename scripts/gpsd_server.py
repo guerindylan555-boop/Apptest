@@ -39,6 +39,11 @@ def ensure_serial():
     s = SERIAL or pick_emulator_serial()
     if not s:
         raise RuntimeError("No emulator device found")
+
+    # Automatically enable mock location settings
+    run_adb(["-s", s, "shell", "settings", "put", "secure", "mock_location", "1"])
+    run_adb(["-s", s, "shell", "appops", "set", "android", "android:mock_location", "allow"])
+
     return s
 
 def has_cmd_location(serial):
@@ -64,10 +69,8 @@ def set_location_cmd(serial, lat, lng, alt):
     return ok, out, err
 
 def set_location_legacy(serial, lat, lng, alt):
-    # Enable mock locations first
+    # Ensure mock location permissions are set
     run_adb(["-s", serial, "shell", "settings", "put", "secure", "mock_location", "1"])
-
-    # Try using appops to grant mock location permission to system
     run_adb(["-s", serial, "shell", "appops", "set", "android", "android:mock_location", "allow"])
 
     # Try direct port forwarding to emulator console
