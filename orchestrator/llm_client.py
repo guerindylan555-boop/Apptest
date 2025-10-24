@@ -27,9 +27,9 @@ class GLMClient:
             base_url: Z.ai API base URL (defaults to env ZAI_BASE_URL)
             api_key: Z.ai API key (defaults to env ZAI_API_KEY)
         """
-        self.base_url = base_url or os.getenv("ZAI_BASE_URL", "https://open.bigmodel.cn/api/paas/v4")
+        self.base_url = base_url or os.getenv("ZAI_BASE_URL", "https://api.z.ai/api/coding/paas/v4")
         self.api_key = api_key or os.getenv("ZAI_API_KEY")
-        self.model = "glm-4-6"  # GLM-4.6 model identifier
+        self.model = "GLM-4.6"  # GLM-4.6 model identifier
 
         if not self.api_key:
             raise ValueError("ZAI_API_KEY environment variable must be set")

@@ -1,0 +1,16 @@
+{
+  "timestamp": 1761339435.3770418,
+  "summary": {
+    "total_patterns": 0,
+    "total_transitions": 0,
+    "total_routes": 0,
+    "failed_patterns_count": 0
+  },
+  "top_performing_transitions": [],
+  "problematic_transitions": [],
+  "route_success_rates": {},
+  "recent_failures": [],
+  "recommendations": [
+    "Run more discovery sessions to expand pattern recognition"
+  ]
+}

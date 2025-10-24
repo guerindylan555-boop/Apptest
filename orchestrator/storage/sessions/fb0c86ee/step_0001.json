@@ -1,0 +1,17 @@
+{
+  "step": 1,
+  "timestamp": 1761340065.1797104,
+  "current_state": "UNKNOWN",
+  "action": {
+    "type": "wait",
+    "coordinates": null,
+    "text": null,
+    "confidence": 0.1
+  },
+  "result": {
+    "success": true,
+    "execution_time_ms": 5000,
+    "retry_count": 0,
+    "error_message": null
+  }
+}
