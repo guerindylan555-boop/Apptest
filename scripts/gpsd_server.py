@@ -51,28 +51,63 @@ def set_location_cmd(serial, lat, lng, alt):
     return ok, out, err
 
 def set_location_legacy(serial, lat, lng, alt):
-    # Try alternative approach using svc command and location manager broadcast
     # Enable mock locations first
     run_adb(["-s", serial, "shell", "settings", "put", "secure", "mock_location", "1"])
 
-    # Try using am broadcast with location intent
-    location_intent = f"am broadcast -a android.location.LOCATION_CHANGED \
-                       --es provider gps \
-                       --ei latitude {int(lat * 1E6)} \
-                       --ei longitude {int(lng * 1E6)} \
-                       --ei altitude {int(alt)}"
+    # Try using appops to grant mock location permission to system
+    run_adb(["-s", serial, "shell", "appops", "set", "android", "android:mock_location", "allow"])
 
-    rc, out, err = run_adb(["-s", serial, "shell", location_intent])
-    if rc == 0:
+    # Try direct port forwarding to emulator console
+    # First, set up port forwarding to the emulator's console
+    rc, out, err = run_adb(["-s", serial, "forward", "tcp:5554", "tcp:5554"])
+    if rc != 0:
+        return False, out, f"Port forwarding failed: {err}"
+
+    # Now try to connect to console and send geo fix command
+    import socket
+    try:
+        # Connect to emulator console via forwarded port
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.settimeout(5)
+        sock.connect(("127.0.0.1", 5554))
+
+        # Read welcome message
+        welcome = sock.recv(1024).decode()
+
+        # Try to authenticate with empty token or common defaults
+        auth_tokens = ["", "emulator", "android", "default"]
+        for token in auth_tokens:
+            if token:
+                sock.send(f"auth {token}\n".encode())
+            else:
+                sock.send(b"auth\n")
+            response = sock.recv(1024).decode()
+            if "OK" in response:
+                # Authentication successful, send geo fix
+                geo_cmd = f"geo fix {lng:.7f} {lat:.7f} {alt:.1f}\n"
+                sock.send(geo_cmd.encode())
+                geo_response = sock.recv(1024).decode()
+                sock.close()
+
+                if "OK" in geo_response or "OK" in response:
+                    return True, geo_response, ""
+                else:
+                    return False, geo_response, "Console command failed"
+
+        sock.close()
+        return False, welcome, "Authentication failed with all tokens"
+
+    except Exception as e:
+        return False, "", f"Console connection failed: {str(e)}"
+
+    # If console approach fails, try using settings put secure mock_location
+    # combined with a simple location injection using service call
+    rc, out, err = run_adb(["-s", serial, "shell", "service", "call", "location", "1",
+                           f"f32 {lat:.7f}", f"f32 {lng:.7f}", f"f32 {alt:.1f}"])
+    if rc == 0 and out:
         return True, out, err
 
-    # If broadcast fails, try using content provider to inject location
-    values = f"'latitude:{lat}', 'longitude:{lng}', 'altitude:{alt}'"
-    rc, out, err = run_adb(["-s", serial, "shell",
-                           "content", "insert", "--uri", "content://settings/secure",
-                           "--bind", "name:s:mock_location", "--bind", "value:i:1"])
-
-    return rc == 0, out, err
+    return False, out, "All location injection methods failed"
 
 class H(BaseHTTPRequestHandler):
     def _json(self, code, obj):
