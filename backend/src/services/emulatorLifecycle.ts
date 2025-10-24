@@ -159,6 +159,17 @@ export const startEmulator = async (): Promise<EmulatorSession> => {
     sessionStore.setBootCompleted();
     sessionStore.transition('Running', { streamToken: undefined });
     logger.info('External emulator connection established');
+
+    // Run startup automation for external emulator
+    import('./autoStartup').then(({ runStartupAutomation }) => {
+      logger.info('Starting auto-startup automation for external emulator...');
+      runStartupAutomation().catch(error => {
+        logger.error('Auto-startup automation failed for external emulator', { error: error.message });
+      });
+    }).catch(error => {
+      logger.error('Failed to load auto-startup module for external emulator', { error: error.message });
+    });
+
     return sessionStore.getSession();
   }
 
