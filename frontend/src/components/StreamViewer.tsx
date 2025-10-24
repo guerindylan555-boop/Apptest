@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState, useRef } from 'react';
 import { Emulator } from 'android-emulator-webrtc';
 import StreamPlaceholder from './StreamPlaceholder';
 import type { StreamTicket } from '../services/backendClient';
@@ -16,6 +16,9 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
   const [connectionState, setConnectionState] = useState<'idle' | 'connecting' | 'connected' | 'error'>('idle');
   const [lastError, setLastError] = useState<string | undefined>();
   const [retryCounter, setRetryCounter] = useState(0);
+  const [reconnectAttempts, setReconnectAttempts] = useState(0);
+  const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastDisconnectTimeRef = useRef<number>(0);
   const setGlobalState = useAppStore((state) => state.setState);
   const activeTicket = streamTicket ?? localTicket;
 
@@ -23,11 +26,33 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
     if (state !== 'Running') {
       return;
     }
-    setLocalTicket(undefined);
+
+    // Debounce rapid disconnections (within 2 seconds)
+    const now = Date.now();
+    if (now - lastDisconnectTimeRef.current < 2000) {
+      console.log('[StreamViewer] Ignoring rapid disconnection event');
+      return;
+    }
+    lastDisconnectTimeRef.current = now;
+
+    // Clear any pending reconnection
+    if (reconnectTimeoutRef.current) {
+      clearTimeout(reconnectTimeoutRef.current);
+    }
+
+    // Calculate exponential backoff (max 30 seconds)
+    const backoffMs = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000);
+    console.log(`[StreamViewer] Scheduling reconnection in ${backoffMs}ms (attempt ${reconnectAttempts + 1})`);
+
     setConnectionState('connecting');
-    setGlobalState({ streamTicket: undefined });
-    setRetryCounter((value) => value + 1);
-  }, [setGlobalState, state]);
+    setReconnectAttempts((prev) => prev + 1);
+
+    reconnectTimeoutRef.current = setTimeout(() => {
+      setLocalTicket(undefined);
+      setGlobalState({ streamTicket: undefined });
+      setRetryCounter((value) => value + 1);
+    }, backoffMs);
+  }, [setGlobalState, state, reconnectAttempts]);
 
   useEffect(() => {
     if (state !== 'Running') {
@@ -72,10 +97,11 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
     if (value === 'connected') {
       setConnectionState('connected');
       setLastError(undefined);
+      setReconnectAttempts(0); // Reset reconnection counter on successful connection
       return;
     }
     if (value === 'disconnected') {
-      console.warn('[StreamViewer] WebRTC session disconnected; attempting to reconnect');
+      console.warn('[StreamViewer] WebRTC session disconnected; scheduling reconnection');
       scheduleReconnect();
       return;
     }
@@ -86,8 +112,22 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
     const message = error instanceof Error ? error.message : String(error);
     console.error('[StreamViewer] WebRTC error', message);
     setLastError(message);
-    scheduleReconnect();
-  }, [scheduleReconnect]);
+
+    // Don't reconnect on every error - some errors are transient
+    // Only reconnect if we're not already in a reconnection state
+    if (connectionState === 'connected') {
+      scheduleReconnect();
+    }
+  }, [scheduleReconnect, connectionState]);
+
+  // Cleanup reconnection timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (reconnectTimeoutRef.current) {
+        clearTimeout(reconnectTimeoutRef.current);
+      }
+    };
+  }, []);
 
   const resolvedEndpoint = activeTicket?.grpcUrl ?? activeTicket?.url;
 
@@ -102,6 +142,7 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
       <div className="stream-viewer-error">
         <p>WebRTC stream unavailable</p>
         {lastError && <p>{lastError}</p>}
+        {reconnectAttempts > 0 && <p>Reconnection attempts: {reconnectAttempts}</p>}
       </div>
     );
   }
@@ -113,13 +154,15 @@ const StreamViewer = ({ streamTicket, state }: StreamViewerProps) => {
         uri={resolvedEndpoint}
         view="webrtc"
         muted
-        poll={false}
+        poll={true}
         onStateChange={handleStateChange}
         onError={handleError}
       />
       {connectionState !== 'connected' && (
         <div className="stream-viewer-status">
-          {connectionState === 'connecting' ? 'Connecting Stream…' : 'Initialising Stream…'}
+          {connectionState === 'connecting' ?
+            (reconnectAttempts > 0 ? `Reconnecting (attempt ${reconnectAttempts})…` : 'Connecting Stream…')
+            : 'Initialising Stream…'}
         </div>
       )}
     </div>
