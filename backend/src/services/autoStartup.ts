@@ -249,14 +249,15 @@ export async function runStartupAutomation(): Promise<void> {
   let installedPackages: string[] = [];
 
   try {
-    // Step 1: Install CA certificate (non-fatal)
+    // Step 1: Set up GPS location services (PRIORITY - doesn't affect network)
     try {
-      await installCertificate(serial);
+      await setupGPSLocation(serial);
+      await logStartup('✅ GPS setup completed successfully');
     } catch (error) {
-      await logStartup('Skipping certificate installation', { error: (error as Error).message });
+      await logStartup('GPS setup failed - critical for functionality', { error: (error as Error).message });
     }
 
-    // Step 2: Find and install XAPK files from library
+    // Step 2: Find and install XAPK files from library (network dependent)
     try {
       const libraryFiles = await readdir(appPaths.libraryDir);
       const xapkFiles = libraryFiles.filter(f => f.endsWith('.xapk'));
@@ -278,21 +279,7 @@ export async function runStartupAutomation(): Promise<void> {
       await logStartup('Failed to scan library directory', { error: (error as Error).message });
     }
 
-    // Step 3: Set up GPS location services
-    try {
-      await setupGPSLocation(serial);
-    } catch (error) {
-      await logStartup('Skipping GPS setup', { error: (error as Error).message });
-    }
-
-    // Step 4: Start proxy capture (non-fatal)
-    try {
-      await startProxyCaptureWithLogging(serial);
-    } catch (error) {
-      await logStartup('Skipping proxy capture', { error: (error as Error).message });
-    }
-
-    // Step 5: Launch first installed app
+    // Step 3: Launch first installed app (after GPS and apps are ready)
     if (installedPackages.length > 0) {
       const firstPackage = installedPackages[0];
       await logStartup(`Launching app: ${firstPackage}`);
@@ -309,6 +296,20 @@ export async function runStartupAutomation(): Promise<void> {
       } catch (error) {
         await logStartup('Failed to launch app', { error: (error as Error).message });
       }
+    }
+
+    // Step 4: Install CA certificate (OPTIONAL - may affect network, done last)
+    try {
+      await installCertificate(serial);
+    } catch (error) {
+      await logStartup('Skipping certificate installation (network stability)', { error: (error as Error).message });
+    }
+
+    // Step 4: Start proxy capture (OPTIONAL - may affect network, done last)
+    try {
+      await startProxyCaptureWithLogging(serial);
+    } catch (error) {
+      await logStartup('Skipping proxy capture (network stability)', { error: (error as Error).message });
     }
 
     await logStartup('=== Auto-Startup Automation Complete ===', {
