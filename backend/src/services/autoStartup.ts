@@ -22,6 +22,95 @@ const STARTUP_LOG_FILE = path.join(appPaths.logsDir, 'auto-startup.log');
 const PROXY_CAPTURE_LOG = path.join(appPaths.logsDir, 'proxy-capture.log');
 
 /**
+ * Set up GPS location services
+ * Configures location provider and sets initial GPS location
+ */
+async function setupGPSLocation(serial: string): Promise<void> {
+  await logStartup('Setting up GPS location services...');
+
+  try {
+    // Check if emulator is ready for GPS commands
+    const bootCheck = await execAsync(`adb -s ${serial} shell getprop sys.boot_completed`);
+    if (bootCheck.stdout.trim() !== '1') {
+      throw new Error('Emulator not fully booted');
+    }
+
+    // Enable location providers
+    await execAsync(`adb -s ${serial} shell settings put secure location_providers_allowed +gps`);
+    await execAsync(`adb -s ${serial} shell settings put secure location_providers_allowed +network`);
+    await logStartup('Location providers enabled');
+
+    // Set initial GPS location (Tours, France)
+    const CONTAINER_ID = "3c75e7304ff6";
+    const AUTH_TOKEN = "v0y2z0gSoz7JAyqD";
+    const TARGET_LAT = "47.3878278";
+    const TARGET_LNG = "0.6737631";
+    const TARGET_ALT = "120";
+
+    // Use Docker container approach for GPS commands
+    const gpsCommand = `docker exec -i ${CONTAINER_ID} bash -lc 'printf "auth %s\\r\\ngeo fix %s %s %s\\r\\nquit\\r\\n" "$(cat ~/.emulator_console_auth_token)" | nc -w 2 localhost 5556'`;
+    const fullCommand = gpsCommand
+      .replace('%s', AUTH_TOKEN)
+      .replace('%s', TARGET_LNG)
+      .replace('%s', TARGET_LAT)
+      .replace('%s', TARGET_ALT);
+
+    await execAsync(fullCommand);
+    await logStartup('GPS location set to Tours, France', { lat: TARGET_LAT, lng: TARGET_LNG, alt: TARGET_ALT });
+
+    // Verify GPS is working
+    const { stdout: gpsStatus } = await execAsync(`adb -s ${serial} shell dumpsys location | grep -A5 "gps provider"`);
+
+    if (gpsStatus.includes('enabled=true') && gpsStatus.includes('last location=Location[gps')) {
+      await logStartup('✅ GPS setup completed successfully');
+
+      // Start GPS daemon for real-time updates
+      const daemonCommand = `
+        # Create GPS control directory
+        mkdir -p /tmp/gps_control
+
+        # Write current location file
+        echo "lat=${TARGET_LAT}" > /tmp/gps_control/current_location.txt
+        echo "lng=${TARGET_LNG}" >> /tmp/gps_control/current_location.txt
+        echo "alt=${TARGET_ALT}" >> /tmp/gps_control/current_location.txt
+
+        # Start GPS daemon
+        while true; do
+          if [ -f "/tmp/gps_control/update_location.txt" ]; then
+            # Read new coordinates
+            source /tmp/gps_control/update_location.txt
+
+            # Update GPS location
+            docker exec -i ${CONTAINER_ID} bash -lc 'printf "auth %s\\r\\ngeo fix %s %s %s\\r\\nquit\\r\\n" "$(cat ~/.emulator_console_auth_token)" | nc -w 2 localhost 5556' \
+              -- "${AUTH_TOKEN}" "${lng}" "${lat}" "${alt}"
+
+            # Update current location file
+            echo "lat=${lat}" > /tmp/gps_control/current_location.txt
+            echo "lng=${lng}" >> /tmp/gps_control/current_location.txt
+            echo "alt=${alt}" >> /tmp/gps_control/current_location.txt
+
+            # Remove update file
+            rm -f /tmp/gps_control/update_location.txt
+
+            echo "GPS location updated to: ${lat}, ${lng}, ${alt}"
+          fi
+          sleep 1
+        done
+      `;
+
+      await execAsync(`nohup bash -c '${daemonCommand}' > /tmp/gps_control/daemon.log 2>&1 &`);
+      await logStartup('GPS daemon started for real-time updates');
+
+    } else {
+      throw new Error('GPS verification failed');
+    }
+
+  } catch (error) {
+    throw new Error(`GPS setup failed: ${(error as Error).message}`);
+  }
+}
+
+/**
  * Log to both console and startup log file
  */
 async function logStartup(message: string, data?: any) {
@@ -189,14 +278,21 @@ export async function runStartupAutomation(): Promise<void> {
       await logStartup('Failed to scan library directory', { error: (error as Error).message });
     }
 
-    // Step 3: Start proxy capture (non-fatal)
+    // Step 3: Set up GPS location services
+    try {
+      await setupGPSLocation(serial);
+    } catch (error) {
+      await logStartup('Skipping GPS setup', { error: (error as Error).message });
+    }
+
+    // Step 4: Start proxy capture (non-fatal)
     try {
       await startProxyCaptureWithLogging(serial);
     } catch (error) {
       await logStartup('Skipping proxy capture', { error: (error as Error).message });
     }
 
-    // Step 4: Launch first installed app
+    // Step 5: Launch first installed app
     if (installedPackages.length > 0) {
       const firstPackage = installedPackages[0];
       await logStartup(`Launching app: ${firstPackage}`);

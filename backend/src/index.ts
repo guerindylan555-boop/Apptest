@@ -4,7 +4,6 @@ import { initializeRepository } from './services/apps/appsRepository';
 import { startScheduler, stopScheduler } from './services/apps/retentionScheduler';
 import { initializeActivityLog } from './state/appsStore';
 import { startEmulator } from './services/emulatorLifecycle';
-import gpsService from './services/gpsService';
 
 const PORT = Number.parseInt(process.env.PORT ?? '3001', 10);
 const HOST = process.env.HOST ?? '0.0.0.0';
@@ -21,17 +20,6 @@ async function bootstrap() {
     // Start retention scheduler
     startScheduler();
     logger.info('Retention scheduler started');
-
-    // Initialize GPS Service (non-blocking)
-    gpsService.initialize().then((success) => {
-      if (success) {
-        logger.info('GPS Service initialized successfully');
-      } else {
-        logger.warn('GPS Service initialization failed - GPS control may not be available');
-      }
-    }).catch((error) => {
-      logger.error('GPS Service initialization error', error);
-    });
 
     if (EXTERNAL_MODE) {
       try {
