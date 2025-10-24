@@ -27,6 +27,7 @@ export interface HealthPayload {
   pid?: number;
   ports?: { console: number; adb: number };
   streamAttached: boolean;
+  streamerActive?: boolean;
   lastError?: { code: string; message: string; hint?: string; occurredAt: string };
   forceStopRequired?: boolean;
   timestamps: {
@@ -39,6 +40,8 @@ export interface StreamTicket {
   url: string;
   token: string;
   expiresAt: string;
+  grpcUrl?: string;
+  iceServers?: string[];
 }
 
 const request = async <T>(path: string, options?: RequestInit): Promise<T> => {
@@ -59,17 +62,66 @@ const request = async <T>(path: string, options?: RequestInit): Promise<T> => {
   return payload as T;
 };
 
-export const startEmulator = () =>
-  request<{ state: EmulatorState; message: string }>('/emulator/start', {
+export const restartEmulator = () =>
+  request<{ state: EmulatorState; message: string }>('/emulator/restart', {
     method: 'POST'
-  });
-
-export const stopEmulator = (force = false) =>
-  request<{ state: EmulatorState; message: string }>('/emulator/stop', {
-    method: 'POST',
-    body: JSON.stringify({ force })
   });
 
 export const fetchHealth = () => request<HealthPayload>('/health', { method: 'GET' });
 
 export const fetchStreamUrl = () => request<StreamTicket>('/stream/url', { method: 'GET' });
+
+export const fetchLogs = (target: 'emulator' | 'streamer', limit?: number) => {
+  const query = limit ? `?limit=${limit}` : '';
+  return request<{ target: string; lines: string[] }>(`/logs/${target}${query}`, {
+    method: 'GET'
+  });
+};
+
+export type UiDiscoveryAction = {
+  id: string;
+  label: string;
+  className?: string;
+  text?: string;
+  contentDesc?: string;
+  resourceId?: string;
+  bounds: {
+    left: number;
+    top: number;
+    right: number;
+    bottom: number;
+  };
+  center: { x: number; y: number };
+};
+
+export type UiDiscoveryScreen = {
+  id: string;
+  hash: string;
+  path: string[];
+  xmlPath: string;
+  screenshotPath: string;
+  actions: UiDiscoveryAction[];
+};
+
+export type UiDiscoveryResult = {
+  runId: string;
+  startedAt: string;
+  completedAt: string;
+  deviceSerial: string;
+  screenCount: number;
+  transitionCount: number;
+  runDirectory: string;
+  screens: UiDiscoveryScreen[];
+  transitions: Array<{
+    from: string;
+    to: string;
+    actionId: string;
+    label: string;
+  }>;
+};
+
+export const runUiDiscovery = (payload?: { maxDepth?: number; maxActionsPerScreen?: number; serial?: string }) =>
+  request<UiDiscoveryResult>('/automation/ui-discovery/run', {
+    method: 'POST',
+    body: JSON.stringify(payload ?? {})
+  });

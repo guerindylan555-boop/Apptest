@@ -14,6 +14,9 @@ const getAndroidEnv = (customEnv?: NodeJS.ProcessEnv): NodeJS.ProcessEnv => {
   const homeDir = process.env.HOME || '/root';
   const androidRoot = process.env.ANDROID_SDK_ROOT?.replace(/^~/, homeDir) || `${homeDir}/Android`;
   const javaHome = process.env.JAVA_HOME || '/usr/lib/jvm/java-17-openjdk-amd64';
+  const adbServerPort = process.env.ADB_SERVER_PORT ?? process.env.ANDROID_ADB_SERVER_PORT ?? '5555';
+  const adbServerSocket =
+    process.env.ADB_SERVER_SOCKET ?? `tcp:127.0.0.1:${adbServerPort}`;
   const pathAdditions = [
     `${androidRoot}/cmdline-tools/latest/bin`,
     `${androidRoot}/platform-tools`,
@@ -32,7 +35,10 @@ const getAndroidEnv = (customEnv?: NodeJS.ProcessEnv): NodeJS.ProcessEnv => {
     ADB: expandPath(process.env.ADB) || `${androidRoot}/platform-tools/adb`,
     EMULATOR: expandPath(process.env.EMULATOR) || `${androidRoot}/emulator/emulator`,
     AVDMANAGER: expandPath(process.env.AVDMANAGER) || `${androidRoot}/cmdline-tools/latest/bin/avdmanager`,
-    LD_LIBRARY_PATH: `${androidRoot}/emulator/lib64:${process.env.LD_LIBRARY_PATH || ''}`
+    LD_LIBRARY_PATH: `${androidRoot}/emulator/lib64:${process.env.LD_LIBRARY_PATH || ''}`,
+    ANDROID_ADB_SERVER_PORT: adbServerPort,
+    ADB_SERVER_PORT: adbServerPort,
+    ADB_SERVER_SOCKET: adbServerSocket
   };
 };
 
@@ -91,9 +97,9 @@ export const launchEmulator = (
   args: string[],
   options?: SpawnOptions
 ): ChildProcess => {
-  // Use wrapper script to ensure proper environment
-  const wrapperScript = '/home/blhack/project/Apptest/backend/scripts/launch-emulator.sh';
-  return spawn(wrapperScript, args, {
+  // Direct emulator command - no wrapper script needed
+  const emulatorBin = process.env.EMULATOR || 'emulator';
+  return spawn(emulatorBin, args, {
     stdio: ['ignore', 'pipe', 'pipe'],
     ...options,
     env: getAndroidEnv(options?.env)

@@ -12,6 +12,7 @@ interface AppState {
   pid?: number;
   bootElapsedMs?: number;
   ports?: { console: number; adb: number };
+  streamerActive?: boolean;
   setState: (state: Partial<AppState>) => void;
   setTransitioning: (flag: boolean) => void;
   reset(): void;
@@ -26,6 +27,7 @@ export const useAppStore = create<AppState>((set) => ({
   pid: undefined,
   bootElapsedMs: undefined,
   ports: undefined,
+  streamerActive: undefined,
   setState: (state) => set(state),
   setTransitioning: (flag) => set({ isTransitioning: flag }),
   reset: () =>
@@ -37,6 +39,7 @@ export const useAppStore = create<AppState>((set) => ({
       forceStopRequired: false,
       pid: undefined,
       bootElapsedMs: undefined,
-      ports: undefined
+      ports: undefined,
+      streamerActive: undefined
     })
 }));

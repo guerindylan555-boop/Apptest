@@ -11,7 +11,7 @@ const NavSidebar = () => {
 
   const navItems = [
     { path: '/', label: 'Emulator', icon: '📱' },
-    { path: '/apps', label: 'Apps', icon: '📦' }
+    { path: '/automation', label: 'Automation', icon: '🤖' }
   ];
 
   const isActive = (path: string) => {

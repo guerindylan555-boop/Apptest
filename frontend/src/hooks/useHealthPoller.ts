@@ -28,7 +28,8 @@ export const useHealthPoller = () => {
           pid: payload.pid,
           bootElapsedMs: payload.bootElapsedMs,
           ports: payload.ports ?? undefined,
-          forceStopRequired: payload.forceStopRequired ?? false
+          forceStopRequired: payload.forceStopRequired ?? false,
+          streamerActive: payload.streamerActive
         });
         setTransitioning(payload.state === 'Booting' || payload.state === 'Stopping');
 

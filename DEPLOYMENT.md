@@ -4,21 +4,14 @@
 
 - Docker and Docker Compose installed on your VPS
 - Dokploy installed and running on your VPS
-- Port forwarding configured (ports 3001, 5173, 8000)
+- Port forwarding configured (ports 3001, 5173, 8000, 5555)
 
 ## Local Development
 
 ### Running with Docker Compose
 
-The docker-compose.yml runs the frontend and backend. ws-scrcpy must be run separately on the host.
+The docker-compose.yml now runs the backend (API + emulator + ws-scrcpy) and the frontend together. Hardware acceleration is enabled automatically when `/dev/kvm` is available on the host.
 
-**Step 1: Start ws-scrcpy on the host**
-```bash
-cd ws-scrcpy
-npm start
-```
-
-**Step 2: Start frontend and backend with Docker**
 ```bash
 docker-compose up --build
 ```
@@ -26,7 +19,8 @@ docker-compose up --build
 Services will be available at:
 - Frontend: http://localhost:5173
 - Backend API: http://localhost:3001
-- ws-scrcpy: http://localhost:8000 (running on host)
+- Stream (ws-scrcpy): http://localhost:8000
+- ADB (TCP): localhost:5555
 
 ## Deploying with Dokploy
 
@@ -38,35 +32,29 @@ Services will be available at:
    - Select "Docker Compose"
    - Connect your Git repository or upload the project
 
-2. **Run ws-scrcpy on the host (before deploying)**
-   ws-scrcpy is not included in the Docker Compose and must run on the host:
-   ```bash
-   cd ws-scrcpy
-   npm start
+2. **Configure Environment Variables**
+   Add these environment variables in Dokploy if you need to override defaults:
    ```
-
-3. **Configure Environment Variables**
-   Add these environment variables in Dokploy (optional, defaults are provided):
-   ```
-   WS_SCRCPY_HOST=localhost  # or your VPS IP
    WS_SCRCPY_PORT=8000
-   WS_SCRCPY_PLAYER=mse
-   EMULATOR_SERIAL=emulator-5555
+   WS_SCRCPY_PLAYER=webcodecs
+   ADB_SERVER_PORT=5555
+   EMULATOR_CONSOLE_PORT=5554
+   EMULATOR_ADB_PORT=5555
    ```
 
-4. **Configure Domains**
+3. **Configure Domains**
    Set up domains for each service:
    - Frontend: `app.yourdomain.com`
    - Backend: `api.yourdomain.com`
 
-5. **Deploy**
+4. **Deploy**
    - Click "Deploy" in Dokploy
    - Dokploy will build and start your containers
    - SSL certificates will be automatically provisioned
 
 ### Note about ws-scrcpy
 
-ws-scrcpy runs separately on the host machine (not in Docker). The backend connects to it via `host.docker.internal:8000`. Make sure ws-scrcpy is running before starting the Docker services.
+The backend container now bundles ws-scrcpy and manages it automatically. No host-level process is required. The streamer listens on port 8000 inside the container and is exposed through Docker Compose for the frontend to embed.
 
 ## Accessing from Local Machine
 
@@ -116,6 +104,7 @@ sudo ufw allow 443/tcp
 # Allow application ports (if not using reverse proxy)
 sudo ufw allow 3001/tcp
 sudo ufw allow 5173/tcp
+sudo ufw allow 5555/tcp
 sudo ufw allow 8000/tcp
 
 # Enable firewall
@@ -149,25 +138,17 @@ docker-compose up --build -d
 
 ### Check if ports are listening
 ```bash
-netstat -tuln | grep -E '3001|5173|8000'
+netstat -tuln | grep -E '3001|5037|5173|8000'
 ```
 
 ## Android Emulator Notes
 
-The backend includes Android SDK and emulator support. To use:
+The backend Docker image now ships with just the Android platform-tools so it can talk to an externally managed emulator. To stream successfully:
 
-1. Create an AVD (Android Virtual Device):
-```bash
-docker exec -it apptest-backend bash
-avdmanager create avd -n test -k "system-images;android-33;google_apis;x86_64"
-```
-
-2. Start the emulator:
-```bash
-emulator -avd test -no-window -no-audio
-```
-
-3. The ws-scrcpy service will stream the emulator screen to the frontend.
+1. Start your Android emulator on a host or VM that has network access to the backend container.
+2. Run `ws-scrcpy` on the same host and point it at the backend's ADB server (`ADB_SERVER_SOCKET=tcp:<backend-host>:5037`).
+3. Set `WS_SCRCPY_HOST`, `WS_SCRCPY_PORT`, and `EMULATOR_SERIAL` in the backend environment so stream tickets point to the external streamer.
+4. From the host running ws-scrcpy, verify connectivity: `adb connect <backend-host>:5555` (if needed) and `nc -zv <backend-host> 5037`.
 
 ## Production Considerations
 

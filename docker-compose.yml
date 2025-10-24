@@ -1,24 +1,8 @@
 services:
-  ws-scrcpy:
-    build:
-      context: ./ws-scrcpy
-      dockerfile: Dockerfile
-    container_name: apptest-ws-scrcpy
-    ports:
-      - "8000:8000"
-    privileged: true
-    volumes:
-      - android-data:/opt/android-sdk
-    networks:
-      - apptest-network
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    restart: unless-stopped
-
   backend:
     build:
-      context: ./backend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: backend/Dockerfile
     container_name: apptest-backend
     ports:
       - "3001:3001"
@@ -29,19 +13,49 @@ services:
       - LOG_LEVEL=info
       - CORS_ALLOWED_ORIGINS=*
       - EXTERNAL_EMULATOR=true
-      - WS_SCRCPY_HOST=${WS_SCRCPY_HOST:-ws-scrcpy}
-      - WS_SCRCPY_PORT=${WS_SCRCPY_PORT:-8000}
-      - WS_SCRCPY_PLAYER=${WS_SCRCPY_PLAYER:-mse}
-      - EMULATOR_SERIAL=${EMULATOR_SERIAL:-emulator-5554}
+      - EXTERNAL_EMULATOR_HOST=${EXTERNAL_EMULATOR_HOST:-host.docker.internal}
+      - EXTERNAL_EMULATOR_ADB_PORT=${EXTERNAL_EMULATOR_ADB_PORT:-5555}
+      - EMULATOR_GRPC_ENDPOINT=${EMULATOR_GRPC_ENDPOINT:-http://envoy:8080}
+      - EMULATOR_WEBRTC_PUBLIC_URL=${EMULATOR_WEBRTC_PUBLIC_URL:-http://82.165.175.97:9000}
+      - EMULATOR_WEBRTC_ICE_SERVERS=${EMULATOR_WEBRTC_ICE_SERVERS:-stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302}
     volumes:
-      - android-data:/opt/android-sdk
-    networks:
-      - apptest-network
+      - ./var/autoapp:/var/autoapp  # Mount app library and logs
+      - adb-keys:/root/.android  # Share ADB keys with emulator
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    networks:
+      - apptest-network
     restart: unless-stopped
+
+  emulator:
+    image: us-docker.pkg.dev/android-emulator-268719/images/30-google-x64:30.1.2
+    container_name: apptest-emulator
+    network_mode: host
+    devices:
+      - /dev/kvm:/dev/kvm
+    environment:
+      - AVD_CONFIG=hw.cpu.ncore=4
+      - ADBKEY=${ADBKEY:-}  # ADB key will be read from shared volume
+      - WEBRTC_PORT_RANGE=53000-53100
+    volumes:
+      - adb-keys:/root/.android  # Share ADB keys with backend
+    shm_size: 1g
+    restart: unless-stopped
+
+  envoy:
+    image: envoyproxy/envoy:v1.30-latest
+    container_name: apptest-envoy
     depends_on:
-      - ws-scrcpy
+      - emulator
+    volumes:
+      - ./infra/envoy/envoy.yaml:/etc/envoy/envoy.yaml:ro
+    ports:
+      - "9000:8080"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - apptest-network
+    restart: unless-stopped
 
   frontend:
     build:
@@ -56,9 +70,9 @@ services:
     depends_on:
       - backend
 
-volumes:
-  android-data:
-
 networks:
   apptest-network:
     driver: bridge
+
+volumes:
+  adb-keys:  # Shared volume for ADB authentication keys

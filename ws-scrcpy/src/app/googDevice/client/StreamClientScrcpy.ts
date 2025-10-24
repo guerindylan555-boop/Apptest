@@ -47,6 +47,8 @@ export class StreamClientScrcpy
 {
     public static ACTION = 'stream';
     private static players: Map<string, PlayerClass> = new Map<string, PlayerClass>();
+    // Reasonable, crisp defaults for portrait phones; still lightweight to encode.
+    private static readonly EMBEDDED_DEFAULT_BOUNDS = new Size(720, 1280);
 
     private controlButtons?: HTMLElement;
     private deviceName = '';
@@ -267,11 +269,11 @@ export class StreamClientScrcpy
         }
 
         this.fitToScreen = fitToScreen;
+        let displayInfo: DisplayInfo | undefined;
         if (!player) {
             if (typeof playerName !== 'string') {
                 throw Error('Must provide BasePlayer instance or playerName');
             }
-            let displayInfo: DisplayInfo | undefined;
             if (this.streamReceiver && videoSettings) {
                 displayInfo = this.streamReceiver.getDisplayInfo(videoSettings.displayId);
             }
@@ -289,6 +291,39 @@ export class StreamClientScrcpy
 
         if (!videoSettings) {
             videoSettings = player.getVideoSettings();
+        }
+
+        // Enhanced resolution for embedded mode on first load
+        const isEmbedded = document.body.classList.contains('embedded');
+        let persistAdjusted = false;
+        
+        if (isEmbedded && displayInfo && (!videoSettings?.bounds || !videoSettings.bounds.width || !videoSettings.bounds.height)) {
+            // Compute target size based on container width, keep device aspect.
+            const containerEl = document.querySelector('.device-view')?.parentElement ?? document.body;
+            const rect = containerEl.getBoundingClientRect();
+            const containerCssPx = Math.max(1, Math.floor(rect.width));
+
+            // Device aspect from display info if available; fallback to 1080x2400 (~9:20).
+            const deviceW = displayInfo?.size?.width ?? 1080;
+            const deviceH = displayInfo?.size?.height ?? 2400;
+            const aspect = deviceW / deviceH; // < 1 for portrait
+
+            // Cap requested width: don't exceed container CSS px * DPR, and clamp to device size & a safety cap.
+            const dpr = Math.max(1, Math.floor(window.devicePixelRatio || 1));
+            const maxWidth = Math.min(containerCssPx * dpr, deviceW, 1280); // keep encoding cost sane
+            let w = Math.max(StreamClientScrcpy.EMBEDDED_DEFAULT_BOUNDS.width, Math.floor(maxWidth));
+            let h = Math.floor(w / aspect);
+            // Round down to multiples of 16 (H.264 friendly)
+            w -= (w % 16); h -= (h % 16);
+            if (w < 16 || h < 16) {
+                w = StreamClientScrcpy.EMBEDDED_DEFAULT_BOUNDS.width;
+                h = StreamClientScrcpy.EMBEDDED_DEFAULT_BOUNDS.height;
+            }
+
+            const desired = new Size(w, h);
+            videoSettings = StreamClientScrcpy.createVideoSettingsWithBounds(videoSettings, desired);
+            this.requestedVideoSettings = videoSettings;
+            persistAdjusted = true; // save once so reconnects reuse it
         }
 
         const deviceView = document.createElement('div');
@@ -335,7 +370,7 @@ export class StreamClientScrcpy
                 videoSettings = StreamClientScrcpy.createVideoSettingsWithBounds(videoSettings, newBounds);
             }
         }
-        this.applyNewVideoSettings(videoSettings, false);
+        this.applyNewVideoSettings(videoSettings, persistAdjusted);
         const element = player.getTouchableElement();
         const logger = new DragAndPushLogger(element);
         this.filePushHandler = new FilePushHandler(element, new ScrcpyFilePushStream(this.streamReceiver));

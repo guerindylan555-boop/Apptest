@@ -3,7 +3,7 @@
 ## Log Locations
 - Backend orchestrator: `var/log/autoapp/backend.log`
 - Backend dev server (when launched via script): `var/log/autoapp/backend-dev.log`
-- ws-scrcpy streamer: `var/log/autoapp/ws-scrcpy.log`
+- ws-scrcpy streamer: `var/log/autoapp/ws-scrcpy.log` (or host-level logs if running outside Docker)
 - Frontend dev server: `var/log/autoapp/frontend-dev.log`
 - Emulator: `${ANDROID_SDK_ROOT}/emulator/logs/` and `~/.android/avd/autoapp-local.avd/*.log`
 
@@ -25,7 +25,8 @@
 1. Re-run `./scripts/run-everything.sh` to recycle all streamer/backend/frontend processes and free port 8000.
 2. Inspect `var/log/autoapp/ws-scrcpy.log` for `EADDRINUSE` or decoder errors; resolve port conflicts (kill stray `node ./index.js` processes) before retrying.
 3. Confirm the backend is issuing WebCodecs tickets: `curl http://<server-host>:3001/api/stream/url` should return a URL containing `player=webcodecs` when the emulator is Running.
-4. Open `http://<server-host>:8000/` only for diagnostics; the embedded iframe should attach automatically without manually selecting a player.
+4. Ensure ws-scrcpy can reach the backend's ADB server: from the host running ws-scrcpy run `nc -zv <backend-host> 5037`.
+5. Open `http://<server-host>:8000/` only for diagnostics; the embedded iframe should attach automatically without manually selecting a player.
 
 ### Health endpoint unreachable
 **Symptoms**: UI switches to Error with hint to check backend service.

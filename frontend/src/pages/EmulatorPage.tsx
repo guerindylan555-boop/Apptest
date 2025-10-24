@@ -1,107 +1,111 @@
-import { useCallback } from 'react';
+import { useCallback, useMemo, useEffect, useState } from 'react';
 import { useAppStore } from '../state/useAppStore';
 import StateBadge from '../components/StateBadge';
-import ControlButton from '../components/ControlButton';
 import StreamViewer from '../components/StreamViewer';
+import { GPSController } from '../components/GPSController';
 import ErrorBanner from '../components/ErrorBanner';
 import DiagnosticsDrawer from '../components/DiagnosticsDrawer';
-import { startEmulator, stopEmulator } from '../services/backendClient';
+import { fetchStreamUrl, fetchLogs, restartEmulator as restartEmulatorApi } from '../services/backendClient';
 import { useHealthPoller } from '../hooks/useHealthPoller';
 
 const EmulatorPage = () => {
   const emulatorState = useAppStore((state) => state.emulatorState);
-  const isTransitioning = useAppStore((state) => state.isTransitioning);
   const streamTicket = useAppStore((state) => state.streamTicket);
   const setState = useAppStore((state) => state.setState);
-  const setTransitioning = useAppStore((state) => state.setTransitioning);
   const lastError = useAppStore((state) => state.lastError);
-  const forceStopRequired = useAppStore((state) => state.forceStopRequired);
   const pid = useAppStore((state) => state.pid);
   const bootElapsedMs = useAppStore((state) => state.bootElapsedMs);
   const ports = useAppStore((state) => state.ports);
+  const streamerActive = useAppStore((state) => state.streamerActive);
+  const isTransitioning = useAppStore((state) => state.isTransitioning);
+  const setTransitioning = useAppStore((state) => state.setTransitioning);
 
   useHealthPoller();
 
-  const handleButtonClick = useCallback(async () => {
+  const [emulatorLogs, setEmulatorLogs] = useState<string[]>([]);
+  const [streamerLogs, setStreamerLogs] = useState<string[]>([]);
+
+  const handleRefreshStream = useCallback(async () => {
+    try {
+      const ticket = await fetchStreamUrl();
+      setState({ streamTicket: ticket, lastError: undefined });
+    } catch (error) {
+      setState({
+        lastError: {
+          code: 'STREAM_TICKET_FAILED',
+          message: error instanceof Error ? error.message : 'Unable to refresh stream ticket'
+        }
+      });
+    }
+  }, [setState]);
+
+  const handleRestart = useCallback(async () => {
+    if (isTransitioning) return;
     setTransitioning(true);
     try {
-      if (emulatorState === 'Running') {
-        await stopEmulator();
-      } else {
-        await startEmulator();
+      await restartEmulatorApi();
+      await handleRefreshStream();
+    } catch (error) {
+      setState({
+        lastError: {
+          code: 'RESTART_FAILED',
+          message: error instanceof Error ? error.message : 'Failed to restart emulator',
+          hint: 'Verify emulator tooling inside the container.'
+        }
+      });
+    } finally {
+      setTransitioning(false);
+    }
+  }, [handleRefreshStream, isTransitioning, setState, setTransitioning]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const pollLogs = async () => {
+      try {
+        const [emu, streamer] = await Promise.all([
+          fetchLogs('emulator', 200),
+          fetchLogs('streamer', 200)
+        ]);
+        if (cancelled) return;
+        setEmulatorLogs(emu.lines);
+        setStreamerLogs(streamer.lines);
+      } catch (error) {
+        if (!cancelled) {
+          console.warn('[EmulatorPage] log poll failed', error);
+        }
       }
-      setState({ lastError: undefined });
-    } catch (error) {
-      setState({
-        emulatorState: 'Error',
-        lastError: {
-          code: emulatorState === 'Running' ? 'STOP_FAILED' : 'BOOT_FAILED',
-          message: error instanceof Error ? error.message : 'Emulator lifecycle command failed'
-        }
-      });
-    } finally {
-      setTransitioning(false);
+    };
+
+    void pollLogs();
+    const interval = setInterval(pollLogs, 4000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  const errorActions = useMemo(() => {
+    if (!lastError) {
+      return undefined;
     }
-  }, [emulatorState, setState, setTransitioning]);
-
-  const isRunning = emulatorState === 'Running';
-  const buttonLabel = emulatorState === 'Stopping' ? 'Stopping...' :
-                     emulatorState === 'Booting' ? 'Starting...' :
-                     isRunning ? 'Stop Emulator' : 'Start Emulator';
-  const intent = isRunning ? 'stop' : 'start';
-  const disableButton =
-    isTransitioning || emulatorState === 'Stopping' || emulatorState === 'Booting';
-
-  const handleForceStop = useCallback(async () => {
-    setTransitioning(true);
-    try {
-      await stopEmulator(true);
-      setState({ forceStopRequired: false, lastError: undefined });
-    } catch (error) {
-      setState({
-        lastError: {
-          code: 'FORCE_STOP_FAILED',
-          message: error instanceof Error ? error.message : 'Force stop failed'
+    if (['STREAM_RETRY', 'STREAM_TICKET_FAILED', 'STREAM_TICKET_UNAVAILABLE'].includes(lastError.code)) {
+      return [
+        {
+          label: 'Refresh Stream',
+          onClick: handleRefreshStream,
+          primary: true
         }
-      });
-    } finally {
-      setTransitioning(false);
+      ];
     }
-  }, [setState, setTransitioning]);
-
-  const handleRetry = useCallback(async () => {
-    setTransitioning(true);
-    try {
-      setState({ lastError: undefined });
-      if (emulatorState === 'Error' || emulatorState === 'Stopped') {
-        await startEmulator();
-      }
-    } catch (error) {
-      setState({
-        lastError: {
-          code: 'RETRY_FAILED',
-          message: error instanceof Error ? error.message : 'Retry failed'
-        }
-      });
-    } finally {
-      setTransitioning(false);
-    }
-  }, [emulatorState, setState, setTransitioning]);
-
-  // Determine if retry action should be shown
-  const showRetry = lastError && (
-    lastError.code === 'BOOT_FAILED' ||
-    lastError.code === 'STREAM_TICKET_FAILED' ||
-    lastError.code === 'RETRY_FAILED' ||
-    lastError.code === 'HEALTH_UNREACHABLE'
-  );
+    return undefined;
+  }, [handleRefreshStream, lastError]);
 
   return (
     <div style={{ padding: '2rem' }}>
       <header style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
         <div>
           <h1 style={{ margin: 0 }}>Emulator Control</h1>
-          <p style={{ margin: 0, color: '#666' }}>Local-only read-only stream + lifecycle controls</p>
+          <p style={{ margin: 0, color: '#666' }}>Streaming an externally managed emulator</p>
         </div>
         <StateBadge state={emulatorState} />
       </header>
@@ -119,25 +123,41 @@ const EmulatorPage = () => {
             message={lastError.message}
             hint={lastError.hint}
             logsPath="var/log/autoapp/backend.log"
-            actions={[
-              ...(forceStopRequired ? [{ label: 'Force Stop', onClick: handleForceStop, primary: true }] : []),
-              ...(showRetry ? [{ label: 'Retry', onClick: handleRetry }] : [])
-            ]}
+            actions={errorActions}
           />
         )}
-        <section style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
-          <StreamViewer state={emulatorState} streamTicket={streamTicket} />
+        <section style={{ width: '100%', display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <StreamViewer state={emulatorState} streamTicket={streamTicket} />
+          </div>
+          <div>
+            <GPSController />
+          </div>
         </section>
 
-        <section style={{ display: 'flex', justifyContent: 'center' }}>
-          <ControlButton
-            label={buttonLabel}
-            intent={intent}
-            onClick={handleButtonClick}
-            loading={isTransitioning}
-            disabled={disableButton}
-          />
-        </section>
+        <div
+          style={{
+            display: 'flex',
+            gap: '1rem',
+            alignItems: 'center',
+            flexWrap: 'wrap'
+          }}
+        >
+          <span style={{ color: '#cbd5f5', fontSize: '0.9rem' }}>
+            Emulator runs continuously; use restart if the stream ever stalls.
+          </span>
+          <button
+            type="button"
+            onClick={handleRestart}
+            disabled={isTransitioning}
+            style={{ padding: '0.5rem 1rem' }}
+          >
+            Restart
+          </button>
+          <span style={{ color: '#93c5fd', fontSize: '0.85rem' }}>
+            Streamer: {streamerActive ? 'active' : 'offline'}
+          </span>
+        </div>
 
         <div style={{ alignSelf: 'stretch' }}>
           <DiagnosticsDrawer
@@ -147,6 +167,53 @@ const EmulatorPage = () => {
             lastError={lastError}
           />
         </div>
+
+        <section style={{ width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
+          <div
+            style={{
+              background: '#0f172a',
+              color: '#cbd5f5',
+              padding: '1rem',
+              borderRadius: '0.75rem',
+              minHeight: '220px'
+            }}
+          >
+            <h2 style={{ marginTop: 0 }}>Emulator Logs</h2>
+            <pre
+              style={{
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                maxHeight: '240px',
+                overflowY: 'auto',
+                fontSize: '0.75rem'
+              }}
+            >
+              {emulatorLogs.join('\n') || 'No emulator output yet.'}
+            </pre>
+          </div>
+          <div
+            style={{
+              background: '#0f172a',
+              color: '#cbd5f5',
+              padding: '1rem',
+              borderRadius: '0.75rem',
+              minHeight: '220px'
+            }}
+          >
+            <h2 style={{ marginTop: 0 }}>Streamer Logs</h2>
+            <pre
+              style={{
+                whiteSpace: 'pre-wrap',
+                wordBreak: 'break-word',
+                maxHeight: '240px',
+                overflowY: 'auto',
+                fontSize: '0.75rem'
+              }}
+            >
+              {streamerLogs.join('\n') || 'No streamer output yet.'}
+            </pre>
+          </div>
+        </section>
       </main>
     </div>
   );

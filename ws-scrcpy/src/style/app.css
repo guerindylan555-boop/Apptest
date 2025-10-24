@@ -90,10 +90,11 @@ body.embedded {
     padding: 0;
 }
 
+/* Fill the host container by default; the host can override --stream-max-width if needed */
 body.embedded .device-view.embedded-view {
     float: none;
     width: 100%;
-    max-width: 420px;
+    max-width: var(--stream-max-width, 100%);
     aspect-ratio: 9 / 16;
     border-radius: 16px;
     overflow: hidden;
@@ -220,4 +221,12 @@ body.embedded .device-view.embedded-view canvas {
 
 .control-wrapper > input[type=checkbox]:checked + label > svg {
     fill: var(--svg-checkbox-bg-color);
+}
+
+/* Optional: ensure canvas/video scales to container width for sharper rendering */
+body.embedded .device-view.embedded-view .video canvas,
+body.embedded .device-view.embedded-view .video video {
+    width: 100% !important;
+    height: auto !important;
+    display: block;
 }

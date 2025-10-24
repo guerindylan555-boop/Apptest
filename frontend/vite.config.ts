@@ -3,6 +3,11 @@ import react from '@vitejs/plugin-react';
 
 export default defineConfig({
   plugins: [react()],
+  resolve: {
+    alias: {
+      'android-emulator-webrtc': 'android-emulator-webrtc/dist/index.js'
+    }
+  },
   server: {
     host: '0.0.0.0',
     port: 5173

@@ -3,8 +3,16 @@ import { startEmulator } from '../../services/emulatorLifecycle';
 import { sessionStore } from '../../state/sessionStore';
 import { logger } from '../../services/logger';
 
+const EXTERNAL_MODE = process.env.EXTERNAL_EMULATOR === 'true';
+
 export const emulatorStartHandler = async (_req: Request, res: Response) => {
   const session = sessionStore.getSession();
+  if (EXTERNAL_MODE && session.state === 'Running') {
+    return res.status(200).json({
+      state: 'Running',
+      message: 'External emulator is already running'
+    });
+  }
   if (session.state === 'Booting' || session.state === 'Running' || session.state === 'Stopping') {
     return res.status(409).json({
       error: {

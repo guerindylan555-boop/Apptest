@@ -1,4 +1,5 @@
 .stream-viewer {
+  position: relative;
   width: min(420px, 100%);
   aspect-ratio: 9 / 16;
   border-radius: 1rem;
@@ -6,6 +7,26 @@
   border: 1px solid rgba(148, 163, 184, 0.3);
   box-shadow: 0 20px 60px rgba(15, 23, 42, 0.45);
   overflow: hidden;
+}
+
+.stream-viewer video {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.stream-viewer-status {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, rgba(15, 23, 42, 0.65), rgba(15, 23, 42, 0.8));
+  color: #e2e8f0;
+  font-size: 0.875rem;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  backdrop-filter: blur(1px);
 }
 
 .stream-viewer-error {
