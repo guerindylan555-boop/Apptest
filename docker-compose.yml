@@ -38,7 +38,7 @@ services:
       - ADBKEY=${ADBKEY:-}  # ADB key will be read from shared volume
       - WEBRTC_PORT_RANGE=53000-53100
     volumes:
-      - adb-keys:/root/.android  # Share ADB keys with backend
+      - emulator-home:/root  # Share ADB keys AND console auth token
     shm_size: 1g
     restart: unless-stopped
 
@@ -67,6 +67,7 @@ services:
       - ADB_SERVER_PORT=5037
     volumes:
       - ./scripts/gpsd_server.py:/opt/gpsd/server.py:ro
+      - emulator-home:/root:ro  # read the same console token
     command: |
       sh -lc "
         apk add --no-cache android-tools curl >/dev/null &&
@@ -93,4 +94,4 @@ networks:
     driver: bridge
 
 volumes:
-  adb-keys:  # Shared volume for ADB authentication keys
+  emulator-home:  # Shared volume for ADB keys and console auth token

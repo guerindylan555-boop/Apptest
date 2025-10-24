@@ -14,6 +14,19 @@ def run_adb(args, timeout=8):
                           text=True, env=env, timeout=timeout)
     return proc.returncode, proc.stdout.strip(), proc.stderr.strip()
 
+def has_console_token():
+    home = os.path.expanduser("~")
+    return os.path.isfile(os.path.join(home, ".emulator_console_auth_token"))
+
+def geo_fix_console(serial, lat, lng, alt):
+    # NOTE: order is lon lat [alt]
+    args = ["-s", serial, "emu", "geo", "fix", f"{lng:.7f}", f"{lat:.7f}"]
+    if alt is not None:
+        args.append(f"{alt:.1f}")
+    rc, out, err = run_adb(args)
+    ok = (rc == 0) and ("KO:" not in out) and ("KO:" not in err)
+    return ok, out, err
+
 def pick_emulator_serial():
     rc, out, _ = run_adb(["devices"])
     if rc != 0: return ""
@@ -146,10 +159,19 @@ class H(BaseHTTPRequestHandler):
                 lat = float(body["lat"])
                 lng = float(body["lng"])
                 alt = float(body.get("alt", 120.0))
+
+                # Try console auth method first
+                if has_console_token():
+                    ok, out, err = geo_fix_console(s, lat, lng, alt)
+                    if ok:
+                        return self._json(200, {"ok": True, "serial": s, "out": out, "err": err})
+
+                # Fallback to cmd location if available
                 if has_cmd_location(s):
                     ok, out, err = set_location_cmd(s, lat, lng, alt)
                 else:
                     ok, out, err = set_location_legacy(s, lat, lng, alt)
+
                 code = 200 if ok else 500
                 return self._json(code, {"ok": ok, "serial": s, "out": out, "err": err})
             except Exception as e:
