@@ -49,7 +49,7 @@ export class GPSService {
         return false;
       }
     } catch (error) {
-      logger.error('Failed to initialize GPS Service', error);
+      logger.error('Failed to initialize GPS Service', { error: error instanceof Error ? error.message : String(error) });
       return false;
     }
   }
