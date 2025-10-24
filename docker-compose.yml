@@ -39,11 +39,8 @@ services:
       - WEBRTC_PORT_RANGE=53000-53100
     volumes:
       - adb-keys:/root/.android  # Share ADB keys with backend
-      - ./scripts/gpsd_server.py:/opt/gpsd/server.py:ro
     shm_size: 1g
     restart: unless-stopped
-    command: ["/bin/bash","-lc",
-      "command -v python3 >/dev/null 2>&1 && nohup python3 /opt/gpsd/server.py >/opt/gpsd.log 2>&1 & true; exec /android/sdk/launch-emulator.sh"]
 
   envoy:
     image: envoyproxy/envoy:v1.30-latest
@@ -59,6 +56,24 @@ services:
     networks:
       - apptest-network
     restart: unless-stopped
+
+  gpsd:
+    image: python:3.11-alpine
+    container_name: apptest-gpsd
+    network_mode: host
+    restart: unless-stopped
+    environment:
+      - ADB_SERVER_HOST=127.0.0.1
+      - ADB_SERVER_PORT=5037
+    volumes:
+      - ./scripts/gpsd_server.py:/opt/gpsd/server.py:ro
+    command: |
+      sh -lc "
+        apk add --no-cache android-tools curl >/dev/null &&
+        python /opt/gpsd/server.py
+      "
+    depends_on:
+      - apptest-emulator
 
   frontend:
     build:
