@@ -39,11 +39,11 @@ services:
       - WEBRTC_PORT_RANGE=53000-53100
     volumes:
       - adb-keys:/root/.android  # Share ADB keys with backend
-      - ./scripts:/opt/scripts:ro  # Mount scripts directory
+      - ./scripts:/opt/scripts  # Mount scripts directory (writable for permissions)
       - gps-service:/opt/gpsd  # Persistent volume for GPS service
     shm_size: 1g
     restart: unless-stopped
-    command: ["/bin/bash", "-c", "/opt/scripts/setup_gps_microservice.sh && tail -f /dev/null"]
+    command: ["/bin/bash", "-c", "chmod +x /opt/scripts/setup_gps_microservice.sh && /opt/scripts/setup_gps_microservice.sh && tail -f /dev/null"]
 
   envoy:
     image: envoyproxy/envoy:v1.30-latest
