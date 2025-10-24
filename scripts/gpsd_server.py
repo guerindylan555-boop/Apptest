@@ -51,11 +51,28 @@ def set_location_cmd(serial, lat, lng, alt):
     return ok, out, err
 
 def set_location_legacy(serial, lat, lng, alt):
-    # Best-effort legacy fallback for older images: enable mock locations
+    # Try alternative approach using svc command and location manager broadcast
+    # Enable mock locations first
     run_adb(["-s", serial, "shell", "settings", "put", "secure", "mock_location", "1"])
-    # If you have a small companion app installed that consumes mock locations,
-    # you can trigger it here. Without an app, legacy fallback may be a no-op.
-    return False, "", "cmd location not available and no mock app installed"
+
+    # Try using am broadcast with location intent
+    location_intent = f"am broadcast -a android.location.LOCATION_CHANGED \
+                       --es provider gps \
+                       --ei latitude {int(lat * 1E6)} \
+                       --ei longitude {int(lng * 1E6)} \
+                       --ei altitude {int(alt)}"
+
+    rc, out, err = run_adb(["-s", serial, "shell", location_intent])
+    if rc == 0:
+        return True, out, err
+
+    # If broadcast fails, try using content provider to inject location
+    values = f"'latitude:{lat}', 'longitude:{lng}', 'altitude:{alt}'"
+    rc, out, err = run_adb(["-s", serial, "shell",
+                           "content", "insert", "--uri", "content://settings/secure",
+                           "--bind", "name:s:mock_location", "--bind", "value:i:1"])
+
+    return rc == 0, out, err
 
 class H(BaseHTTPRequestHandler):
     def _json(self, code, obj):
