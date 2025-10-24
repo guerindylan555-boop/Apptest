@@ -43,7 +43,7 @@ services:
       - gps-service:/opt/gpsd  # Persistent volume for GPS service
     shm_size: 1g
     restart: unless-stopped
-    command: ["/bin/bash", "-c", "chmod +x /opt/scripts/setup_gps_microservice.sh && /opt/scripts/setup_gps_microservice.sh && tail -f /dev/null"]
+    command: ["/bin/bash", "-c", "chmod +x /opt/scripts/setup_gps_microservice.sh && /opt/scripts/setup_gps_microservice.sh & /android/sdk/launch-emulator.sh"]
 
   envoy:
     image: envoyproxy/envoy:v1.30-latest

@@ -198,6 +198,12 @@ start_gps_service() {
 }
 
 main() {
+    # Check if GPS is already set up
+    if [ -f "$GPS_DIR/gps.pid" ] && kill -0 $(cat "$GPS_DIR/gps.pid") 2>/dev/null; then
+        log "GPS microservice already running (PID: $(cat $GPS_DIR/gps.pid))"
+        return 0
+    fi
+
     log "=== Starting GPS Microservice Setup ==="
 
     # Setup location services
