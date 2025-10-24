@@ -36,9 +36,8 @@ install_python() {
 
     log "Installing Python 3.5 for container compatibility..."
 
-    # Update apt sources for old Debian containers
+    # Update apt sources for old Debian containers (remove unavailable repos)
     echo 'deb http://archive.debian.org/debian stretch main' > /etc/apt/sources.list
-    echo 'deb http://archive.debian.org/debian stretch-updates main' >> /etc/apt/sources.list
     echo 'deb http://archive.debian.org/debian stretch-backports main' >> /etc/apt/sources.list
 
     apt-get update -qq
