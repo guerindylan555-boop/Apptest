@@ -245,12 +245,12 @@ export const HealthEndpoint: React.FC<HealthEndpointProps> = ({
               <div>
                 <span className="text-gray-600">Uptime:</span>
                 <span className="ml-2 font-mono">
-                  {formatUptime(process.uptime() || 0)}
+                  {formatUptime(0)}
                 </span>
               </div>
               <div>
                 <span className="text-gray-600">Version:</span>
-                <span className="ml-2 font-mono">{health.version || '1.0.0'}</span>
+                <span className="ml-2 font-mono">{(health as any).version || '1.0.0'}</span>
               </div>
             </div>
           </div>

@@ -6,17 +6,139 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import {
-  StateRecord,
-  UIGraph,
-  SnapshotRequest,
-  SnapshotResponse,
-  CreateTransitionRequest,
-  TransitionRecord,
-  MergeStatesRequest,
-  MergeStatesResponse,
-  CurrentStateResponse
-} from '../../../specs/001-ui-map-flow-engine/contracts/types';
+// Type definitions for the UI Discovery system
+interface Selector {
+  rid?: string;
+  desc?: string;
+  text?: string;
+  cls?: string;
+  bounds?: [number, number, number, number];
+  xpath?: string;
+}
+
+interface UserAction {
+  type: 'tap' | 'type' | 'swipe' | 'back' | 'intent' | 'long_press';
+  target?: Selector;
+  text?: string;
+  swipe?: {
+    direction: 'up' | 'down' | 'left' | 'right';
+    distance: number;
+  };
+  intent?: {
+    action: string;
+    package?: string;
+    component?: string;
+    extras?: Record<string, any>;
+  };
+  metadata?: {
+    duration?: number;
+    confidence?: number;
+  };
+}
+
+interface StateRecord {
+  id: string;
+  package: string;
+  activity: string;
+  digest: string;
+  selectors: Selector[];
+  visibleText: string[];
+  screenshot?: string;
+  tags?: string[];
+  createdAt: string;
+  updatedAt: string;
+  metadata?: {
+    captureMethod: 'adb' | 'frida';
+    captureDuration: number;
+    elementCount: number;
+    hierarchyDepth: number;
+  };
+}
+
+interface TransitionRecord {
+  id: string;
+  from: string;
+  to: string;
+  action: UserAction;
+  evidence?: {
+    beforeDigest?: string;
+    afterDigest?: string;
+    timestamp?: string;
+    notes?: string;
+    beforeScreenshot?: string;
+    afterScreenshot?: string;
+  };
+  confidence?: number;
+  createdAt: string;
+  tags?: string[];
+}
+
+interface UIGraph {
+  version: string;
+  createdAt: string;
+  updatedAt: string;
+  packageName: string;
+  states: StateRecord[];
+  transitions: TransitionRecord[];
+  stats: {
+    stateCount: number;
+    transitionCount: number;
+    averageDegree: number;
+    isolatedStates: number;
+    lastCapture?: string;
+  };
+  metadata: {
+    captureTool: string;
+    androidVersion?: string;
+    appVersion?: string;
+    deviceInfo?: string;
+    totalCaptureTime: number;
+    totalSessions: number;
+  };
+}
+
+interface SnapshotRequest {
+  forceScreenshot?: boolean;
+  tags?: string[];
+}
+
+interface SnapshotResponse {
+  state: StateRecord;
+  merged: boolean;
+  mergedInto?: string;
+}
+
+interface CreateTransitionRequest {
+  fromStateId?: string;
+  action: UserAction;
+  toStateId?: string;
+  evidence?: {
+    beforeDigest?: string;
+    afterDigest?: string;
+    notes?: string;
+  };
+}
+
+interface MergeStatesRequest {
+  sourceId: string;
+  targetId: string;
+}
+
+interface MergeStatesResponse {
+  success: boolean;
+  mergedCount: number;
+  updatedTransitions: string[];
+  removedTransitions: string[];
+}
+
+interface CurrentStateResponse {
+  state?: StateRecord;
+  confidence: number;
+  candidates: Array<{
+    state: StateRecord;
+    similarity: number;
+  }>;
+}
 
 interface DiscoveryState {
   graph: UIGraph | null;
@@ -51,7 +173,7 @@ export const useDiscovery = (refreshInterval?: number): UseDiscoveryReturn => {
   });
 
   const abortControllerRef = useRef<AbortController | null>(null);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<number | null>(null);
 
   /**
    * Handle API errors consistently

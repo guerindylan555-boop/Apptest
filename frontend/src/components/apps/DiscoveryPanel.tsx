@@ -20,7 +20,96 @@ import {
   XCircleIcon
 } from '@heroicons/react/24/outline';
 import { useDiscovery } from '../../hooks/useDiscovery';
-import { StateRecord, TransitionRecord, Selector } from '../../../specs/001-ui-map-flow-engine/contracts/types';
+// Type definitions for the UI Discovery system
+interface Selector {
+  rid?: string;
+  desc?: string;
+  text?: string;
+  cls?: string;
+  bounds?: [number, number, number, number];
+  xpath?: string;
+}
+
+interface UserAction {
+  type: 'tap' | 'type' | 'swipe' | 'back' | 'intent' | 'long_press';
+  target?: Selector;
+  text?: string;
+  swipe?: {
+    direction: 'up' | 'down' | 'left' | 'right';
+    distance: number;
+  };
+  intent?: {
+    action: string;
+    package?: string;
+    component?: string;
+    extras?: Record<string, any>;
+  };
+  metadata?: {
+    duration?: number;
+    confidence?: number;
+  };
+}
+
+interface StateRecord {
+  id: string;
+  package: string;
+  activity: string;
+  digest: string;
+  selectors: Selector[];
+  visibleText: string[];
+  screenshot?: string;
+  tags?: string[];
+  createdAt: string;
+  updatedAt: string;
+  metadata?: {
+    captureMethod: 'adb' | 'frida';
+    captureDuration: number;
+    elementCount: number;
+    hierarchyDepth: number;
+  };
+}
+
+interface TransitionRecord {
+  id: string;
+  from: string;
+  to: string;
+  action: UserAction;
+  evidence?: {
+    beforeDigest?: string;
+    afterDigest?: string;
+    timestamp?: string;
+    notes?: string;
+    beforeScreenshot?: string;
+    afterScreenshot?: string;
+  };
+  confidence?: number;
+  createdAt: string;
+  tags?: string[];
+}
+
+interface UIGraph {
+  version: string;
+  createdAt: string;
+  updatedAt: string;
+  packageName: string;
+  states: StateRecord[];
+  transitions: TransitionRecord[];
+  stats: {
+    stateCount: number;
+    transitionCount: number;
+    averageDegree: number;
+    isolatedStates: number;
+    lastCapture?: string;
+  };
+  metadata: {
+    captureTool: string;
+    androidVersion?: string;
+    appVersion?: string;
+    deviceInfo?: string;
+    totalCaptureTime: number;
+    totalSessions: number;
+  };
+}
 
 interface DiscoveryPanelProps {
   className?: string;
@@ -309,7 +398,7 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
           <div className="p-4 border-b border-gray-200">
             <h3 className="text-sm font-semibold text-gray-900 mb-2">Interactive Elements</h3>
             <div className="space-y-2 max-h-48 overflow-y-auto">
-              {currentState.selectors.slice(0, 10).map((selector, index) => (
+              {currentState.selectors.slice(0, 10).map((selector: Selector, index: number) => (
                 <div key={index} className="p-2 bg-gray-50 rounded text-xs">
                   <div className="flex items-center justify-between">
                     <div className="flex-1 min-w-0">
@@ -376,7 +465,7 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
                           {activity}
                         </div>
                         <div className="flex flex-wrap gap-1">
-                          {activityStates.map(state => (
+                          {activityStates.map((state: StateRecord) => (
                             <div
                               key={state.id}
                               onClick={() => {
