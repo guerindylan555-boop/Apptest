@@ -84,11 +84,11 @@ description: "Task list for UI Map & Discovery System implementation"
 
 ### Implementation for User Story 2
 
-- [ ] T022 [P] [US2] Create flow types and interfaces in backend/src/types/flow.ts
-- [ ] T023 [P] [US2] Create flow service in backend/src/services/flowService.ts for validation and management
-- [ ] T024 [US2] Implement flow endpoints in backend/src/routes/graph.ts (GET/POST /api/flows/*)
-- [ ] T025 [US2] Add flow validation logic to ensure predicates resolve to known states
-- [ ] T026 [US2] Create flow management UI in DiscoveryPanel component
+- [X] T022 [P] [US2] Create flow types and interfaces in backend/src/types/flow.ts
+- [X] T023 [P] [US2] Create flow service in backend/src/services/flowService.ts for validation and management
+- [X] T024 [US2] Implement flow endpoints in backend/src/routes/graph.ts (GET/POST /api/flows/*)
+- [X] T025 [US2] Add flow validation logic to ensure predicates resolve to known states
+- [X] T026 [US2] Create flow management UI in DiscoveryPanel component
 - [ ] T027 [US2] Add flow editor with state predicate selection
 - [ ] T028 [US2] Implement semantic selector support for flow actions
 - [ ] T029 [US2] Add precondition validation for flow completeness

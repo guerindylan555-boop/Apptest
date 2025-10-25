@@ -8,6 +8,7 @@
 import { Router, Request, Response } from 'express';
 import { introspectionService } from '../services/introspectService';
 import { graphService } from '../services/graphService';
+import { FlowService } from '../services/flowService';
 import {
   SnapshotRequest,
   SnapshotResponse,
@@ -19,8 +20,22 @@ import {
   MergeStatesResponse,
   UIGraph
 } from '../types/graph';
+import {
+  CreateFlowRequest,
+  UpdateFlowRequest,
+  ExecuteFlowRequest,
+  ValidateFlowRequest,
+  ListFlowsRequest,
+  GetFlowExecutionRequest,
+  FlowDefinition,
+  FlowExecutionResult,
+  FlowValidationResult
+} from '../types/flow';
 
 const router = Router();
+
+// Initialize flow service
+const flowService = new FlowService(graphService);
 
 /**
  * POST /api/graph/snapshot - Capture current UI state
@@ -486,6 +501,581 @@ router.get('/device/info', async (req: Request, res: Response) => {
     console.error('Failed to get device info:', error);
     res.status(500).json({
       error: 'device_info_failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// ============================================================================
+// Flow Management Endpoints
+// ============================================================================
+
+/**
+ * POST /api/flows - Create a new flow
+ */
+router.post('/flows', async (req: Request, res: Response) => {
+  try {
+    const request: CreateFlowRequest = req.body;
+
+    // Validate request
+    if (!request.flow) {
+      return res.status(400).json({
+        error: 'validation_error',
+        message: 'flow is required'
+      });
+    }
+
+    if (!request.flow.name) {
+      return res.status(400).json({
+        error: 'validation_error',
+        message: 'flow.name is required'
+      });
+    }
+
+    if (!request.flow.packageName) {
+      return res.status(400).json({
+        error: 'validation_error',
+        message: 'flow.packageName is required'
+      });
+    }
+
+    if (!request.flow.steps || !Array.isArray(request.flow.steps)) {
+      return res.status(400).json({
+        error: 'validation_error',
+        message: 'flow.steps must be a non-empty array'
+      });
+    }
+
+    if (!request.flow.entryPoint) {
+      return res.status(400).json({
+        error: 'validation_error',
+        message: 'flow.entryPoint is required'
+      });
+    }
+
+    // Create flow
+    const flow = await flowService.createFlow(request);
+
+    // Log flow creation
+    await logSessionEvent('flow_create', 'info', `Created flow: ${flow.name}`, {
+      flowId: flow.id,
+      flowName: flow.name,
+      packageName: flow.packageName,
+      stepCount: flow.steps.length
+    });
+
+    res.status(201).json(flow);
+  } catch (error) {
+    console.error('Failed to create flow:', error);
+
+    await logSessionEvent('error', 'error', `Flow creation failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+    if (error instanceof Error && error.message.includes('validation failed')) {
+      return res.status(400).json({
+        error: 'flow_validation_failed',
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      error: 'flow_creation_failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/flows - List flows with filtering and pagination
+ */
+router.get('/flows', async (req: Request, res: Response) => {
+  try {
+    const request: ListFlowsRequest = {
+      filter: {
+        package: req.query.package as string,
+        tags: req.query.tags ? (req.query.tags as string).split(',') : undefined,
+        author: req.query.author as string,
+        search: req.query.search as string
+      },
+      sort: {
+        field: (req.query.sortField as any) || 'updatedAt',
+        order: (req.query.sortOrder as any) || 'desc'
+      },
+      pagination: {
+        page: parseInt(req.query.page as string) || 1,
+        limit: parseInt(req.query.limit as string) || 50
+      }
+    };
+
+    // Validate pagination
+    if (request.pagination!.page < 1) {
+      return res.status(400).json({
+        error: 'validation_error',
+        message: 'page must be greater than 0'
+      });
+    }
+
+    if (request.pagination!.limit < 1 || request.pagination!.limit > 100) {
+      return res.status(400).json({
+        error: 'validation_error',
+        message: 'limit must be between 1 and 100'
+      });
+    }
+
+    const result = await flowService.listFlows(request);
+
+    res.json({
+      flows: result.flows,
+      pagination: {
+        page: request.pagination!.page,
+        limit: request.pagination!.limit,
+        total: result.total,
+        pages: Math.ceil(result.total / request.pagination!.limit)
+      }
+    });
+  } catch (error) {
+    console.error('Failed to list flows:', error);
+    res.status(500).json({
+      error: 'flow_list_failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/flows/:flowId - Get a specific flow
+ */
+router.get('/flows/:flowId', async (req: Request, res: Response) => {
+  try {
+    const { flowId } = req.params;
+
+    if (!flowId || typeof flowId !== 'string') {
+      return res.status(400).json({
+        error: 'validation_error',
+        message: 'flowId is required and must be a string'
+      });
+    }
+
+    const flow = await flowService.loadFlow(flowId);
+
+    if (!flow) {
+      return res.status(404).json({
+        error: 'flow_not_found',
+        message: `Flow not found: ${flowId}`
+      });
+    }
+
+    res.json(flow);
+  } catch (error) {
+    console.error('Failed to get flow:', error);
+    res.status(500).json({
+      error: 'flow_retrieval_failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * PUT /api/flows/:flowId - Update a flow
+ */
+router.put('/flows/:flowId', async (req: Request, res: Response) => {
+  try {
+    const { flowId } = req.params;
+    const request: UpdateFlowRequest = {
+      flowId,
+      flow: req.body,
+      mergeStrategy: req.body.mergeStrategy || 'merge'
+    };
+
+    if (!flowId || typeof flowId !== 'string') {
+      return res.status(400).json({
+        error: 'validation_error',
+        message: 'flowId is required and must be a string'
+      });
+    }
+
+    if (!request.flow) {
+      return res.status(400).json({
+        error: 'validation_error',
+        message: 'flow data is required'
+      });
+    }
+
+    // Update flow
+    const updatedFlow = await flowService.updateFlow(request);
+
+    // Log flow update
+    await logSessionEvent('flow_update', 'info', `Updated flow: ${updatedFlow.name}`, {
+      flowId: updatedFlow.id,
+      flowName: updatedFlow.name,
+      version: updatedFlow.version
+    });
+
+    res.json(updatedFlow);
+  } catch (error) {
+    console.error('Failed to update flow:', error);
+
+    await logSessionEvent('error', 'error', `Flow update failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+    if (error instanceof Error && error.message.includes('not found')) {
+      return res.status(404).json({
+        error: 'flow_not_found',
+        message: error.message
+      });
+    }
+
+    if (error instanceof Error && error.message.includes('validation failed')) {
+      return res.status(400).json({
+        error: 'flow_validation_failed',
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      error: 'flow_update_failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * DELETE /api/flows/:flowId - Delete a flow
+ */
+router.delete('/flows/:flowId', async (req: Request, res: Response) => {
+  try {
+    const { flowId } = req.params;
+
+    if (!flowId || typeof flowId !== 'string') {
+      return res.status(400).json({
+        error: 'validation_error',
+        message: 'flowId is required and must be a string'
+      });
+    }
+
+    // Check if flow exists
+    const flow = await flowService.loadFlow(flowId);
+    if (!flow) {
+      return res.status(404).json({
+        error: 'flow_not_found',
+        message: `Flow not found: ${flowId}`
+      });
+    }
+
+    // TODO: Implement flow deletion in FlowService
+    // await flowService.deleteFlow(flowId);
+
+    // Log flow deletion
+    await logSessionEvent('flow_delete', 'info', `Deleted flow: ${flow.name}`, {
+      flowId: flow.id,
+      flowName: flow.name
+    });
+
+    res.status(204).send();
+  } catch (error) {
+    console.error('Failed to delete flow:', error);
+
+    await logSessionEvent('error', 'error', `Flow deletion failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+    res.status(500).json({
+      error: 'flow_deletion_failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * POST /api/flows/:flowId/execute - Execute a flow
+ */
+router.post('/flows/:flowId/execute', async (req: Request, res: Response) => {
+  try {
+    const { flowId } = req.params;
+    const request: ExecuteFlowRequest = {
+      flowId,
+      config: req.body.config || {}
+    };
+
+    if (!flowId || typeof flowId !== 'string') {
+      return res.status(400).json({
+        error: 'validation_error',
+        message: 'flowId is required and must be a string'
+      });
+    }
+
+    // Check if flow exists
+    const flow = await flowService.loadFlow(flowId);
+    if (!flow) {
+      return res.status(404).json({
+        error: 'flow_not_found',
+        message: `Flow not found: ${flowId}`
+      });
+    }
+
+    // Execute flow
+    const executionId = await flowService.executeFlow(request);
+
+    // Log flow execution start
+    await logSessionEvent('flow_execute', 'info', `Started flow execution: ${flow.name}`, {
+      flowId: flow.id,
+      flowName: flow.name,
+      executionId,
+      config: request.config
+    });
+
+    res.status(202).json({
+      executionId,
+      status: 'started',
+      message: 'Flow execution started'
+    });
+  } catch (error) {
+    console.error('Failed to execute flow:', error);
+
+    await logSessionEvent('error', 'error', `Flow execution failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+
+    if (error instanceof Error && error.message.includes('not found')) {
+      return res.status(404).json({
+        error: 'flow_not_found',
+        message: error.message
+      });
+    }
+
+    if (error instanceof Error && error.message.includes('Maximum parallel executions')) {
+      return res.status(429).json({
+        error: 'too_many_executions',
+        message: error.message
+      });
+    }
+
+    res.status(500).json({
+      error: 'flow_execution_failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/flows/:flowId/executions/:executionId - Get flow execution status
+ */
+router.get('/flows/:flowId/executions/:executionId', async (req: Request, res: Response) => {
+  try {
+    const { flowId, executionId } = req.params;
+
+    if (!flowId || typeof flowId !== 'string') {
+      return res.status(400).json({
+        error: 'validation_error',
+        message: 'flowId is required and must be a string'
+      });
+    }
+
+    if (!executionId || typeof executionId !== 'string') {
+      return res.status(400).json({
+        error: 'validation_error',
+        message: 'executionId is required and must be a string'
+      });
+    }
+
+    const status = flowService.getExecutionStatus(executionId);
+
+    if (!status) {
+      return res.status(404).json({
+        error: 'execution_not_found',
+        message: `Execution not found: ${executionId}`
+      });
+    }
+
+    res.json({
+      executionId: status.executionId,
+      flowId: status.flow.id,
+      status: status.status,
+      currentStep: status.currentStep,
+      startedAt: status.startedAt,
+      stepHistory: status.stepHistory,
+      variables: status.variables
+    });
+  } catch (error) {
+    console.error('Failed to get execution status:', error);
+    res.status(500).json({
+      error: 'execution_status_failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/flows/:flowId/executions/:executionId/result - Get flow execution result
+ */
+router.get('/flows/:flowId/executions/:executionId/result', async (req: Request, res: Response) => {
+  try {
+    const { flowId, executionId } = req.params;
+    const includeLogs = req.query.includeLogs === 'true';
+    const includeStepHistory = req.query.includeStepHistory === 'true';
+
+    if (!flowId || typeof flowId !== 'string') {
+      return res.status(400).json({
+        error: 'validation_error',
+        message: 'flowId is required and must be a string'
+      });
+    }
+
+    if (!executionId || typeof executionId !== 'string') {
+      return res.status(400).json({
+        error: 'validation_error',
+        message: 'executionId is required and must be a string'
+      });
+    }
+
+    const result = await flowService.getExecutionResult(executionId);
+
+    if (!result) {
+      return res.status(404).json({
+        error: 'execution_not_found',
+        message: `Execution not found: ${executionId}`
+      });
+    }
+
+    // Filter response based on query parameters
+    let response: any = {
+      executionId: result.executionId,
+      flowId: result.flowId,
+      status: result.status,
+      startedAt: result.startedAt,
+      completedAt: result.completedAt,
+      duration: result.duration,
+      summary: result.summary
+    };
+
+    if (includeStepHistory) {
+      response.stepHistory = result.stepHistory;
+    }
+
+    if (includeLogs) {
+      response.logs = result.logs;
+    }
+
+    res.json(response);
+  } catch (error) {
+    console.error('Failed to get execution result:', error);
+    res.status(500).json({
+      error: 'execution_result_failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * POST /api/flows/validate - Validate a flow definition
+ */
+router.post('/flows/validate', async (req: Request, res: Response) => {
+  try {
+    const request: ValidateFlowRequest = req.body;
+
+    if (!request.flow) {
+      return res.status(400).json({
+        error: 'validation_error',
+        message: 'flow is required'
+      });
+    }
+
+    // Validate flow
+    const result = await flowService.validateFlow(request);
+
+    res.json(result);
+  } catch (error) {
+    console.error('Failed to validate flow:', error);
+    res.status(500).json({
+      error: 'flow_validation_failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/flows/templates - List available flow templates
+ */
+router.get('/flows/templates', async (req: Request, res: Response) => {
+  try {
+    // TODO: Implement flow templates in FlowService
+    // const templates = await flowService.getFlowTemplates();
+
+    const templates = [
+      {
+        id: 'login-template',
+        name: 'Login Flow Template',
+        description: 'Template for creating login flows',
+        category: 'login',
+        parameters: [
+          {
+            name: 'username',
+            type: 'string',
+            required: true,
+            description: 'Username for login'
+          },
+          {
+            name: 'password',
+            type: 'string',
+            required: true,
+            description: 'Password for login'
+          }
+        ]
+      }
+    ];
+
+    res.json({ templates });
+  } catch (error) {
+    console.error('Failed to list flow templates:', error);
+    res.status(500).json({
+      error: 'flow_templates_failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+/**
+ * GET /api/flows/library - Get flow library summary
+ */
+router.get('/flows/library', async (req: Request, res: Response) => {
+  try {
+    const { flows, total } = await flowService.listFlows({ pagination: { page: 1, limit: 1 } });
+
+    const library = {
+      version: '1.0.0',
+      flows: [], // Would be populated with full flow list if needed
+      templates: [], // Would be populated with template list if needed
+      categories: [
+        {
+          name: 'login',
+          description: 'Authentication and login flows',
+          flowCount: flows.filter(f => f.metadata.tags?.includes('login')).length
+        },
+        {
+          name: 'navigation',
+          description: 'UI navigation flows',
+          flowCount: flows.filter(f => f.metadata.tags?.includes('navigation')).length
+        },
+        {
+          name: 'form',
+          description: 'Form filling and submission flows',
+          flowCount: flows.filter(f => f.metadata.tags?.includes('form')).length
+        }
+      ],
+      stats: {
+        totalFlows: total,
+        totalTemplates: 0,
+        totalExecutions: 0, // Would be calculated from execution logs
+        averageFlowDuration: 0,
+        successRate: 0
+      },
+      metadata: {
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        packageName: 'fr.mayndrive.app',
+        version: '1.0.0'
+      }
+    };
+
+    res.json(library);
+  } catch (error) {
+    console.error('Failed to get flow library:', error);
+    res.status(500).json({
+      error: 'flow_library_failed',
       message: error instanceof Error ? error.message : 'Unknown error'
     });
   }

@@ -17,9 +17,17 @@ import {
   ArrowsRightLeftIcon,
   CheckCircleIcon,
   ExclamationTriangleIcon,
-  XCircleIcon
+  XCircleIcon,
+  PlayIcon,
+  PlusIcon,
+  DocumentTextIcon,
+  FolderIcon,
+  Cog6ToothIcon,
+  ChevronRightIcon,
+  StopIcon
 } from '@heroicons/react/24/outline';
 import { useDiscovery } from '../../hooks/useDiscovery';
+import { useFlow } from '../../hooks/useFlow';
 // Type definitions for the UI Discovery system
 interface Selector {
   rid?: string;
@@ -111,6 +119,94 @@ interface UIGraph {
   };
 }
 
+// Flow-related types
+interface FlowDefinition {
+  id: string;
+  name: string;
+  description?: string;
+  version: string;
+  packageName: string;
+  steps: FlowStep[];
+  entryPoint: StatePredicate;
+  exitPoint?: StatePredicate;
+  metadata: {
+    createdAt: string;
+    updatedAt: string;
+    author?: string;
+    tags?: string[];
+    estimatedDuration?: number;
+    complexity?: number;
+    executionCount?: number;
+    successRate?: number;
+  };
+  config?: {
+    defaultTimeout: number;
+    retryAttempts: number;
+    allowParallel: boolean;
+    priority: 'low' | 'medium' | 'high';
+  };
+}
+
+interface FlowStep {
+  id: string;
+  name: string;
+  description?: string;
+  preconditions: StatePredicate[];
+  action: UserAction;
+  expectedState?: StatePredicate;
+  timeout?: number;
+  critical?: boolean;
+  metadata?: {
+    confidence?: number;
+    notes?: string;
+    tags?: string[];
+  };
+}
+
+interface StatePredicate {
+  type: 'exact' | 'contains' | 'matches' | 'fuzzy';
+  stateId?: string;
+  activity?: string;
+  containsText?: string[];
+  matches?: {
+    activity?: string;
+    text?: string;
+    selectors?: string;
+  };
+  fuzzyThreshold?: number;
+  hasSelectors?: Array<{
+    rid?: string;
+    text?: string;
+    desc?: string;
+  }>;
+}
+
+interface FlowExecution {
+  executionId: string;
+  flowId: string;
+  status: 'pending' | 'running' | 'completed' | 'failed' | 'paused' | 'cancelled';
+  startedAt: string;
+  completedAt?: string;
+  duration?: number;
+  currentStep?: number;
+  stepHistory: any[];
+  summary?: {
+    totalSteps: number;
+    successfulSteps: number;
+    failedSteps: number;
+    skippedSteps: number;
+    averageStepDuration: number;
+  };
+  logs?: Array<{
+    id: string;
+    timestamp: string;
+    level: 'debug' | 'info' | 'warn' | 'error';
+    message: string;
+    stepId?: string;
+    data?: any;
+  }>;
+}
+
 interface DiscoveryPanelProps {
   className?: string;
 }
@@ -130,12 +226,35 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
     clearError
   } = useDiscovery(30000); // Refresh every 30 seconds
 
+  const {
+    flows,
+    executions,
+    flowLoading,
+    flowError,
+    createFlow,
+    updateFlow,
+    deleteFlow,
+    executeFlow,
+    getFlowExecutionStatus,
+    getFlowExecutionResult,
+    refreshFlows,
+    clearFlowError
+  } = useFlow(15000); // Refresh every 15 seconds
+
+  // Discovery state
   const [selectedState, setSelectedState] = useState<StateRecord | null>(null);
   const [transitionMode, setTransitionMode] = useState(false);
   const [transitionStart, setTransitionStart] = useState<StateRecord | null>(null);
   const [mergeMode, setMergeMode] = useState(false);
   const [mergeTarget, setMergeTarget] = useState<StateRecord | null>(null);
   const [showGraphMini, setShowGraphMini] = useState(true);
+
+  // Flow state
+  const [activeTab, setActiveTab] = useState<'discovery' | 'flows'>('discovery');
+  const [selectedFlow, setSelectedFlow] = useState<FlowDefinition | null>(null);
+  const [selectedExecution, setSelectedExecution] = useState<FlowExecution | null>(null);
+  const [showFlowEditor, setShowFlowEditor] = useState(false);
+  const [showFlowExecutor, setShowFlowExecutor] = useState(false);
 
   // Handle state capture
   const handleCaptureState = async () => {
@@ -208,6 +327,86 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
     return new Date(dateString).toLocaleString();
   };
 
+  // Flow handlers
+  const handleCreateFlow = async () => {
+    try {
+      const newFlow: Partial<FlowDefinition> = {
+        name: `New Flow ${new Date().toISOString().split('T')[0]}`,
+        description: 'Created from current UI state',
+        packageName: graph?.packageName || 'unknown',
+        steps: [
+          {
+            id: 'step-1',
+            name: 'Initial Action',
+            description: 'Starting step',
+            preconditions: currentState ? [{
+              type: 'exact',
+              stateId: currentState.id
+            }] : [{
+              type: 'contains',
+              containsText: ['']
+            }],
+            action: { type: 'tap' },
+            critical: true
+          }
+        ],
+        entryPoint: currentState ? {
+          type: 'exact',
+          stateId: currentState.id
+        } : {
+          type: 'contains',
+          containsText: ['']
+        }
+      };
+
+      const createdFlow = await createFlow(newFlow);
+      setSelectedFlow(createdFlow);
+      setShowFlowEditor(true);
+      refreshFlows();
+    } catch (error) {
+      console.error('Failed to create flow:', error);
+    }
+  };
+
+  const handleExecuteFlow = async (flowId: string) => {
+    try {
+      const executionId = await executeFlow(flowId);
+      // Refresh executions after a short delay
+      setTimeout(() => refreshFlows(), 1000);
+    } catch (error) {
+      console.error('Failed to execute flow:', error);
+    }
+  };
+
+  const handleDeleteFlow = async (flowId: string) => {
+    if (!confirm('Are you sure you want to delete this flow?')) return;
+
+    try {
+      await deleteFlow(flowId);
+      if (selectedFlow?.id === flowId) {
+        setSelectedFlow(null);
+      }
+      refreshFlows();
+    } catch (error) {
+      console.error('Failed to delete flow:', error);
+    }
+  };
+
+  const getFlowStatusIcon = (status: string) => {
+    switch (status) {
+      case 'running':
+        return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>;
+      case 'completed':
+        return <CheckCircleIcon className="w-4 h-4 text-green-500" />;
+      case 'failed':
+        return <XCircleIcon className="w-4 h-4 text-red-500" />;
+      case 'pending':
+        return <div className="w-4 h-4 bg-yellow-400 rounded-full"></div>;
+      default:
+        return <div className="w-4 h-4 bg-gray-300 rounded-full"></div>;
+    }
+  };
+
   // Get status icon
   const getStatusIcon = (status: string) => {
     switch (status) {
@@ -229,31 +428,70 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
 
   return (
     <div className={`h-full flex flex-col bg-white border-l border-gray-200 ${className}`}>
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-gray-200">
-        <h2 className="text-lg font-semibold text-gray-900">UI Discovery</h2>
-        <div className="flex items-center space-x-2">
-          {getStatusIcon(isCapturing ? 'capturing' : error ? 'error' : 'success')}
+      {/* Header with Tabs */}
+      <div className="border-b border-gray-200">
+        <div className="flex items-center justify-between p-4 border-b border-gray-100">
+          <h2 className="text-lg font-semibold text-gray-900">UI Discovery & Flows</h2>
+          <div className="flex items-center space-x-2">
+            {getStatusIcon(isCapturing ? 'capturing' : flowError ? 'error' : 'success')}
+            <button
+              onClick={() => activeTab === 'discovery' ? refreshGraph() : refreshFlows()}
+              disabled={isLoading || flowLoading}
+              className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-50"
+              title="Refresh"
+            >
+              <ArrowPathIcon className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex">
           <button
-            onClick={refreshGraph}
-            disabled={isLoading}
-            className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-50"
-            title="Refresh"
+            onClick={() => setActiveTab('discovery')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'discovery'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
           >
-            <ArrowPathIcon className="w-4 h-4" />
+            <div className="flex items-center space-x-2">
+              <Squares2X2Icon className="w-4 h-4" />
+              <span>Discovery</span>
+            </div>
+          </button>
+          <button
+            onClick={() => setActiveTab('flows')}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === 'flows'
+                ? 'border-blue-500 text-blue-600'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center space-x-2">
+              <DocumentTextIcon className="w-4 h-4" />
+              <span>Flows</span>
+              {flows && flows.length > 0 && (
+                <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs">
+                  {flows.length}
+                </span>
+              )}
+            </div>
           </button>
         </div>
       </div>
 
       {/* Error Display */}
-      {error && (
+      {(error || flowError) && (
         <div className="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
           <div className="flex items-start">
             <XCircleIcon className="w-5 h-5 text-red-500 mt-0.5 mr-2" />
             <div className="flex-1">
-              <p className="text-sm text-red-700">{error}</p>
+              <p className="text-sm text-red-700">
+                {activeTab === 'discovery' ? error : flowError}
+              </p>
               <button
-                onClick={clearError}
+                onClick={() => activeTab === 'discovery' ? clearError() : clearFlowError()}
                 className="mt-1 text-xs text-red-600 hover:text-red-800"
               >
                 Dismiss
@@ -350,9 +588,12 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
         )}
       </div>
 
-      {/* Current State Display */}
+      {/* Main Content */}
       <div className="flex-1 overflow-y-auto">
-        {currentState && (
+        {activeTab === 'discovery' ? (
+          <>
+            {/* Current State Display */}
+            {currentState && (
           <div className="p-4 border-b border-gray-200">
             <h3 className="text-sm font-semibold text-gray-900 mb-2">Current State</h3>
             <div className="space-y-2 text-xs">
@@ -517,6 +758,229 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
               </button>
             </div>
           </div>
+        )}
+          </>
+        ) : (
+          <>
+            {/* Flow Management UI */}
+            <div className="p-4 border-b border-gray-200">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-sm font-semibold text-gray-900">Flow Management</h3>
+                <button
+                  onClick={handleCreateFlow}
+                  disabled={flowLoading}
+                  className="flex items-center px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                >
+                  <PlusIcon className="w-3 h-3 mr-1" />
+                  Create Flow
+                </button>
+              </div>
+
+              {/* Flow List */}
+              <div className="space-y-2">
+                {flows && flows.length > 0 ? (
+                  flows.map((flow: FlowDefinition) => (
+                    <div
+                      key={flow.id}
+                      className="border border-gray-200 rounded-lg p-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                      onClick={() => setSelectedFlow(flow)}
+                    >
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center space-x-2">
+                            <h4 className="text-sm font-medium text-gray-900 truncate">{flow.name}</h4>
+                            <span className="text-xs text-gray-500">v{flow.version}</span>
+                          </div>
+                          {flow.description && (
+                            <p className="text-xs text-gray-600 mt-1 line-clamp-2">{flow.description}</p>
+                          )}
+                          <div className="flex items-center space-x-4 mt-2 text-xs text-gray-500">
+                            <span>{flow.steps.length} steps</span>
+                            <span>Complexity: {flow.metadata.complexity || 0}</span>
+                            {flow.metadata.executionCount !== undefined && (
+                              <span>Runs: {flow.metadata.executionCount}</span>
+                            )}
+                            {flow.metadata.successRate !== undefined && (
+                              <span>Success: {Math.round(flow.metadata.successRate * 100)}%</span>
+                            )}
+                          </div>
+                          {flow.metadata.tags && flow.metadata.tags.length > 0 && (
+                            <div className="flex flex-wrap gap-1 mt-2">
+                              {flow.metadata.tags.map((tag, index) => (
+                                <span
+                                  key={index}
+                                  className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs"
+                                >
+                                  {tag}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center space-x-1 ml-3">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleExecuteFlow(flow.id);
+                            }}
+                            disabled={flowLoading}
+                            className="p-1 text-green-600 hover:text-green-800 disabled:opacity-50"
+                            title="Execute Flow"
+                          >
+                            <PlayIcon className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowFlowEditor(true);
+                            }}
+                            className="p-1 text-blue-600 hover:text-blue-800"
+                            title="Edit Flow"
+                          >
+                            <PencilIcon className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDeleteFlow(flow.id);
+                            }}
+                            className="p-1 text-red-600 hover:text-red-800"
+                            title="Delete Flow"
+                          >
+                            <XCircleIcon className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <FolderIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
+                    <p className="text-sm text-gray-500 mb-4">No flows created yet</p>
+                    <button
+                      onClick={handleCreateFlow}
+                      disabled={flowLoading}
+                      className="inline-flex items-center px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
+                    >
+                      <PlusIcon className="w-4 h-4 mr-2" />
+                      Create Your First Flow
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Flow Details */}
+            {selectedFlow && (
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Flow Details</h3>
+                <div className="space-y-3">
+                  <div className="bg-gray-50 rounded p-3">
+                    <h4 className="text-xs font-medium text-gray-700 mb-2">Entry Point</h4>
+                    <div className="text-xs text-gray-600">
+                      <span className="font-medium">Type:</span> {selectedFlow.entryPoint.type}
+                      {selectedFlow.entryPoint.stateId && (
+                        <div>
+                          <span className="font-medium">State:</span>
+                          <span className="font-mono ml-1">{selectedFlow.entryPoint.stateId.substring(0, 8)}...</span>
+                        </div>
+                      )}
+                      {selectedFlow.entryPoint.activity && (
+                        <div>
+                          <span className="font-medium">Activity:</span> {selectedFlow.entryPoint.activity}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="bg-gray-50 rounded p-3">
+                    <h4 className="text-xs font-medium text-gray-700 mb-2">Steps ({selectedFlow.steps.length})</h4>
+                    <div className="space-y-1 max-h-32 overflow-y-auto">
+                      {selectedFlow.steps.map((step, index) => (
+                        <div key={step.id} className="flex items-center space-x-2 text-xs">
+                          <span className="text-gray-400">#{index + 1}</span>
+                          <span className="font-medium">{step.name}</span>
+                          <ChevronRightIcon className="w-3 h-3 text-gray-400" />
+                          <span className="text-gray-600">{step.action.type}</span>
+                          {step.critical && (
+                            <span className="px-1 py-0.5 bg-red-100 text-red-600 rounded">Critical</span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => handleExecuteFlow(selectedFlow.id)}
+                      disabled={flowLoading}
+                      className="flex items-center px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
+                    >
+                      <PlayIcon className="w-3 h-3 mr-1" />
+                      Execute Flow
+                    </button>
+                    <button
+                      onClick={() => setShowFlowEditor(true)}
+                      className="flex items-center px-3 py-1.5 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
+                    >
+                      <PencilIcon className="w-3 h-3 mr-1" />
+                      Edit Flow
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Flow Executions */}
+            {executions && executions.length > 0 && (
+              <div className="p-4 border-b border-gray-200">
+                <h3 className="text-sm font-semibold text-gray-900 mb-3">Recent Executions</h3>
+                <div className="space-y-2">
+                  {executions.slice(0, 5).map((execution: FlowExecution) => (
+                    <div
+                      key={execution.executionId}
+                      className="flex items-center justify-between p-2 bg-gray-50 rounded"
+                    >
+                      <div className="flex items-center space-x-2">
+                        {getFlowStatusIcon(execution.status)}
+                        <div>
+                          <div className="text-xs font-medium">{execution.executionId.substring(0, 8)}...</div>
+                          <div className="text-xs text-gray-500">
+                            {formatDate(execution.startedAt)}
+                            {execution.duration && ` • ${formatDuration(execution.duration)}`}
+                          </div>
+                        </div>
+                      </div>
+                      {execution.summary && (
+                        <div className="text-xs text-gray-600">
+                          {execution.summary.successfulSteps}/{execution.summary.totalSteps} steps
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Flow Library Info */}
+            <div className="p-4">
+              <h3 className="text-sm font-semibold text-gray-900 mb-3">Flow Library</h3>
+              <div className="bg-blue-50 border border-blue-200 rounded p-3">
+                <div className="flex items-center space-x-2 mb-2">
+                  <DocumentTextIcon className="w-4 h-4 text-blue-600" />
+                  <span className="text-xs font-medium text-blue-900">Flow Management</span>
+                </div>
+                <p className="text-xs text-blue-700">
+                  Create and manage reusable UI automation flows. Flows capture sequences of actions and state transitions
+                  that can be executed automatically for testing and navigation.
+                </p>
+                <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-blue-600">
+                  <div>• {flows?.length || 0} flows created</div>
+                  <div>• {executions?.length || 0} executions</div>
+                </div>
+              </div>
+            </div>
+          </>
         )}
       </div>
     </div>

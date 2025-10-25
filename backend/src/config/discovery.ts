@@ -262,6 +262,61 @@ export function isDiscoveryEnabled(): boolean {
 }
 
 /**
+ * Flow configuration
+ */
+export const FLOW_CONFIG = {
+  /** Directory for flow definitions */
+  flowsDir: process.env.FLOWS_DIR || '/app/data/flows',
+
+  /** Directory for flow execution logs */
+  flowLogsDir: process.env.FLOW_LOGS_DIR || '/app/data/flow_logs',
+
+  /** Maximum flow complexity score */
+  maxFlowComplexity: parseInt(process.env.MAX_FLOW_COMPLEXITY || '100'),
+
+  /** Default flow execution timeout in milliseconds */
+  defaultFlowTimeout: parseInt(process.env.DEFAULT_FLOW_TIMEOUT || '60000'), // 1 minute
+
+  /** Maximum flow execution timeout in milliseconds */
+  maxFlowTimeout: parseInt(process.env.MAX_FLOW_TIMEOUT || '300000'), // 5 minutes
+
+  /** Maximum number of parallel flow executions */
+  maxParallelExecutions: parseInt(process.env.MAX_PARALLEL_EXECUTIONS || '5'),
+
+  /** Flow execution retry attempts */
+  flowRetryAttempts: parseInt(process.env.FLOW_RETRY_ATTEMPTS || '3'),
+
+  /** Flow result retention in days */
+  flowRetentionDays: parseInt(process.env.FLOW_RETENTION_DAYS || '30'),
+
+  /** Enable flow execution caching */
+  enableFlowCaching: process.env.ENABLE_FLOW_CACHING !== 'false',
+
+  /** Flow validation strictness */
+  flowValidationStrict: process.env.FLOW_VALIDATION_STRICT !== 'false',
+
+  /** Maximum flow steps */
+  maxFlowSteps: parseInt(process.env.MAX_FLOW_STEPS || '50')
+};
+
+/**
+ * Flow performance targets
+ */
+export const FLOW_TARGETS = {
+  /** Target flow validation time in milliseconds */
+  VALIDATION_TIME: parseInt(process.env.TARGET_FLOW_VALIDATION_TIME || '2000'),
+
+  /** Target step execution time in milliseconds */
+  STEP_EXECUTION_TIME: parseInt(process.env.TARGET_STEP_EXECUTION_TIME || '5000'),
+
+  /** Target flow compilation time in milliseconds */
+  COMPILATION_TIME: parseInt(process.env.TARGET_FLOW_COMPILATION_TIME || '1000'),
+
+  /** Target flow loading time in milliseconds */
+  LOADING_TIME: parseInt(process.env.TARGET_FLOW_LOADING_TIME || '500')
+};
+
+/**
  * Get current configuration summary for health checks
  */
 export function getConfigSummary(): Record<string, any> {
@@ -271,6 +326,8 @@ export function getConfigSummary(): Record<string, any> {
     targets: CAPTURE_TARGETS,
     limits: LIMITS,
     features: FEATURE_FLAGS,
-    performance: PERFORMANCE_CONFIG
+    performance: PERFORMANCE_CONFIG,
+    flow: FLOW_CONFIG,
+    flowTargets: FLOW_TARGETS
   };
 }

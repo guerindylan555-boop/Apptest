@@ -37,3 +37,9 @@ var/autoapp/dumps/
 CAPTURE_*.md
 MAYNDRIVE_*.md
 MAYN_DRIVE_*.md
+
+# Discovery system artifacts
+data/
+screenshots/
+sessions/
+graph.json
