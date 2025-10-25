@@ -58,6 +58,15 @@ export interface UserAction {
     duration?: number; // for long_press
     confidence?: number; // 0-1, selector confidence
   };
+
+  /** Semantic selector information for enhanced element targeting */
+  semanticSelector?: {
+    semanticType?: 'button' | 'input' | 'link' | 'image' | 'text' | 'container' | 'navigation' | 'menu' | 'list' | 'unknown';
+    purpose?: string;
+    contentSignature?: string;
+    nearText?: string[];
+    confidence?: number;
+  };
 }
 
 // ============================================================================

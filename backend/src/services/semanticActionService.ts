@@ -6,7 +6,6 @@
 
 import { UserAction, StateRecord } from '../types/graph';
 import { SemanticSelector, generateSelectorStrategy, matchSemanticSelector } from '../utils/semanticSelectors';
-import { ADBCommandResult } from '../utils/adb';
 
 /**
  * Enhanced action with semantic selector information
@@ -19,7 +18,7 @@ export interface EnhancedUserAction extends UserAction {
   selectorStrategy?: {
     primary: any;
     fallbacks: any[];
-    strategy: 'exact' | 'semantic' | 'hybrid';
+    strategy: 'exact' | 'semantic' | 'fallback';
     confidence: number;
   };
 

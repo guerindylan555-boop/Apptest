@@ -5,7 +5,8 @@
  * Ensures flow completeness and provides actionable feedback for flow authors.
  */
 
-import { FlowDefinition, FlowStep, StatePredicate, StateRecord, UIGraph } from '../types/graph';
+import { FlowDefinition, FlowStep, StatePredicate } from '../types/flow';
+import { StateRecord, UIGraph } from '../types/graph';
 import { SemanticSelector, matchSemanticSelector } from '../utils/semanticSelectors';
 
 /**

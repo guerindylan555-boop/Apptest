@@ -24,6 +24,7 @@ export interface SemanticSelector extends Selector {
   locationHint?: {
     position: 'header' | 'footer' | 'sidebar' | 'main' | 'center' | 'floating';
     area?: string;
+    size?: 'small' | 'medium' | 'large';
   };
 
   /** Relational selectors */
@@ -320,7 +321,7 @@ function findNearbyText(selector: Selector, state: StateRecord): string[] {
   const nearbyTexts: string[] = [];
 
   state.selectors.forEach(other => {
-    if (other.id === selector.rid) return; // Skip self
+    if (other.rid === selector.rid) return; // Skip self
 
     if (other.bounds) {
       const [otherLeft, otherTop, otherRight, otherBottom] = other.bounds;
@@ -557,7 +558,7 @@ export function generateSelectorStrategy(
 ): {
   primary: Selector;
   fallbacks: Selector[];
-  strategy: 'exact' | 'semantic' | 'hybrid';
+  strategy: 'exact' | 'semantic' | 'fallback';
   confidence: number;
 } {
   // Try to find exact match first
@@ -588,7 +589,7 @@ export function generateSelectorStrategy(
   return {
     primary: targetSelector.fallbackSelectors?.[0] || targetSelector,
     fallbacks: targetSelector.fallbackSelectors?.slice(1) || [],
-    strategy: 'hybrid',
+    strategy: 'fallback',
     confidence: 0.5
   };
 }

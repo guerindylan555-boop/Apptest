@@ -464,9 +464,9 @@ export const FlowEditor: React.FC<FlowEditorProps> = ({
 
   // Handle save
   const handleSave = () => {
-    const errors = validateFlow();
+    const validation = validateFlow();
 
-    if (errors.length === 0) {
+    if (validation.errors.length === 0) {
       onSave(flowData);
       setIsDirty(false);
     }
