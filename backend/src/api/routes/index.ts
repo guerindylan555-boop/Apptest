@@ -8,6 +8,7 @@ import automationRouter from './automation';
 import { emulatorRestartHandler } from './emulatorRestart';
 import { logsRouter } from './logs';
 import gpsRouter from './gps';
+import uiGraphRouter from './ui-graph';
 
 const routes = Router();
 
@@ -26,5 +27,8 @@ routes.use('/apps', appsRouter);
 
 // Automation & Logging
 routes.use('/automation', automationRouter);
+
+// UI Graph & Discovery
+routes.use('/ui-graph', uiGraphRouter);
 
 export const apiRouter = routes;

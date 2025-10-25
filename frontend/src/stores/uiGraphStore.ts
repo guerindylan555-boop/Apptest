@@ -11,6 +11,115 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 
+// Helper function to extract selectors from XML dump
+function extractSelectorsFromXML(xmlContent: string) {
+  const selectors = [];
+  try {
+    // Parse XML nodes
+    const nodeRegex = /<node[^>]*>/g;
+    const nodes = xmlContent.match(nodeRegex) || [];
+
+    nodes.forEach((nodeString, index) => {
+      const resourceIdMatch = nodeString.match(/resource-id=['"]([^'"]+)['"]/);
+      const textMatch = nodeString.match(/text=['"]([^'"]*)['"]/);
+      const contentDescMatch = nodeString.match(/content-desc=['"]([^'"]*)['"]/);
+      const clickableMatch = nodeString.match(/clickable=['"](true|false)['"]/);
+      const boundsMatch = nodeString.match(/bounds=['"]\[(\d+),(\d+)\]\[(\d+),(\d+)\]['"]/);
+
+      const isClickable = clickableMatch?.[1] === 'true';
+      const hasText = textMatch?.[1] && textMatch[1].length > 0;
+      const hasResourceId = resourceIdMatch?.[1] && resourceIdMatch[1].trim().length > 0;
+      const hasContentDesc = contentDescMatch?.[1] && contentDescMatch[1].trim().length > 0;
+
+      // Only create selectors for interactive elements
+      if (isClickable && (hasText || hasResourceId || hasContentDesc)) {
+        const selectorId = `selector_${index}`;
+        const confidence = calculateSelectorConfidence({
+          hasText: !!hasText,
+          hasResourceId: !!hasResourceId,
+          hasContentDesc: !!hasContentDesc,
+          isClickable,
+          hasBounds: !!boundsMatch,
+        });
+
+        if (confidence >= 0.3) { // Filter very low-confidence selectors
+          // Add resource-id selector if available
+          if (hasResourceId) {
+            selectors.push({
+              id: `${selectorId}_resource_id`,
+              type: 'resource-id',
+              value: resourceIdMatch![1],
+              confidence: confidence * 1.2, // Boost resource-id confidence
+            });
+          }
+
+          // Add text selector if available
+          if (hasText) {
+            selectors.push({
+              id: `${selectorId}_text`,
+              type: 'text',
+              value: textMatch![1],
+              confidence: confidence * 0.8, // Text selectors are slightly less reliable
+            });
+          }
+
+          // Add content-desc selector if available
+          if (hasContentDesc) {
+            selectors.push({
+              id: `${selectorId}_content_desc`,
+              type: 'content-desc',
+              value: contentDescMatch![1],
+              confidence: confidence * 0.9, // Content-desc is fairly reliable
+            });
+          }
+
+          // Add coordinate fallback if bounds available
+          if (boundsMatch) {
+            const [x1, y1, x2, y2] = boundsMatch.slice(1).map(Number);
+            const centerX = Math.floor((x1 + x2) / 2);
+            const centerY = Math.floor((y1 + y2) / 2);
+
+            selectors.push({
+              id: `${selectorId}_coords`,
+              type: 'coords',
+              value: `${centerX},${centerY}`,
+              confidence: confidence * 0.4, // Coordinate selectors are least reliable
+            });
+          }
+        }
+      }
+    });
+
+    return selectors;
+  } catch (error) {
+    console.error('Failed to extract selectors from XML:', error);
+    return [];
+  }
+}
+
+// Helper function to calculate selector confidence
+function calculateSelectorConfidence(traits: {
+  hasText: boolean;
+  hasResourceId: boolean;
+  hasContentDesc: boolean;
+  isClickable: boolean;
+  hasBounds: boolean;
+}): number {
+  let confidence = 0.0;
+
+  // Base confidence for clickable elements
+  if (traits.isClickable) confidence += 0.3;
+
+  // Boosts for reliable attributes
+  if (traits.hasResourceId) confidence += 0.5;
+  if (traits.hasText) confidence += 0.3;
+  if (traits.hasContentDesc) confidence += 0.2;
+  if (traits.hasBounds) confidence += 0.1;
+
+  // Cap at 1.0
+  return Math.min(confidence, 1.0);
+}
+
 // Types (shared with backend)
 export interface ScreenNode {
   id: string;
@@ -172,15 +281,19 @@ export const useUIGraphStore = create<UIGraphStore>()(
       loadGraph: async () => {
         set({ loading: true, error: undefined });
         try {
-          const response = await fetch('/api/ui-graph/latest');
+          const response = await fetch('/api/ui-graph');
           if (!response.ok) {
             throw new Error(`Failed to load graph: ${response.statusText}`);
           }
 
-          const graph = await response.json();
+          const result = await response.json();
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to load graph');
+          }
+
           set({
-            nodes: graph.nodes || [],
-            edges: graph.edges || [],
+            nodes: result.data.nodes || [],
+            edges: result.data.edges || [],
             loading: false,
           });
         } catch (error) {
@@ -188,6 +301,120 @@ export const useUIGraphStore = create<UIGraphStore>()(
             error: error instanceof Error ? error.message : 'Unknown error',
             loading: false,
           });
+        }
+      },
+
+      loadNode: async (nodeId: string) => {
+        set({ loading: true, error: undefined });
+        try {
+          const response = await fetch(`/api/ui-graph/nodes/${nodeId}`);
+          if (!response.ok) {
+            throw new Error(`Failed to load node: ${response.statusText}`);
+          }
+
+          const result = await response.json();
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to load node');
+          }
+
+          const node = result.data;
+          set((state) => ({
+            nodes: state.nodes.some(n => n.id === node.id)
+              ? state.nodes.map(n => n.id === node.id ? node : n)
+              : [...state.nodes, node],
+            loading: false,
+          }));
+
+          return node;
+        } catch (error) {
+          set({
+            error: error instanceof Error ? error.message : 'Unknown error',
+            loading: false,
+          });
+          return null;
+        }
+      },
+
+      captureSignature: async (screenshot: string, xmlDump: string) => {
+        set({ loading: true, error: undefined });
+        try {
+          // Extract selectors from XML dump (client-side extraction)
+          const selectors = extractSelectorsFromXML(xmlDump);
+
+          set({
+            screenshot,
+            xmlDump,
+            availableSelectors: selectors,
+            loading: false,
+          });
+
+          return selectors;
+        } catch (error) {
+          set({
+            error: error instanceof Error ? error.message : 'Failed to capture signature',
+            loading: false,
+          });
+          return [];
+        }
+      },
+
+      createOptimisticEdge: async (fromNodeId: string, action: any, notes?: string) => {
+        set({ loading: true, error: undefined });
+        try {
+          // Create optimistic edge locally first
+          const tempEdge: ActionEdge = {
+            id: `temp-${Date.now()}`,
+            fromNodeId,
+            toNodeId: null, // Will be determined after action execution
+            action,
+            guard: {},
+            notes: notes || '',
+            createdAt: new Date().toISOString(),
+            createdBy: 'current-operator',
+            confidence: 0.8, // Initial optimistic confidence
+          };
+
+          // Add to local state immediately (optimistic update)
+          set((state) => ({
+            edges: [...state.edges, tempEdge],
+          }));
+
+          // Send to backend
+          const response = await fetch(`/api/ui-graph/nodes/${fromNodeId}/actions`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              action,
+              notes,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Failed to create edge: ${response.statusText}`);
+          }
+
+          const result = await response.json();
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to create edge');
+          }
+
+          // Replace optimistic edge with real one
+          set((state) => ({
+            edges: state.edges.map(edge =>
+              edge.id === tempEdge.id ? result.data : edge
+            ),
+            loading: false,
+          }));
+
+          return result.data;
+        } catch (error) {
+          // Remove optimistic edge on error
+          set((state) => ({
+            edges: state.edges.filter(edge => !edge.id.startsWith('temp-')),
+            error: error instanceof Error ? error.message : 'Failed to create edge',
+            loading: false,
+          }));
+          return null;
         }
       },
 
@@ -281,8 +508,8 @@ export const useUIGraphStore = create<UIGraphStore>()(
       saveCapturedNode: async () => {
         const state = get();
 
-        if (!state.nodeName || !state.selectedSelectors.length) {
-          set({ error: 'Node name and at least one selector are required' });
+        if (!state.nodeName) {
+          set({ error: 'Node name is required' });
           return;
         }
 
@@ -293,9 +520,9 @@ export const useUIGraphStore = create<UIGraphStore>()(
             body: JSON.stringify({
               name: state.nodeName,
               hints: state.nodeHints,
-              selectedSelectorIds: state.selectedSelectors,
-              screenshot: state.screenshot,
-              xmlDump: state.xmlDump,
+              metadata: {
+                // Additional metadata can be added here
+              },
             }),
           });
 
@@ -303,7 +530,12 @@ export const useUIGraphStore = create<UIGraphStore>()(
             throw new Error(`Failed to save node: ${response.statusText}`);
           }
 
-          const newNode = await response.json();
+          const result = await response.json();
+          if (!result.success) {
+            throw new Error(result.error || 'Failed to save node');
+          }
+
+          const newNode = result.data;
           get().addNode(newNode);
 
           // Reset capture workflow

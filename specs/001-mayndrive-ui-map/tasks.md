@@ -35,14 +35,14 @@
 
 ### Implementation
 
-- [ ] T009 [P] [US1] Create the signature builder (stable traits → SHA-256 hash) in `backend/src/services/ui-graph/signatureBuilder.ts`.
-- [ ] T010 [US1] Implement `NodeCaptureService` in `backend/src/services/ui-graph/nodeCaptureService.ts` to orchestrate screenshot/UI dump capture and selector ranking.
-- [ ] T011 [P] [US1] Implement `GraphStore` read/write helpers in `backend/src/services/ui-graph/graphStore.ts` to version graphs under `var/graphs/<timestamp>/`.
-- [ ] T012 [US1] Add Express routes for `POST /ui-graph/nodes`, `GET /ui-graph/nodes/:id`, and `POST /ui-graph/nodes/:id/actions` in `backend/src/api/ui-graph/routes.ts` using contracts/ui-map.openapi.yaml.
-- [ ] T013 [P] [US1] Extend the frontend graph store in `frontend/src/stores/uiGraphStore.ts` with actions for loading nodes, capturing signatures, and optimistic edge creation.
-- [ ] T014 [P] [US1] Build the capture panel UI in `frontend/src/components/discovery/CapturePanel.tsx` (name, hints, selector ranking, artifact upload progress).
-- [ ] T015 [US1] Wire the Discovery page at `frontend/src/pages/DiscoveryPage.tsx` to list nodes, trigger captures, and visualize outgoing edges.
-- [ ] T016 [US1] Add the artifact integrity CLI at `scripts/graph/update-index.ts` to recalculate checksums and sync `var/graphs/index.json` during capture sessions.
+- [X] T009 [P] [US1] Create the signature builder (stable traits → SHA-256 hash) in `backend/src/services/ui-graph/signatureBuilder.ts`.
+- [X] T010 [US1] Implement `NodeCaptureService` in `backend/src/services/ui-graph/nodeCaptureService.ts` to orchestrate screenshot/UI dump capture and selector ranking.
+- [X] T011 [P] [US1] Implement `GraphStore` read/write helpers in `backend/src/services/ui-graph/graphStore.ts` to version graphs under `var/graphs/<timestamp>/`.
+- [X] T012 [US1] Add Express routes for `POST /ui-graph/nodes`, `GET /ui-graph/nodes/:id`, and `POST /ui-graph/nodes/:id/actions` in `backend/src/api/ui-graph/routes.ts` using contracts/ui-map.openapi.yaml.
+- [X] T013 [P] [US1] Extend the frontend graph store in `frontend/src/stores/uiGraphStore.ts` with actions for loading nodes, capturing signatures, and optimistic edge creation.
+- [X] T014 [P] [US1] Build the capture panel UI in `frontend/src/components/discovery/CapturePanel.tsx` (name, hints, selector ranking, artifact upload progress).
+- [X] T015 [US1] Wire the Discovery page at `frontend/src/pages/DiscoveryPage.tsx` to list nodes, trigger captures, and visualize outgoing edges.
+- [X] T016 [US1] Add the artifact integrity CLI at `scripts/graph/update-index.ts` to recalculate checksums and sync `var/graphs/index.json` during capture sessions.
 
 **Checkpoint**: Operators can capture nodes/actions and see them reflected in the UI graph plus filesystem artifacts.
 
