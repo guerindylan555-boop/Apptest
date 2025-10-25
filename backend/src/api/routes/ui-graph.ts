@@ -14,7 +14,7 @@ import { z } from 'zod';
 import { v4 as uuidv4 } from 'uuid';
 import { nodeCaptureService } from '../../services/ui-graph/nodeCaptureService';
 import { graphStore } from '../../services/ui-graph/graphStore';
-import { validateScreenNodeInput, validateActionEdgeInput } from '../../utils/validation/uiGraphSchema';
+import { validateScreenNode, validateActionEdge } from '../../utils/validation/uiGraphSchema';
 import type { ScreenNode, ActionEdge } from '../../types/uiGraph';
 
 const router = Router();
