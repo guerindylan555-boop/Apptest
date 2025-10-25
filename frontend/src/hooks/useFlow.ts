@@ -297,7 +297,7 @@ export const useFlow = (refreshInterval: number = 15000): UseFlowReturn => {
       const flow = await apiRequest<FlowDefinition>(`/${flowId}`);
       return flow;
     } catch (error) {
-      if (error.message.includes('404')) {
+      if ((error as any).message?.includes('404')) {
         return null;
       }
       handleError(error, 'Failed to get flow');
