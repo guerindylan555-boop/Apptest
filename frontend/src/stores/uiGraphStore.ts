@@ -12,8 +12,8 @@ import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 
 // Helper function to extract selectors from XML dump
-function extractSelectorsFromXML(xmlContent: string) {
-  const selectors = [];
+function extractSelectorsFromXML(xmlContent: string): SelectorCandidate[] {
+  const selectors: SelectorCandidate[] = [];
   try {
     // Parse XML nodes
     const nodeRegex = /<node[^>]*>/g;
@@ -256,7 +256,7 @@ interface UIGraphStore extends UIGraphState, CaptureWorkflowState {
   rejectDetection: (action: 'map_new' | 'merge' | 'retry') => void;
 
   // Optimistic edge creation
-  createOptimisticEdge: (fromNodeId: string, action: any, notes?: string) => Promise<ActionEdge | null>;
+  createOptimisticEdge: (fromNodeId: string, action: ActionEdge['action'], notes?: string) => Promise<ActionEdge | null>;
 
   // Computed getters
   getNodeById: (nodeId: string) => ScreenNode | undefined;
@@ -370,7 +370,7 @@ export const useUIGraphStore = create<UIGraphStore>()(
         }
       },
 
-      createOptimisticEdge: async (fromNodeId: string, action: any, notes?: string) => {
+      createOptimisticEdge: async (fromNodeId: string, action: ActionEdge['action'], notes?: string) => {
         set({ loading: true, error: undefined });
         try {
           // Create optimistic edge locally first
