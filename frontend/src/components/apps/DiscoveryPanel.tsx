@@ -445,17 +445,17 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
   };
 
   return (
-    <div className={`h-full flex flex-col bg-white border-l border-gray-200 ${className}`}>
+    <div className={`h-full flex flex-col bg-gray-900 ${className}`}>
       {/* Header with Tabs */}
-      <div className="border-b border-gray-200">
-        <div className="flex items-center justify-between p-4 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-900">UI Discovery & Flows</h2>
+      <div className="border-b border-gray-700">
+        <div className="flex items-center justify-between p-4 border-b border-gray-800">
+          <h2 className="text-lg font-semibold text-gray-100">Discovery & Flows</h2>
           <div className="flex items-center space-x-2">
             {getStatusIcon(isCapturing ? 'capturing' : flowError ? 'error' : 'success')}
             <button
               onClick={() => activeTab === 'discovery' ? refreshGraph() : refreshFlows()}
               disabled={isLoading || flowLoading}
-              className="p-1 text-gray-500 hover:text-gray-700 disabled:opacity-50"
+              className="p-1 text-gray-400 hover:text-gray-200 disabled:opacity-50 transition-colors"
               title="Refresh"
             >
               <ArrowPathIcon className="w-4 h-4" />
@@ -464,13 +464,13 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex">
+        <div className="flex bg-gray-800">
           <button
             onClick={() => setActiveTab('discovery')}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'discovery'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-blue-500 text-blue-400 bg-gray-700'
+                : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-600'
             }`}
           >
             <div className="flex items-center space-x-2">
@@ -482,15 +482,15 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
             onClick={() => setActiveTab('flows')}
             className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
               activeTab === 'flows'
-                ? 'border-blue-500 text-blue-600'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                ? 'border-blue-500 text-blue-400 bg-gray-700'
+                : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-600'
             }`}
           >
             <div className="flex items-center space-x-2">
               <DocumentTextIcon className="w-4 h-4" />
               <span>Flows</span>
               {flows && flows.length > 0 && (
-                <span className="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs">
+                <span className="bg-blue-900 text-blue-300 px-2 py-0.5 rounded-full text-xs">
                   {flows.length}
                 </span>
               )}
@@ -501,16 +501,16 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
 
       {/* Error Display */}
       {(error || flowError) && (
-        <div className="mx-4 mt-4 p-3 bg-red-50 border border-red-200 rounded-md">
+        <div className="mx-4 mt-4 p-3 bg-red-900 border border-red-700 rounded-md">
           <div className="flex items-start">
-            <XCircleIcon className="w-5 h-5 text-red-500 mt-0.5 mr-2" />
+            <XCircleIcon className="w-5 h-5 text-red-400 mt-0.5 mr-2" />
             <div className="flex-1">
-              <p className="text-sm text-red-700">
+              <p className="text-sm text-red-200">
                 {activeTab === 'discovery' ? error : flowError}
               </p>
               <button
                 onClick={() => activeTab === 'discovery' ? clearError() : clearFlowError()}
-                className="mt-1 text-xs text-red-600 hover:text-red-800"
+                className="mt-1 text-xs text-red-300 hover:text-red-100 transition-colors"
               >
                 Dismiss
               </button>
@@ -520,15 +520,15 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
       )}
 
       {/* Action Buttons */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-gray-700">
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={handleCaptureState}
             disabled={isCapturing}
             className={`flex items-center justify-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
               isCapturing
-                ? 'bg-gray-100 text-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700'
+                ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
+                : 'bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50'
             }`}
           >
             <CameraIcon className="w-4 h-4 mr-2" />
@@ -551,7 +551,7 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
             <button
               onClick={() => setMergeMode(true)}
               disabled={!graph || graph.states.length < 2}
-              className="flex items-center justify-center px-3 py-2 text-sm font-medium bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+              className="flex items-center justify-center px-3 py-2 text-sm font-medium bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
             >
               <ArrowsRightLeftIcon className="w-4 h-4 mr-2" />
               Merge States
@@ -561,7 +561,7 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
               <button
                 onClick={handleMergeStates}
                 disabled={!mergeTarget || !selectedState}
-                className="flex items-center justify-center px-3 py-2 text-sm font-medium bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+                className="flex items-center justify-center px-3 py-2 text-sm font-medium bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <CheckCircleIcon className="w-4 h-4 mr-2" />
                 Confirm Merge
@@ -590,16 +590,16 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
 
         {/* Mode Indicators */}
         {transitionMode && transitionStart && (
-          <div className="mt-3 p-2 bg-orange-50 border border-orange-200 rounded-md">
-            <p className="text-xs text-orange-700">
+          <div className="mt-3 p-2 bg-orange-900 border border-orange-700 rounded-md">
+            <p className="text-xs text-orange-200">
               Transition mode: From {transitionStart.activity}
             </p>
           </div>
         )}
 
         {mergeMode && (
-          <div className="mt-3 p-2 bg-purple-50 border border-purple-200 rounded-md">
-            <p className="text-xs text-purple-700">
+          <div className="mt-3 p-2 bg-purple-900 border border-purple-700 rounded-md">
+            <p className="text-xs text-purple-200">
               Merge mode: Select target state to merge {selectedState?.activity || 'selected state'} into
             </p>
           </div>
@@ -612,30 +612,30 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
           <>
             {/* Current State Display */}
             {currentState && (
-          <div className="p-4 border-b border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">Current State</h3>
+          <div className="p-4 border-b border-gray-700">
+            <h3 className="text-sm font-semibold text-gray-100 mb-2">Current State</h3>
             <div className="space-y-2 text-xs">
               <div className="flex justify-between">
-                <span className="text-gray-600">Activity:</span>
-                <span className="font-mono">{currentState.activity}</span>
+                <span className="text-gray-400">Activity:</span>
+                <span className="font-mono text-gray-200">{currentState.activity}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Package:</span>
-                <span className="font-mono text-xs truncate ml-2">{currentState.package}</span>
+                <span className="text-gray-400">Package:</span>
+                <span className="font-mono text-xs truncate ml-2 text-gray-200">{currentState.package}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-gray-600">Elements:</span>
-                <span>{currentState.selectors.length}</span>
+                <span className="text-gray-400">Elements:</span>
+                <span className="text-gray-200">{currentState.selectors.length}</span>
               </div>
               {currentState.metadata?.captureDuration && (
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Capture Time:</span>
-                  <span>{formatDuration(currentState.metadata.captureDuration)}</span>
+                  <span className="text-gray-400">Capture Time:</span>
+                  <span className="text-gray-200">{formatDuration(currentState.metadata.captureDuration)}</span>
                 </div>
               )}
               <div className="flex justify-between">
-                <span className="text-gray-600">Captured:</span>
-                <span>{formatDate(currentState.createdAt)}</span>
+                <span className="text-gray-400">Captured:</span>
+                <span className="text-gray-200">{formatDate(currentState.createdAt)}</span>
               </div>
             </div>
 
@@ -645,7 +645,7 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
                 <img
                   src={`/api/state/${currentState.id}/screenshot`}
                   alt="Current state screenshot"
-                  className="w-full h-32 object-cover border border-gray-300 rounded"
+                  className="w-full h-32 object-cover border border-gray-600 rounded"
                 />
               </div>
             )}

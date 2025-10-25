@@ -1,12 +1,11 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import NavSidebar from './components/NavSidebar';
 import EmulatorPage from './pages/EmulatorPage';
-import AutomationWorkbenchPage from './pages/AutomationWorkbenchPage';
 
 /**
  * App Root Component
  *
  * Provides routing and layout structure for the AutoApp control interface.
+ * Simplified layout without sidebar navigation.
  */
 
 const App = () => {
@@ -14,19 +13,15 @@ const App = () => {
     <BrowserRouter>
       <div
         style={{
-          display: 'flex',
           minHeight: '100vh',
-          fontFamily: 'Inter, system-ui, sans-serif'
+          fontFamily: 'Inter, system-ui, sans-serif',
+          backgroundColor: '#0f172a'
         }}
       >
-        <NavSidebar />
-        <main style={{ flex: 1, overflow: 'auto' }}>
-          <Routes>
-            <Route path="/" element={<EmulatorPage />} />
-            <Route path="/automation" element={<AutomationWorkbenchPage />} />
-            <Route path="*" element={<EmulatorPage />} />
-          </Routes>
-        </main>
+        <Routes>
+          <Route path="/" element={<EmulatorPage />} />
+          <Route path="*" element={<EmulatorPage />} />
+        </Routes>
       </div>
     </BrowserRouter>
   );

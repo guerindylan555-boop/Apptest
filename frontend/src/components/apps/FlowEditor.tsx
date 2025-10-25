@@ -608,16 +608,16 @@ export const FlowEditor: React.FC<FlowEditorProps> = ({
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
       <div className="flex min-h-full items-center justify-center p-4">
-        <div className="fixed inset-0 bg-gray-500 bg-opacity-75" onClick={onClose} />
+        <div className="fixed inset-0 bg-gray-900 bg-opacity-75" onClick={onClose} />
 
-        <div className="relative bg-white rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden">
+        <div className="relative bg-gray-800 rounded-lg shadow-xl max-w-6xl w-full max-h-[90vh] overflow-hidden border border-gray-700">
           {/* Header */}
-          <div className="flex items-center justify-between p-6 border-b border-gray-200">
+          <div className="flex items-center justify-between p-6 border-b border-gray-700">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">
+              <h2 className="text-xl font-semibold text-gray-100">
                 {flow ? 'Edit Flow' : 'Create New Flow'}
               </h2>
-              <p className="text-sm text-gray-500 mt-1">
+              <p className="text-sm text-gray-400 mt-1">
                 Define automated UI interaction sequences with state predicates
               </p>
             </div>
@@ -629,13 +629,13 @@ export const FlowEditor: React.FC<FlowEditorProps> = ({
                   validationWarnings.length > 0 ? 'bg-yellow-500' :
                   completenessScore === 100 ? 'bg-green-500' : 'bg-blue-500'
                 }`}></div>
-                <span className="text-sm text-gray-600">
+                <span className="text-sm text-gray-300">
                   {completenessScore}% Complete
                 </span>
               </div>
 
               {isDirty && (
-                <span className="flex items-center text-sm text-amber-600">
+                <span className="flex items-center text-sm text-amber-400">
                   <ExclamationTriangleIcon className="w-4 h-4 mr-1" />
                   Unsaved changes
                 </span>
@@ -643,7 +643,7 @@ export const FlowEditor: React.FC<FlowEditorProps> = ({
 
               <button
                 onClick={onClose}
-                className="p-2 text-gray-400 hover:text-gray-600"
+                className="p-2 text-gray-400 hover:text-gray-200 transition-colors"
               >
                 <XMarkIcon className="w-5 h-5" />
               </button>
