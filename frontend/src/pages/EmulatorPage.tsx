@@ -2,11 +2,13 @@ import { useCallback, useMemo, useEffect, useState } from 'react';
 import { useAppStore } from '../state/useAppStore';
 import StateBadge from '../components/StateBadge';
 import StreamViewer from '../components/StreamViewer';
-import { AutomationController } from '../components/AutomationController';
+import { GPSController } from '../components/GPSController';
+import DiscoveryPanel from '../components/apps/DiscoveryPanel';
 import ErrorBanner from '../components/ErrorBanner';
 import DiagnosticsDrawer from '../components/DiagnosticsDrawer';
 import { fetchStreamUrl, fetchLogs, restartEmulator as restartEmulatorApi } from '../services/backendClient';
 import { useHealthPoller } from '../hooks/useHealthPoller';
+import { useDiscoveryPanel, useGpsPanel } from '../state/featureFlagsStore';
 
 const EmulatorPage = () => {
   const emulatorState = useAppStore((state) => state.emulatorState);
@@ -19,6 +21,10 @@ const EmulatorPage = () => {
   const streamerActive = useAppStore((state) => state.streamerActive);
   const isTransitioning = useAppStore((state) => state.isTransitioning);
   const setTransitioning = useAppStore((state) => state.setTransitioning);
+
+  // Feature flags
+  const discoveryEnabled = useDiscoveryPanel();
+  const gpsEnabled = useGpsPanel();
 
   useHealthPoller();
 
@@ -101,119 +107,273 @@ const EmulatorPage = () => {
   }, [handleRefreshStream, lastError]);
 
   return (
-    <div style={{ padding: '2rem' }}>
-      <header style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem' }}>
+    <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#0f172a' }}>
+      {/* Header */}
+      <header style={{
+        padding: '1rem 2rem',
+        borderBottom: '1px solid #1e293b',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        backgroundColor: '#0f172a',
+        color: '#f1f5f9'
+      }}>
         <div>
-          <h1 style={{ margin: 0 }}>Emulator Control</h1>
-          <p style={{ margin: 0, color: '#666' }}>Streaming an externally managed emulator</p>
+          <h1 style={{ margin: 0, fontSize: '1.5rem', fontWeight: '600', color: '#f1f5f9' }}>
+            UI Discovery & Flow Automation
+          </h1>
+          <p style={{ margin: '4px 0 0 0', color: '#94a3b8', fontSize: '0.875rem' }}>
+            Android UI state discovery and automated flow management
+          </p>
         </div>
-        <StateBadge state={emulatorState} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+          <StateBadge state={emulatorState} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', color: '#64748b', fontSize: '0.875rem' }}>
+            <div style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: streamerActive ? '#10b981' : '#ef4444'
+            }} />
+            <span>Streamer: {streamerActive ? 'active' : 'offline'}</span>
+          </div>
+        </div>
       </header>
 
-      <main
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          gap: '1.5rem'
-        }}
-      >
-        {lastError && (
+      {/* Error Banner */}
+      {lastError && (
+        <div style={{ padding: '0 2rem' }}>
           <ErrorBanner
             message={lastError.message}
             hint={lastError.hint}
             logsPath="var/log/autoapp/backend.log"
             actions={errorActions}
           />
-        )}
-        <section style={{ width: '100%', display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem' }}>
-          <div style={{ display: 'flex', justifyContent: 'center' }}>
-            <StreamViewer state={emulatorState} streamTicket={streamTicket} />
-          </div>
-          <div>
-            <AutomationController />
-          </div>
-        </section>
+        </div>
+      )}
 
-        <div
-          style={{
+      {/* Main Content */}
+      <main style={{
+        flex: 1,
+        display: 'flex',
+        flexDirection: 'column',
+        padding: '1.5rem 2rem',
+        gap: '1.5rem',
+        overflow: 'hidden',
+        height: 'calc(100vh - 80px)' // Account for header height
+      }}>
+        {/* Top Section - Video Stream and Discovery Panel */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 480px',
+          gap: '1.5rem',
+          flex: '1', // Allow this section to grow
+          minHeight: '400px'
+        }}>
+          {/* Video Stream Section */}
+          <div style={{
             display: 'flex',
-            gap: '1rem',
-            alignItems: 'center',
-            flexWrap: 'wrap'
-          }}
-        >
-          <span style={{ color: '#cbd5f5', fontSize: '0.9rem' }}>
-            Emulator runs continuously; use restart if the stream ever stalls.
-          </span>
-          <button
-            type="button"
-            onClick={handleRestart}
-            disabled={isTransitioning}
-            style={{ padding: '0.5rem 1rem' }}
-          >
-            Restart
-          </button>
-          <span style={{ color: '#93c5fd', fontSize: '0.85rem' }}>
-            Streamer: {streamerActive ? 'active' : 'offline'}
-          </span>
+            flexDirection: 'column',
+            gap: '1rem'
+          }}>
+            {/* Stream Header */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              padding: '0.75rem 1rem',
+              backgroundColor: '#1e293b',
+              borderRadius: '0.75rem',
+              border: '1px solid #334155'
+            }}>
+              <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '600', color: '#f1f5f9' }}>
+                Device Stream
+              </h2>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <span style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
+                  {emulatorState}
+                </span>
+                <button
+                  type="button"
+                  onClick={handleRefreshStream}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.875rem',
+                    fontWeight: '500',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseOver={(e) => {
+                    const target = e.target as HTMLButtonElement;
+                    target.style.backgroundColor = '#2563eb';
+                  }}
+                  onMouseOut={(e) => {
+                    const target = e.target as HTMLButtonElement;
+                    target.style.backgroundColor = '#3b82f6';
+                  }}
+                >
+                  Refresh
+                </button>
+              </div>
+            </div>
+            {/* Stream Viewer Direct */}
+            <div style={{
+              flex: 1,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              borderRadius: '0.75rem',
+              overflow: 'hidden',
+              border: '1px solid #334155',
+              backgroundColor: '#000',
+              minHeight: '300px', // Minimum height but allow growth
+              maxHeight: 'calc(100vh - 320px)'
+            }}>
+              <div style={{
+                width: 'min(100%, 560px)',
+                maxHeight: '100%',
+                aspectRatio: '9 / 16',
+                display: 'flex',
+                flex: '0 0 auto',
+                justifyContent: 'center'
+              }}>
+                <StreamViewer state={emulatorState} streamTicket={streamTicket} />
+              </div>
+            </div>
+          </div>
+
+          {/* Discovery Panel Section */}
+          <div style={{
+            height: '600px', // Increased height for better usability
+            minHeight: '400px',
+            overflow: 'hidden'
+          }}>
+            {discoveryEnabled ? (
+              <div style={{
+                height: '100%',
+                backgroundColor: '#1e293b',
+                borderRadius: '0.75rem',
+                border: '1px solid #334155',
+                overflow: 'hidden'
+              }}>
+                <DiscoveryPanel className="h-full" />
+              </div>
+            ) : gpsEnabled ? (
+              <div style={{
+                height: '100%',
+                backgroundColor: '#1e293b',
+                borderRadius: '0.75rem',
+                border: '1px solid #334155',
+                padding: '1rem'
+              }}>
+                <GPSController />
+              </div>
+            ) : (
+              <div style={{
+                height: '100%',
+                backgroundColor: '#1e293b',
+                borderRadius: '0.75rem',
+                border: '1px solid #334155',
+                padding: '2rem',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                textAlign: 'center'
+              }}>
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  backgroundColor: '#475569',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '1rem'
+                }}>
+                  <span style={{ fontSize: '1.5rem', color: '#94a3b8' }}>⚙️</span>
+                </div>
+                <h3 style={{ margin: '0 0 0.5rem 0', color: '#cbd5f5' }}>
+                  No Control Panel Active
+                </h3>
+                <p style={{ margin: 0, color: '#64748b', fontSize: '0.875rem' }}>
+                  Enable the Discovery Panel or GPS Controller in settings
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
-        <div style={{ alignSelf: 'stretch' }}>
-          <DiagnosticsDrawer
-            pid={pid}
-            bootElapsedMs={bootElapsedMs}
-            ports={ports}
-            lastError={lastError}
-          />
-        </div>
+        {/* Bottom Section - Controls and Diagnostics */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '1.5rem',
+          flex: '0 0 auto' // Don't grow
+        }}>
+          {/* Controls Section */}
+          <div style={{
+            backgroundColor: '#1e293b',
+            borderRadius: '0.75rem',
+            border: '1px solid #334155',
+            padding: '1.25rem'
+          }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: '#f1f5f9', fontSize: '1rem', fontWeight: '600' }}>
+              Device Controls
+            </h3>
+            <div style={{
+              display: 'flex',
+              gap: '1rem',
+              alignItems: 'center',
+              flexWrap: 'wrap'
+            }}>
+              <button
+                type="button"
+                onClick={handleRestart}
+                disabled={isTransitioning}
+                style={{
+                  padding: '0.625rem 1.25rem',
+                  backgroundColor: isTransitioning ? '#475569' : '#dc2626',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '0.375rem',
+                  fontSize: '0.875rem',
+                  fontWeight: '500',
+                  cursor: isTransitioning ? 'not-allowed' : 'pointer',
+                  transition: 'background-color 0.2s',
+                  opacity: isTransitioning ? 0.6 : 1
+                }}
+              >
+                {isTransitioning ? 'Restarting...' : 'Restart Device'}
+              </button>
+              <span style={{ color: '#94a3b8', fontSize: '0.875rem' }}>
+                Device runs continuously; restart if the stream stalls
+              </span>
+            </div>
+          </div>
 
-        <section style={{ width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem' }}>
-          <div
-            style={{
-              background: '#0f172a',
-              color: '#cbd5f5',
-              padding: '1rem',
-              borderRadius: '0.75rem',
-              minHeight: '220px'
-            }}
-          >
-            <h2 style={{ marginTop: 0 }}>Emulator Logs</h2>
-            <pre
-              style={{
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-                maxHeight: '240px',
-                overflowY: 'auto',
-                fontSize: '0.75rem'
-              }}
-            >
-              {emulatorLogs.join('\n') || 'No emulator output yet.'}
-            </pre>
+          {/* System Info Section */}
+          <div style={{
+            backgroundColor: '#1e293b',
+            borderRadius: '0.75rem',
+            border: '1px solid #334155',
+            padding: '1.25rem'
+          }}>
+            <h3 style={{ margin: '0 0 1rem 0', color: '#f1f5f9', fontSize: '1rem', fontWeight: '600' }}>
+              System Information
+            </h3>
+            <DiagnosticsDrawer
+              pid={pid}
+              bootElapsedMs={bootElapsedMs}
+              ports={ports}
+              lastError={lastError}
+            />
           </div>
-          <div
-            style={{
-              background: '#0f172a',
-              color: '#cbd5f5',
-              padding: '1rem',
-              borderRadius: '0.75rem',
-              minHeight: '220px'
-            }}
-          >
-            <h2 style={{ marginTop: 0 }}>Streamer Logs</h2>
-            <pre
-              style={{
-                whiteSpace: 'pre-wrap',
-                wordBreak: 'break-word',
-                maxHeight: '240px',
-                overflowY: 'auto',
-                fontSize: '0.75rem'
-              }}
-            >
-              {streamerLogs.join('\n') || 'No streamer output yet.'}
-            </pre>
-          </div>
-        </section>
+        </div>
       </main>
     </div>
   );

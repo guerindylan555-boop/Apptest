@@ -1,4 +1,0 @@
-[*] Authentication hooks loaded for Mayn Drive
-[UI] UI hooks failed: Error: setText(): specified argument types do not match any of:
-	.overload('java.lang.CharSequence', 'android.widget.TextView$BufferType')
-[*] Authentication hooks installed successfully!

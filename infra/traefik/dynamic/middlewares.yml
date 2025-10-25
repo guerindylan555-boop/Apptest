@@ -1,0 +1,106 @@
+# Traefik Dynamic Configuration - Middlewares
+# AutoApp UI Map & Intelligent Flow Engine
+
+http:
+  middlewares:
+    # Security Headers Middleware
+    security-headers:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Proto: "https"
+        customResponseHeaders:
+          X-Content-Type-Options: "nosniff"
+          X-Frame-Options: "DENY"
+          X-XSS-Protection: "1; mode=block"
+          Referrer-Policy: "strict-origin-when-cross-origin"
+          Content-Security-Policy: >
+            default-src 'self';
+            script-src 'self' 'unsafe-inline' 'unsafe-eval';
+            style-src 'self' 'unsafe-inline';
+            img-src 'self' data: blob:;
+            connect-src 'self' ws: wss:;
+            font-src 'self';
+            object-src 'none';
+            base-uri 'self';
+            form-action 'self'
+          Strict-Transport-Security: "max-age=31536000; includeSubDomains; preload"
+
+    # CORS Headers Middleware
+    cors-headers:
+      headers:
+        accessControlAllowCredentials: false
+        accessControlAllowHeaders:
+          - "Content-Type"
+          - "Authorization"
+          - "X-Requested-With"
+          - "Accept"
+          - "Origin"
+          - "X-User-Agent"
+          - "grpc-timeout"
+          - "keep-alive"
+        accessControlAllowMethods:
+          - "GET"
+          - "POST"
+          - "PUT"
+          - "DELETE"
+          - "OPTIONS"
+          - "PATCH"
+        accessControlAllowOriginList:
+          - "https://localhost:5173"
+          - "https://127.0.0.1:5173"
+          - "http://localhost:5173"
+          - "http://127.0.0.1:5173"
+          - "*"  # For development - restrict in production
+        accessControlMaxAge: 86400
+
+    # API Rate Limiting
+    api-ratelimit:
+      rateLimit:
+        average: 100
+        period: 1m
+        burst: 200
+
+    # Backend API Strip Prefix
+    api-strip-prefix:
+      stripPrefix:
+        prefixes:
+          - "/api"
+        forceSlash: false
+
+    # WebSocket Headers for WebRTC
+    websocket-headers:
+      headers:
+        customRequestHeaders:
+          Connection: "Upgrade"
+          Upgrade: "websocket"
+        customResponseHeaders:
+          Sec-WebSocket-Accept: ""
+
+    # Compression Middleware
+    compress:
+      compress:
+        excludedContentTypes:
+          - "text/event-stream"
+          - "application/grpc"
+          - "application/grpc-web"
+
+    # Error Pages Middleware
+    error-pages:
+      errors:
+        status:
+          - "400-599"
+        service: error-pages@docker
+        query: "/{status}.html"
+
+    # Health Check Middleware
+    health-check:
+      headers:
+        customRequestHeaders:
+          X-Health-Check: "true"
+
+  # Services for error handling
+  services:
+    error-pages:
+      loadBalancer:
+        servers:
+          - url: "http://frontend:80"

@@ -1,0 +1,130 @@
+# Traefik Production Dynamic Configuration - Middlewares
+# AutoApp UI Map & Intelligent Flow Engine - Production
+
+http:
+  middlewares:
+    # Security Headers Middleware (Production - Stricter)
+    security-headers:
+      headers:
+        customRequestHeaders:
+          X-Forwarded-Proto: "https"
+          X-Forwarded-Host: "yourdomain.com"  # UPDATE with production domain
+        customResponseHeaders:
+          X-Content-Type-Options: "nosniff"
+          X-Frame-Options: "DENY"
+          X-XSS-Protection: "1; mode=block"
+          Referrer-Policy: "strict-origin-when-cross-origin"
+          Content-Security-Policy: >
+            default-src 'self';
+            script-src 'self' 'unsafe-inline';
+            style-src 'self' 'unsafe-inline';
+            img-src 'self' data: blob:;
+            connect-src 'self' wss: https:;
+            font-src 'self';
+            object-src 'none';
+            base-uri 'self';
+            form-action 'self';
+            frame-ancestors 'none'
+          Strict-Transport-Security: "max-age=31536000; includeSubDomains; preload"
+          Permissions-Policy: >
+            geolocation=(),
+            microphone=(),
+            camera=(),
+            payment=(),
+            usb=(),
+            magnetometer=(),
+            gyroscope=()
+
+    # CORS Headers Middleware (Production - Restricted)
+    cors-headers:
+      headers:
+        accessControlAllowCredentials: false
+        accessControlAllowHeaders:
+          - "Content-Type"
+          - "Authorization"
+          - "X-Requested-With"
+          - "Accept"
+          - "Origin"
+        accessControlAllowMethods:
+          - "GET"
+          - "POST"
+          - "PUT"
+          - "DELETE"
+          - "OPTIONS"
+        accessControlAllowOriginList:
+          - "https://app.yourdomain.com"    # UPDATE with production frontend domain
+          - "https://api.yourdomain.com"    # UPDATE with production API domain
+        accessControlMaxAge: 86400
+
+    # API Rate Limiting (Production - Stricter)
+    api-ratelimit:
+      rateLimit:
+        average: 50      # Reduced for production
+        period: 1m
+        burst: 100       # Reduced burst capacity
+
+    # Backend API Strip Prefix
+    api-strip-prefix:
+      stripPrefix:
+        prefixes:
+          - "/api"
+        forceSlash: false
+
+    # WebSocket Headers for WebRTC
+    websocket-headers:
+      headers:
+        customRequestHeaders:
+          Connection: "Upgrade"
+          Upgrade: "websocket"
+          Sec-WebSocket-Protocol: "webrtc"
+        customResponseHeaders:
+          Sec-WebSocket-Accept: ""
+
+    # Compression Middleware (Production - Optimized)
+    compress:
+      compress:
+        excludedContentTypes:
+          - "text/event-stream"
+          - "application/grpc"
+          - "application/grpc-web"
+          - "application/octet-stream"
+        minResponseBodyBytes: 1024
+
+    # Error Pages Middleware
+    error-pages:
+      errors:
+        status:
+          - "400-599"
+        service: error-pages@docker
+        query: "/{status}.html"
+
+    # Health Check Middleware
+    health-check:
+      headers:
+        customRequestHeaders:
+          X-Health-Check: "true"
+          X-Forwarded-Proto: "https"
+
+    # IP Whitelist for Admin Endpoints (Production Security)
+    admin-whitelist:
+      ipWhiteList:
+        sourceRange:
+          - "127.0.0.1/32"    # Localhost only
+          - "10.0.0.0/8"      # Private networks (adjust as needed)
+          - "192.168.0.0/16"  # Private networks (adjust as needed)
+
+    # Basic Authentication Middleware (for Traefik Dashboard)
+    dashboard-auth:
+      basicAuth:
+        # Use: htpasswd -nb admin password | base64
+        # Example: admin:$apr1$c7Vt5... (base64 encoded)
+        # UPDATE with actual credentials
+        users:
+          - "admin:$apr1$c7Vt5WLBg$8QwKwYfYpKg8QkQq8QkQkQ="  # EXAMPLE - REPLACE
+
+  # Services for error handling
+  services:
+    error-pages:
+      loadBalancer:
+        servers:
+          - url: "http://frontend:80"

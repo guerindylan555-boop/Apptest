@@ -1,8 +1,0 @@
-[+] Starting Mayn Drive Scooter Unlock Capture
-[+] Mayn Drive scooter unlock capture script loaded
-[+] Java environment initialized for scooter unlock capture
-[+] HttpURLConnection hook installed for complete network capture
-[+] Scooter unlock capture script loaded successfully
-[+] Ready to capture TUF020 unlock requests!
-[+] Starting automated scooter unlock flow...
-[-] Automated unlock flow failed: Error: java.lang.ClassNotFoundException: Didn't find class "androidx.test.uiautomator.UiDevice" on path: DexPathList[[zip file "/data/app/~~KvakmAuXGCJN2zo_oAb6dw==/fr.mayndrive.app-bnrYDBkYvhYYk4sjWbGwmQ==/base.apk", zip file "/data/app/~~KvakmAuXGCJN2zo_oAb6dw==/fr.mayndrive.app-bnrYDBkYvhYYk4sjWbGwmQ==/split_config.arm64_v8a.apk", zip file "/data/app/~~KvakmAuXGCJN2zo_oAb6dw==/fr.mayndrive.app-bnrYDBkYvhYYk4sjWbGwmQ==/split_config.fr.apk", zip file "/data/app/~~KvakmAuXGCJN2zo_oAb6dw==/fr.mayndrive.app-bnrYDBkYvhYYk4sjWbGwmQ==/split_config.xhdpi.apk"],nativeLibraryDirectories=[/data/app/~~KvakmAuXGCJN2zo_oAb6dw==/fr.mayndrive.app-bnrYDBkYvhYYk4sjWbGwmQ==/lib/arm64, /data/app/~~KvakmAuXGCJN2zo_oAb6dw==/fr.mayndrive.app-bnrYDBkYvhYYk4sjWbGwmQ==/base.apk!/lib/arm64-v8a, /data/app/~~KvakmAuXGCJN2zo_oAb6dw==/fr.mayndrive.app-bnrYDBkYvhYYk4sjWbGwmQ==/split_config.arm64_v8a.apk!/lib/arm64-v8a, /data/app/~~KvakmAuXGCJN2zo_oAb6dw==/fr.mayndrive.app-bnrYDBkYvhYYk4sjWbGwmQ==/split_config.fr.apk!/lib/arm64-v8a, /data/app/~~KvakmAuXGCJN2zo_oAb6dw==/fr.mayndrive.app-bnrYDBkYvhYYk4sjWbGwmQ==/split_config.xhdpi.apk!/lib/arm64-v8a, /system/lib64, /system_ext/lib64]]
