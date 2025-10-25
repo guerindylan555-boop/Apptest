@@ -246,6 +246,11 @@ export const serializeUIGraph = (graph: unknown): string => {
   return JSON.stringify(result, null, 2);
 };
 
+export const serializeGraphIndex = (index: unknown): string => {
+  const result = graphIndexSchema.parse(index);
+  return JSON.stringify(result, null, 2);
+};
+
 // Parse helpers with validation
 export const parseScreenNode = (json: string) => {
   try {
