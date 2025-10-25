@@ -287,6 +287,7 @@ export const useUIGraphStore = create<UIGraphStore>()(
       selectedSelectors: [],
       nodeName: '',
       nodeHints: [],
+      selectors: [],
 
       // Basic actions
       loadGraph: async () => {
