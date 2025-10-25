@@ -5,7 +5,18 @@
  * Optimized for stable state hashing and element identification.
  */
 
-import { parseDocument, Element, Node } from 'xml2js';
+import { parseString } from 'xml2js';
+
+// Type definitions for xml2js
+interface XmlNode {
+  [key: string]: any;
+  $?: { [key: string]: string };
+  $$?: XmlNode[];
+  _?: string;
+}
+
+type Element = XmlNode;
+type Node = XmlNode;
 import { Selector } from '../types/graph';
 
 export interface NormalizationOptions {
@@ -86,8 +97,14 @@ const INTERACTIVE_CLASSES = [
  */
 export function parseUIHierarchy(xml: string): Element | null {
   try {
-    const document = parseDocument(xml, { trim: true, normalize: true });
-    return document.root;
+    let document: any = null;
+    parseString(xml, (err: Error, result: any) => {
+      if (err) {
+        throw err;
+      }
+      document = result;
+    });
+    return document;
   } catch (error) {
     throw new Error(`Failed to parse UI hierarchy XML: ${error}`);
   }

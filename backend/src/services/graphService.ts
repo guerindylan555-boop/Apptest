@@ -277,7 +277,7 @@ export class GraphService {
    * Detect current state based on UI snapshot
    */
   async detectCurrentState(
-    package: string,
+    packageName: string,
     activity: string,
     selectors: any[],
     visibleText: string[]
@@ -291,13 +291,13 @@ export class GraphService {
 
     // Find potential matches
     for (const state of graph.states) {
-      if (state.package === package && state.activity === activity) {
+      if (state.package === packageName && state.activity === activity) {
         const similarity = calculateStateSimilarity(
           {
             ...state,
             selectors,
             visibleText,
-            package,
+            package: packageName,
             activity,
             digest: '' // Not needed for similarity calculation
           } as StateRecord,
@@ -382,7 +382,7 @@ export class GraphService {
     // Calculate average degree (average number of transitions per state)
     let averageDegree = 0;
     if (stateCount > 0) {
-      const totalDegree = this.graph.transitions.reduce((sum, t) => {
+      const totalDegree = this.graph.transitions.reduce((sum: number, t) => {
         return sum + 1; // Each transition contributes 1 to degree
       }, 0);
       averageDegree = totalDegree / stateCount;

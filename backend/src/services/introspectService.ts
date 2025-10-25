@@ -321,7 +321,8 @@ export class IntrospectionService {
     maxTime: number;
     successRate: number;
   }> {
-    const times: number[] = let successes = 0;
+    const times: number[] = [];
+    let successes = 0;
 
     for (let i = 0; i < iterations; i++) {
       try {
