@@ -399,10 +399,7 @@ export class StatePredicate implements IStatePredicate {
         confidence: 0.0,
         factors: {},
         matchedCriteria: [],
-        duration: performance.now() - startTime,
-        debug: {
-          error: error instanceof Error ? error.message : 'Unknown evaluation error'
-        }
+        duration: performance.now() - startTime
       };
     }
   }
@@ -871,60 +868,7 @@ export class StatePredicate implements IStatePredicate {
     return Math.max(MIN_FUZZY_THRESHOLD, Math.min(MAX_FUZZY_THRESHOLD, threshold));
   }
 
-  /**
-   * Validate the complete predicate
-   *
-   * @throws Error if validation fails
-   */
-  private validate(): void {
-    // Validate exact match requirements
-    if (this.type === 'exact' && !this.stateId && !this.activity) {
-      throw new Error('Exact match predicate must specify either stateId or activity');
-    }
-
-    // Validate contains match requirements
-    if (this.type === 'contains' &&
-        !this.activity &&
-        (!this.containsText || this.containsText.length === 0) &&
-        (!this.hasSelectors || this.hasSelectors.length === 0)) {
-      throw new Error('Contains match predicate must specify activity, containsText, or hasSelectors');
-    }
-
-    // Validate regex match requirements
-    if (this.type === 'matches' &&
-        (!this.matches?.activity &&
-         !this.matches?.text &&
-         !this.matches?.selectors)) {
-      throw new Error('Regex match predicate must specify at least one pattern in matches');
-    }
-
-    // Validate fuzzy match requirements
-    if (this.type === 'fuzzy' &&
-        !this.activity &&
-        (!this.containsText || this.containsText.length === 0) &&
-        (!this.hasSelectors || this.hasSelectors.length === 0)) {
-      throw new Error('Fuzzy match predicate must specify activity, containsText, or hasSelectors');
-    }
-
-    // Validate text fragments
-    if (this.containsText) {
-      for (const text of this.containsText) {
-        if (typeof text !== 'string' || text.trim().length === 0) {
-          throw new Error('Text fragments must be non-empty strings');
-        }
-      }
-    }
-
-    // Validate selectors
-    if (this.hasSelectors) {
-      for (const selector of this.hasSelectors) {
-        if (!selector.rid && !selector.text && !selector.desc) {
-          throw new Error('Each selector must specify at least rid, text, or desc');
-        }
-      }
-    }
-  }
-
+  
   /**
    * Validate predicate and return detailed result
    *

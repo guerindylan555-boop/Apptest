@@ -18,6 +18,12 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
+
+// Extended Request interface for custom properties
+interface EnhancedRequest extends Request {
+  requestId?: string;
+  dependencyCheck?: any;
+}
 import { FlowService } from '../services/flowService';
 import { FlowValidationService } from '../services/flowValidationService';
 import { FlowDefinition, FlowError } from '../types/flow';
@@ -275,7 +281,7 @@ export function initializeFlowsDeleteRoutes(
 /**
  * Middleware for request logging
  */
-function requestLogger(req: Request, res: Response, next: NextFunction): void {
+function requestLogger(req: EnhancedRequest, res: Response, next: NextFunction): void {
   const startTime = Date.now();
   const requestId = `delete_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -293,7 +299,7 @@ function requestLogger(req: Request, res: Response, next: NextFunction): void {
   }));
 
   const originalEnd = res.end;
-  res.end = function(chunk?: any, encoding?: any) {
+  res.end = function(chunk?: any, encoding?: any): Response<any, Record<string, any>> {
     const responseTime = Date.now() - startTime;
     res.setHeader('X-Response-Time', `${responseTime}ms`);
 
@@ -333,7 +339,7 @@ function deletionRateLimiter(req: Request, res: Response, next: NextFunction): v
   if (clientUsage && clientUsage.count >= DELETION_RATE_LIMITS.maxDeletions) {
     const resetIn = Math.ceil((clientUsage.resetTime - now) / 1000);
 
-    return res.status(429).json({
+    res.status(429).json({
       error: {
         code: 'DELETION_RATE_LIMIT_EXCEEDED',
         message: `Flow deletion rate limit exceeded. Try again in ${resetIn} seconds.`,
@@ -453,7 +459,7 @@ function dependencyChecker(req: Request, res: Response, next: NextFunction): voi
  *   }
  * }
  */
-router.delete('/:flowId', async (req: Request, res: Response) => {
+router.delete('/:flowId', async (req: EnhancedRequest, res: Response) => {
   const startTime = Date.now();
   const requestId = req.requestId || 'unknown';
   const flowId = req.params.flowId;
@@ -639,7 +645,7 @@ router.delete('/:flowId', async (req: Request, res: Response) => {
         message: 'Failed to delete flow',
         details: {
           flowId,
-          originalError: error instanceof Error ? error.message : 'Unknown error'
+          errorMessage: error instanceof Error ? error.message : 'Unknown error'
         },
         timestamp: new Date().toISOString(),
         requestId
@@ -659,7 +665,7 @@ router.delete('/:flowId', async (req: Request, res: Response) => {
  * Delete multiple flows in a single request with options for
  * batch processing, error handling, and progress tracking.
  */
-router.post('/batch-delete', async (req: Request, res: Response) => {
+router.post('/batch-delete', async (req: EnhancedRequest, res: Response) => {
   const startTime = Date.now();
   const requestId = req.requestId || 'unknown';
 
@@ -736,7 +742,7 @@ router.post('/batch-delete', async (req: Request, res: Response) => {
  *
  * Check what resources depend on this flow before deletion.
  */
-router.get('/:flowId/dependencies', async (req: Request, res: Response) => {
+router.get('/:flowId/dependencies', async (req: EnhancedRequest, res: Response) => {
   const startTime = Date.now();
   const requestId = req.requestId || 'unknown';
   const flowId = req.params.flowId;
@@ -798,7 +804,7 @@ router.get('/:flowId/dependencies', async (req: Request, res: Response) => {
  *
  * Recover a soft-deleted flow using a recovery token.
  */
-router.post('/recover', async (req: Request, res: Response) => {
+router.post('/recover', async (req: EnhancedRequest, res: Response) => {
   const startTime = Date.now();
   const requestId = req.requestId || 'unknown';
 
@@ -1013,7 +1019,7 @@ async function performFlowDeletion(
  */
 async function performCascadeDeletion(
   dependencies: any[],
-  deleteRequest: DeleteRequest
+  deleteRequest: DeleteFlowRequest
 ): Promise<{ deletedCount: number; errors: string[] }> {
   const deletedCount = 0;
   const errors: string[] = [];
@@ -1029,7 +1035,7 @@ async function performCascadeDeletion(
  */
 async function trackDeletion(
   flow: FlowDefinition,
-  deleteRequest: DeleteRequest,
+  deleteRequest: DeleteFlowRequest,
   deletionResult: any,
   req: Request
 ): Promise<void> {
@@ -1061,7 +1067,7 @@ async function trackDeletion(
 /**
  * Generate recovery information
  */
-function generateRecoveryInfo(flow: FlowDefinition, deleteRequest: DeleteRequest): any {
+function generateRecoveryInfo(flow: FlowDefinition, deleteRequest: DeleteFlowRequest): any {
   const recoveryToken = Buffer.from(`recover_${flow.id}_${Date.now()}`).toString('base64');
   const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(); // 30 days
 

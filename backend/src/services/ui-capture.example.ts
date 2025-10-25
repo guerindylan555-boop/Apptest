@@ -452,14 +452,3 @@ export async function runAllExamples(): Promise<void> {
 }
 
 // Export individual examples for selective execution
-export {
-  basicCaptureExample,
-  advancedCaptureExample,
-  deviceValidationExample,
-  deviceInfoExample,
-  performanceTestExample,
-  performanceMonitoringExample,
-  errorHandlingExample,
-  stateAnalysisExample,
-  batchCaptureExample
-};

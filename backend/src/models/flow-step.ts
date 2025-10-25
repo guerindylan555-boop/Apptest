@@ -242,7 +242,7 @@ export class FlowStep implements IFlowStep {
     tags?: string[];
     retryAttempts?: number;
     retryDelay?: number; // in seconds
-    priority?: number; // 1-10
+    priority?: 'low' | 'medium' | 'high'; // flow priority
     estimatedDuration?: number; // in seconds
   };
 
@@ -263,7 +263,7 @@ export class FlowStep implements IFlowStep {
     failedExecutions: 0,
     averageDuration: 0,
     totalDuration: 0,
-    lastExecutedAt?: ISOTimestamp
+    lastExecutedAt: undefined
   };
 
   /** Cached hash for comparison */
@@ -877,7 +877,7 @@ export class FlowStep implements IFlowStep {
         confidence: DEFAULT_CONFIDENCE_THRESHOLD,
         retryAttempts: DEFAULT_RETRY_COUNT,
         retryDelay: 1,
-        priority: 5
+        priority: 'medium'
       };
     }
 
@@ -915,12 +915,12 @@ export class FlowStep implements IFlowStep {
 
     // Validate priority
     if (metadata.priority !== undefined) {
-      if (typeof metadata.priority !== 'number' || metadata.priority < 1 || metadata.priority > 10) {
-        throw new Error('Priority must be a number between 1 and 10');
+      if (!['low', 'medium', 'high'].includes(metadata.priority)) {
+        throw new Error('Priority must be one of: low, medium, high');
       }
       normalized.priority = metadata.priority;
     } else {
-      normalized.priority = 5;
+      normalized.priority = 'medium';
     }
 
     // Validate estimated duration
@@ -949,16 +949,7 @@ export class FlowStep implements IFlowStep {
     return normalized;
   }
 
-  /**
-   * Validate the complete step
-   *
-   * @throws Error if validation fails
-   */
-  private validate(): void {
-    // Additional validation logic can be added here
-    // For now, the constructor validation is sufficient
-  }
-
+  
   /**
    * Validate step and return detailed result
    *
@@ -1174,7 +1165,7 @@ export class FlowStep implements IFlowStep {
     successRate: number;
     averageDuration: number;
     totalDuration: number;
-    lastExecutedAt?: ISOTimestamp;
+    lastExecutedAt: string | undefined;
   } {
     const successRate = this._executionStats.totalExecutions > 0
       ? this._executionStats.successfulExecutions / this._executionStats.totalExecutions
@@ -1195,7 +1186,8 @@ export class FlowStep implements IFlowStep {
       successfulExecutions: 0,
       failedExecutions: 0,
       averageDuration: 0,
-      totalDuration: 0
+      totalDuration: 0,
+      lastExecutedAt: undefined
     };
   }
 
@@ -1668,9 +1660,10 @@ export const FlowStepUtils = {
    * @returns Sorted steps
    */
   sortByPriority(steps: FlowStep[]): FlowStep[] {
+    const priorityOrder = { high: 3, medium: 2, low: 1 };
     return [...steps].sort((a, b) => {
-      const priorityA = a.metadata?.priority || 5;
-      const priorityB = b.metadata?.priority || 5;
+      const priorityA = priorityOrder[a.metadata?.priority || 'medium'];
+      const priorityB = priorityOrder[b.metadata?.priority || 'medium'];
       return priorityB - priorityA; // Higher priority first
     });
   },

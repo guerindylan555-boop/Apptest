@@ -18,6 +18,12 @@
  */
 
 import { Router, Request, Response, NextFunction } from 'express';
+
+// Extended Request interface for custom properties
+interface EnhancedRequest extends Request {
+  requestId?: string;
+  duplicateCheck?: any;
+}
 import { FlowService } from '../services/flowService';
 import { FlowValidationService } from '../services/flowValidationService';
 import {
@@ -64,7 +70,7 @@ interface EnhancedCreateFlowRequest extends CreateFlowRequest {
   duplicateStrategy?: 'error' | 'update' | 'version';
 
   /** Auto-save options */
-  autoSave?: {
+  autoSaveConfig?: {
     enabled: boolean;
     category?: string;
     tags?: string[];
@@ -170,7 +176,7 @@ export function initializeFlowsCreateRoutes(
 /**
  * Middleware for request logging
  */
-function requestLogger(req: Request, res: Response, next: NextFunction): void {
+function requestLogger(req: EnhancedRequest, res: Response, next: NextFunction): void {
   const startTime = Date.now();
   const requestId = `create_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -188,7 +194,7 @@ function requestLogger(req: Request, res: Response, next: NextFunction): void {
   }));
 
   const originalEnd = res.end;
-  res.end = function(chunk?: any, encoding?: any) {
+  res.end = function(chunk?: any, encoding?: any): Response<any, Record<string, any>> {
     const responseTime = Date.now() - startTime;
     res.setHeader('X-Response-Time', `${responseTime}ms`);
 
@@ -197,12 +203,12 @@ function requestLogger(req: Request, res: Response, next: NextFunction): void {
       requestId,
       method: req.method,
       url: req.url,
-      statusCode: res.statusCode,
-      responseTime: `${responseTime}ms`,
-      event: 'flow_create_request_complete'
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      event: 'flow_create_request_start'
     }));
 
-    originalEnd.call(this, chunk, encoding);
+    return originalEnd.call(this, chunk, encoding);
   };
 
   next();
@@ -211,7 +217,7 @@ function requestLogger(req: Request, res: Response, next: NextFunction): void {
 /**
  * Rate limiting middleware for flow creation
  */
-function creationRateLimiter(req: Request, res: Response, next: NextFunction): void {
+function creationRateLimiter(req: EnhancedRequest, res: Response, next: NextFunction): void {
   const clientIp = req.ip || 'unknown';
   const now = Date.now();
 
@@ -228,7 +234,7 @@ function creationRateLimiter(req: Request, res: Response, next: NextFunction): v
   if (clientUsage && clientUsage.count >= CREATION_RATE_LIMITS.maxCreations) {
     const resetIn = Math.ceil((clientUsage.resetTime - now) / 1000);
 
-    return res.status(429).json({
+    res.status(429).json({
       error: {
         code: 'CREATION_RATE_LIMIT_EXCEEDED',
         message: `Flow creation rate limit exceeded. Try again in ${resetIn} seconds.`,
@@ -259,7 +265,7 @@ function creationRateLimiter(req: Request, res: Response, next: NextFunction): v
 /**
  * Input sanitization middleware
  */
-function inputSanitizer(req: Request, res: Response, next: NextFunction): void {
+function inputSanitizer(req: EnhancedRequest, res: Response, next: NextFunction): void {
   try {
     if (req.body && typeof req.body === 'object') {
       // Sanitize string fields to prevent XSS
@@ -298,7 +304,7 @@ function sanitizeObject(obj: any): void {
 /**
  * Duplicate checking middleware
  */
-function duplicateChecker(req: Request, res: Response, next: NextFunction): void {
+function duplicateChecker(req: EnhancedRequest, res: Response, next: NextFunction): void {
   // This is a pre-check - actual duplicate checking happens in the route handler
   req.duplicateCheck = {
     checked: false,
@@ -352,7 +358,7 @@ function duplicateChecker(req: Request, res: Response, next: NextFunction): void
  *   }
  * }
  */
-router.post('/', async (req: Request, res: Response) => {
+router.post('/', async (req: EnhancedRequest, res: Response) => {
   const startTime = Date.now();
   const requestId = req.requestId || 'unknown';
   creationMetrics.totalCreations++;
@@ -392,7 +398,7 @@ router.post('/', async (req: Request, res: Response) => {
     const serviceRequest: CreateFlowRequest = {
       flow: flowDefinition,
       validate: createRequest.validation?.checkStates !== false,
-      autoSave: createRequest.autoSave?.enabled
+      autoSave: typeof createRequest.autoSave === 'object' ? createRequest.autoSave.enabled : createRequest.autoSave
     };
 
     const createdFlow = await flowService.createFlow(serviceRequest);
@@ -472,9 +478,7 @@ router.post('/', async (req: Request, res: Response) => {
       error: {
         code: 'FLOW_CREATION_ERROR',
         message: 'Failed to create flow',
-        details: {
-          originalError: error instanceof Error ? error.message : 'Unknown error'
-        },
+        details: {},
         timestamp: new Date().toISOString(),
         requestId
       },
@@ -493,7 +497,7 @@ router.post('/', async (req: Request, res: Response) => {
  * Specialized endpoint for creating flows from templates with parameter
  * substitution and validation.
  */
-router.post('/from-template', async (req: Request, res: Response) => {
+router.post('/from-template', async (req: EnhancedRequest, res: Response) => {
   const startTime = Date.now();
   const requestId = req.requestId || 'unknown';
 
@@ -593,7 +597,7 @@ router.post('/from-template', async (req: Request, res: Response) => {
  * Validate flow definition without actually creating it.
  * Useful for form validation in UI.
  */
-router.post('/validate', async (req: Request, res: Response) => {
+router.post('/validate', async (req: EnhancedRequest, res: Response) => {
   const startTime = Date.now();
   const requestId = req.requestId || 'unknown';
 
@@ -656,7 +660,7 @@ router.post('/validate', async (req: Request, res: Response) => {
 /**
  * Parse and validate create request
  */
-function parseCreateRequest(req: Request): EnhancedCreateFlowRequest {
+function parseCreateRequest(req: EnhancedRequest): EnhancedCreateFlowRequest {
   const body = req.body;
 
   const createRequest: EnhancedCreateFlowRequest = {

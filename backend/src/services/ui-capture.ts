@@ -20,7 +20,8 @@
 
 import { createADBConnection, ADBConnection } from '../utils/adb';
 import { parseUIHierarchy, extractSelectors, normalizeXML, generateXMLHash } from '../utils/xml';
-import { State, StateFactory, CreateStateRequest } from '../models/state';
+import { State, StateFactory } from '../models/state';
+import { CreateStateRequest } from '../types/models';
 import { createServiceLogger } from './logger';
 import { promises as fs } from 'fs';
 import path from 'path';
@@ -507,7 +508,7 @@ export class UICaptureService {
       lastCapture: new Date().toISOString()
     };
 
-    this.logger.info('performance_test_completed', 'Performance test completed', traceId, metrics);
+    this.logger.info('performance_test_completed', 'Performance test completed', traceId, metrics as unknown as Record<string, unknown>);
 
     return metrics;
   }

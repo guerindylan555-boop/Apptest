@@ -42,6 +42,11 @@ export type ExecutionStatus = 'pending' | 'running' | 'completed' | 'failed' | '
 export type EventLevel = 'debug' | 'info' | 'warn' | 'error';
 
 /**
+ * ISO timestamp type for consistent timestamp handling
+ */
+export type ISOTimestamp = string;
+
+/**
  * Flow priority enumeration for scheduling
  */
 export type FlowPriority = 'low' | 'medium' | 'high';
@@ -302,6 +307,10 @@ export interface FlowStep {
     confidence?: number; // 0-1
     notes?: string;
     tags?: string[];
+    retryAttempts?: number;
+    retryDelay?: number; // milliseconds
+    priority?: FlowPriority;
+    estimatedDuration?: number; // seconds
   };
 }
 
@@ -783,10 +792,6 @@ export interface ExecutionError extends ModelError {
  */
 export type UUID = string;
 
-/**
- * ISO timestamp type alias for better type documentation
- */
-export type ISOTimestamp = string;
 
 /**
  * SemVer type alias for version strings

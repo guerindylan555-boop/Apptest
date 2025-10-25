@@ -18,8 +18,8 @@ import {
   CaptureMethod,
   ModelError,
   StateError,
-  TransitionError,
   ValidationError,
+  ValidationWarning,
   ValidationResult
 } from '../types/models';
 import {
@@ -55,7 +55,16 @@ const GRAPH_SCHEMA_VERSION = '1.0.0';
 /**
  * Graph-specific error class
  */
-export class GraphError extends ModelError {
+export class GraphError extends Error {
+  public readonly code: string;
+  public readonly details?: {
+    graphId?: string;
+    packageName?: string;
+    constraint?: string;
+    [key: string]: any;
+  };
+  public readonly timestamp: string;
+
   constructor(
     message: string,
     code: string,
@@ -66,8 +75,42 @@ export class GraphError extends ModelError {
       [key: string]: any;
     }
   ) {
-    super(message, code, details);
+    super(message);
     this.name = 'GraphError';
+    this.code = code;
+    this.details = details;
+    this.timestamp = new Date().toISOString();
+  }
+}
+
+/**
+ * Transition error class
+ */
+export class TransitionError extends Error {
+  public readonly code: string;
+  public readonly details?: {
+    transitionId?: string;
+    fromStateId?: string;
+    toStateId?: string;
+    [key: string]: any;
+  };
+  public readonly timestamp: string;
+
+  constructor(
+    message: string,
+    code: string,
+    details?: {
+      transitionId?: string;
+      fromStateId?: string;
+      toStateId?: string;
+      [key: string]: any;
+    }
+  ) {
+    super(message);
+    this.name = 'TransitionError';
+    this.code = code;
+    this.details = details;
+    this.timestamp = new Date().toISOString();
   }
 }
 
@@ -297,9 +340,9 @@ export class UIGraph implements IUIGraph {
     const config = getEnvironmentConfig();
     this.metadata = {
       captureTool: 'UIAutomator2',
-      androidVersion: config?.adb?.androidVersion,
+      androidVersion: undefined, // Will be filled during capture
       appVersion: undefined,
-      deviceInfo: config?.adb?.deviceId,
+      deviceInfo: config?.adb?.deviceSerial,
       totalCaptureTime: 0,
       totalSessions: 0,
       ...options.metadata
@@ -1751,18 +1794,7 @@ export class UIGraph implements IUIGraph {
 // Export Types and Utilities
 // ============================================================================
 
-export type {
-  CreateGraphOptions,
-  AddStateOptions,
-  AddTransitionOptions,
-  MergeGraphOptions,
-  GraphStatistics
-};
 
-export {
-  GraphError,
-  GraphValidationError
-};
 
 // ============================================================================
 // Usage Examples

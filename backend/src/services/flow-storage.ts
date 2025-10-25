@@ -254,7 +254,7 @@ export interface FlowAnalytics {
     reliabilityScores: Record<string, number>;
   };
 
-  ** User behavior */
+  /** User behavior */
   behavior: {
     mostActiveAuthors: Array<{
       author: string;

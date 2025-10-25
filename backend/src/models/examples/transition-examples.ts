@@ -9,8 +9,7 @@ import { Transition } from '../transition';
 import {
   ActionType,
   SwipeDirection,
-  CreateTransitionRequest,
-  TransitionEvidence
+  CreateTransitionRequest
 } from '../../types/models';
 
 // ============================================================================
@@ -106,7 +105,26 @@ export function createBackTransition(): Transition {
  * Example 5: Create transition with comprehensive evidence
  */
 export function createTransitionWithEvidence(): Transition {
-  const evidence: TransitionEvidence = {
+  const evidence: {
+    beforeDigest: string;
+    afterDigest: string;
+    timestamp: string;
+    duration: number;
+    screenshots?: {
+      before?: string;
+      after?: string;
+    };
+    notes?: string;
+    metrics?: {
+      confidence?: number;
+      stability?: number;
+      consistency?: number;
+      responseTime?: number;
+      renderTime?: number;
+      animationTime?: number;
+      networkRequests?: number;
+    };
+  } = {
     beforeDigest: 'sha256:abc123...',
     afterDigest: 'sha256:def456...',
     timestamp: '2024-01-15T10:30:45.123Z',

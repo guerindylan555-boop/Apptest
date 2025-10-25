@@ -26,7 +26,6 @@ import { promises as fs } from 'fs';
 import { createHash } from 'crypto';
 import * as path from 'path';
 import { existsSync, mkdirSync, constants } from 'fs';
-import { join, dirname, resolve } from 'path';
 import * as sharp from 'sharp';
 import { createServiceLogger } from './logger';
 import { jsonStorage, StorageResult } from './json-storage';
@@ -1762,7 +1761,7 @@ export class ScreenshotStorageService {
           duplicateFiles += count - 1;
           spaceSaved += (count - 1) * fileSize;
         }
-      });
+      }
 
       // Calculate preview storage usage
       let previewStorageUsed = 0;

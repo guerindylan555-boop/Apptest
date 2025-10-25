@@ -15,8 +15,7 @@ import {
   SwipeDirection,
   CreateTransitionRequest,
   UpdateTransitionRequest,
-  TransitionError,
-  ValidationResult,
+    ValidationResult,
   ValidationError,
   ValidationWarning,
   UUID,
@@ -59,8 +58,22 @@ const TRANSITION_SCHEMA_VERSION = '1.0.0';
 // ============================================================================
 
 /**
- * Extended evidence interface with performance metrics
+ * Transition error class
  */
+export class TransitionError extends Error {
+  public readonly code: string;
+  public readonly details?: any;
+  public readonly timestamp: string;
+
+  constructor(details: { code: string; message: string; details?: any }) {
+    super(details.message);
+    this.name = 'TransitionError';
+    this.code = details.code;
+    this.details = details.details;
+    this.timestamp = new Date().toISOString();
+  }
+}
+
 export interface TransitionEvidence {
   /** Hash of source state hierarchy */
   beforeDigest?: string;
@@ -279,9 +292,8 @@ export class Transition implements ITransition {
       evidence: {
         beforeDigest,
         afterDigest,
-        timestamp: getCurrentTimestamp(),
-        duration
-      }
+        notes: `Transition completed in ${duration}ms`
+      } as any
     });
   }
 
@@ -300,8 +312,7 @@ export class Transition implements ITransition {
       ...request,
       evidence: {
         ...evidence,
-        timestamp: getCurrentTimestamp()
-      }
+              } as any
     });
   }
 
@@ -453,8 +464,7 @@ export class Transition implements ITransition {
           entityType: 'Transition',
           field: 'action',
           errors: errors.map(e => ({ code: e.code, message: e.message }))
-        },
-        timestamp: getCurrentTimestamp()
+        }
       });
     }
 
@@ -970,8 +980,7 @@ export class Transition implements ITransition {
       evidence: this.evidence,
       confidence: this.confidence,
       tags: this.tags,
-      createdAt: this.createdAt,
-      updatedAt: this.updatedAt
+      createdAt: this.createdAt
     };
   }
 
@@ -990,7 +999,6 @@ export class Transition implements ITransition {
       confidence: this.confidence,
       tags: this.tags,
       createdAt: this.createdAt,
-      updatedAt: this.updatedAt,
       version: this.version
     };
   }
@@ -1036,8 +1044,7 @@ export class Transition implements ITransition {
         details: {
           entityType: 'Transition'
         },
-        timestamp: getCurrentTimestamp()
-      });
+              });
     }
 
     if (!request.from) {
@@ -1049,8 +1056,7 @@ export class Transition implements ITransition {
           field: 'from',
           value: request.from
         },
-        timestamp: getCurrentTimestamp()
-      });
+              });
     }
 
     if (!request.to) {
@@ -1062,8 +1068,7 @@ export class Transition implements ITransition {
           field: 'to',
           value: request.to
         },
-        timestamp: getCurrentTimestamp()
-      });
+              });
     }
 
     if (!request.action) {
@@ -1075,8 +1080,7 @@ export class Transition implements ITransition {
           field: 'action',
           value: request.action
         },
-        timestamp: getCurrentTimestamp()
-      });
+              });
     }
   }
 
@@ -1247,9 +1251,3 @@ export class Transition implements ITransition {
 
 export default Transition;
 
-// Export types for external use
-export type {
-  TransitionEvidence,
-  ActionValidationResult,
-  TransitionComparisonResult
-};
