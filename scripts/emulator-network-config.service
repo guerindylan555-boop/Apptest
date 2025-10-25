@@ -1,0 +1,15 @@
+[Unit]
+Description=Android Emulator Network Configuration
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/home/blhack/project/Apptest/scripts/emulator_network_setup.sh
+RemainAfterExit=yes
+User=blhack
+Group=blhack
+Environment=EMULATOR_ID=emulator-5556
+
+[Install]
+WantedBy=multi-user.target

@@ -3,10 +3,12 @@ import { useAppStore } from '../state/useAppStore';
 import StateBadge from '../components/StateBadge';
 import StreamViewer from '../components/StreamViewer';
 import { GPSController } from '../components/GPSController';
+import DiscoveryPanel from '../components/apps/DiscoveryPanel';
 import ErrorBanner from '../components/ErrorBanner';
 import DiagnosticsDrawer from '../components/DiagnosticsDrawer';
 import { fetchStreamUrl, fetchLogs, restartEmulator as restartEmulatorApi } from '../services/backendClient';
 import { useHealthPoller } from '../hooks/useHealthPoller';
+import { useDiscoveryPanel, useGpsPanel } from '../state/featureFlagsStore';
 
 const EmulatorPage = () => {
   const emulatorState = useAppStore((state) => state.emulatorState);
@@ -19,6 +21,10 @@ const EmulatorPage = () => {
   const streamerActive = useAppStore((state) => state.streamerActive);
   const isTransitioning = useAppStore((state) => state.isTransitioning);
   const setTransitioning = useAppStore((state) => state.setTransitioning);
+
+  // Feature flags
+  const discoveryEnabled = useDiscoveryPanel();
+  const gpsEnabled = useGpsPanel();
 
   useHealthPoller();
 
@@ -131,7 +137,21 @@ const EmulatorPage = () => {
             <StreamViewer state={emulatorState} streamTicket={streamTicket} />
           </div>
           <div>
-            <GPSController />
+            {discoveryEnabled ? (
+              <DiscoveryPanel />
+            ) : gpsEnabled ? (
+              <GPSController />
+            ) : (
+              <div style={{
+                padding: '1rem',
+                background: '#f3f4f6',
+                borderRadius: '0.5rem',
+                textAlign: 'center',
+                color: '#6b7280'
+              }}>
+                <p>No control panel enabled</p>
+              </div>
+            )}
           </div>
         </section>
 

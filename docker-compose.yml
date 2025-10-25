@@ -13,6 +13,18 @@ services:
       - LOG_LEVEL=info
       - CORS_ALLOWED_ORIGINS=*
       - EXTERNAL_EMULATOR=true
+      # Discovery System Configuration
+      - ENABLE_DISCOVERY=true
+      - DISCOVERY_PANEL=true
+      - GPS_PANEL=false
+      - GRAPH_PATH=/app/data/graph.json
+      - SESSIONS_DIR=/app/data/sessions
+      - SCREENSHOTS_DIR=/app/data/screenshots
+      - ADB_HOST=host.docker.internal
+      - ANDROID_SERIAL=emulator-5554
+      - SNAPSHOT_TIMEOUT_MS=5000
+      - UIXML_TMP=/tmp/view.xml
+      - MERGE_THRESHOLD=0.9
       - EXTERNAL_EMULATOR_HOST=${EXTERNAL_EMULATOR_HOST:-host.docker.internal}
       - EXTERNAL_EMULATOR_ADB_PORT=${EXTERNAL_EMULATOR_ADB_PORT:-5555}
       - EMULATOR_GRPC_ENDPOINT=${EMULATOR_GRPC_ENDPOINT:-http://envoy:8080}
@@ -21,6 +33,7 @@ services:
     volumes:
       - ./var/autoapp:/var/autoapp  # Mount app library and logs
       - emulator-home:/root/.android  # Share ADB keys with emulator
+      - discovery-data:/app/data  # Discovery artifacts storage
     extra_hosts:
       - "host.docker.internal:host-gateway"
     networks:
@@ -95,3 +108,4 @@ networks:
 
 volumes:
   emulator-home:  # Shared volume for ADB keys and console auth token
+  discovery-data:  # Discovery artifacts storage

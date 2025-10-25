@@ -1,0 +1,758 @@
+openapi: 3.0.3
+info:
+  title: AutoApp UI Discovery API
+  description: REST API for UI state discovery, graph management, and transition recording
+  version: 1.0.0
+  contact:
+    name: AutoApp Team
+  license:
+    name: MIT
+
+servers:
+  - url: http://localhost:3001/api
+    description: Development server
+  - url: /api
+    description: Production server (behind Traefik)
+
+paths:
+  /graph:
+    get:
+      summary: Get complete UI graph
+      description: Retrieve the complete UI graph with all states and transitions
+      operationId: getGraph
+      tags:
+        - Graph Management
+      responses:
+        '200':
+          description: Complete UI graph
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UIGraph'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /graph/snapshot:
+    post:
+      summary: Capture current UI state
+      description: Capture the current UI state and optionally create a screenshot
+      operationId: captureSnapshot
+      tags:
+        - State Capture
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SnapshotRequest'
+      responses:
+        '200':
+          description: State captured successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SnapshotResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /graph/transition:
+    post:
+      summary: Create a transition
+      description: Create a transition between two states with an action
+      operationId: createTransition
+      tags:
+        - Transition Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTransitionRequest'
+      responses:
+        '201':
+          description: Transition created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TransitionRecord'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /graph/merge:
+    post:
+      summary: Merge two states
+      description: Merge duplicate states and update all transitions
+      operationId: mergeStates
+      tags:
+        - Graph Management
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MergeStatesRequest'
+      responses:
+        '200':
+          description: States merged successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MergeStatesResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: States cannot be merged
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorDetail'
+
+  /state/current:
+    get:
+      summary: Get current UI state
+      description: Detect the current UI state with confidence scoring
+      operationId: getCurrentState
+      tags:
+        - State Detection
+      responses:
+        '200':
+          description: Current state detection results
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CurrentStateResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /state/{stateId}:
+    get:
+      summary: Get specific state
+      description: Retrieve a specific state by ID
+      operationId: getState
+      tags:
+        - State Management
+      parameters:
+        - name: stateId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: State ID (SHA256 hash)
+      responses:
+        '200':
+          description: State found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StateRecord'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /state/{stateId}/screenshot:
+    get:
+      summary: Get state screenshot
+      description: Retrieve the screenshot for a specific state
+      operationId: getStateScreenshot
+      tags:
+        - State Management
+      parameters:
+        - name: stateId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: State ID (SHA256 hash)
+      responses:
+        '200':
+          description: Screenshot image
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /sessions:
+    get:
+      summary: List capture sessions
+      description: Get list of capture session files
+      operationId: listSessions
+      tags:
+        - Session Management
+      responses:
+        '200':
+          description: List of session files
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionsResponse'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /sessions/{sessionId}:
+    get:
+      summary: Get session events
+      description: Retrieve events from a specific capture session
+      operationId: getSession
+      tags:
+        - Session Management
+      parameters:
+        - name: sessionId
+          in: path
+          required: true
+          schema:
+            type: string
+          description: Session ID (timestamp)
+      responses:
+        '200':
+          description: Session events
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+components:
+  schemas:
+    Selector:
+      type: object
+      description: Canonical UI element selector
+      properties:
+        rid:
+          type: string
+          description: Resource ID (highest priority)
+        desc:
+          type: string
+          description: Content description
+        text:
+          type: string
+          description: Visible text content
+        cls:
+          type: string
+          description: UI element class name
+        bounds:
+          type: array
+          items:
+            type: number
+          minItems: 4
+          maxItems: 4
+          description: Element bounds [left, top, right, bottom]
+        xpath:
+          type: string
+          description: XPath selector
+      minProperties: 1
+
+    UserAction:
+      type: object
+      description: User interaction action
+      required:
+        - type
+      properties:
+        type:
+          type: string
+          enum: [tap, type, swipe, back, intent, long_press]
+          description: Action type
+        target:
+          $ref: '#/components/schemas/Selector'
+          description: Target element selector
+        text:
+          type: string
+          description: Text to type (for type actions)
+        swipe:
+          type: object
+          properties:
+            direction:
+              type: string
+              enum: [up, down, left, right]
+            distance:
+              type: number
+              minimum: 0
+          required: [direction, distance]
+          description: Swipe configuration
+        intent:
+          type: object
+          properties:
+            action:
+              type: string
+            package:
+              type: string
+            component:
+              type: string
+            extras:
+              type: object
+              additionalProperties: true
+          required: [action]
+          description: Intent configuration
+        metadata:
+          type: object
+          properties:
+            duration:
+              type: number
+              minimum: 0
+            confidence:
+              type: number
+              minimum: 0
+              maximum: 1
+          description: Action metadata
+
+    StateRecord:
+      type: object
+      description: UI state record
+      required:
+        - id
+        - package
+        - activity
+        - digest
+        - selectors
+        - visibleText
+        - createdAt
+        - updatedAt
+      properties:
+        id:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: SHA256 hash of package + activity + digest
+        package:
+          type: string
+          description: Android package name
+        activity:
+          type: string
+          description: Current activity name
+        digest:
+          type: string
+          description: Normalized hash of UI hierarchy
+        selectors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Selector'
+          description: Canonical selectors for interactive elements
+        visibleText:
+          type: array
+          items:
+            type: string
+          description: Visible text content (non-empty, trimmed)
+        screenshot:
+          type: string
+          description: Screenshot filename
+        tags:
+          type: array
+          items:
+            type: string
+          description: User-defined tags
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last update timestamp
+        metadata:
+          type: object
+          properties:
+            captureMethod:
+              type: string
+              enum: [adb, frida]
+            captureDuration:
+              type: number
+              minimum: 0
+            elementCount:
+              type: number
+              minimum: 0
+            hierarchyDepth:
+              type: number
+              minimum: 0
+          description: State metadata
+
+    TransitionRecord:
+      type: object
+      description: Transition between states
+      required:
+        - id
+        - from
+        - to
+        - action
+        - createdAt
+      properties:
+        id:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: SHA256 hash of from + to + action
+        from:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: Source state ID
+        to:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: Destination state ID
+        action:
+          $ref: '#/components/schemas/UserAction'
+          description: Action that triggered transition
+        evidence:
+          type: object
+          properties:
+            beforeDigest:
+              type: string
+            afterDigest:
+              type: string
+            timestamp:
+              type: string
+              format: date-time
+            notes:
+              type: string
+            beforeScreenshot:
+              type: string
+            afterScreenshot:
+              type: string
+          description: Transition evidence
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Transition confidence score
+        createdAt:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        tags:
+          type: array
+          items:
+            type: string
+          description: User-defined tags
+
+    UIGraph:
+      type: object
+      description: Complete UI graph
+      required:
+        - version
+        - createdAt
+        - updatedAt
+        - packageName
+        - states
+        - transitions
+        - stats
+        - metadata
+      properties:
+        version:
+          type: string
+          description: Graph schema version
+        createdAt:
+          type: string
+          format: date-time
+          description: Graph creation timestamp
+        updatedAt:
+          type: string
+          format: date-time
+          description: Last modification timestamp
+        packageName:
+          type: string
+          description: Package name this graph represents
+        states:
+          type: array
+          items:
+            $ref: '#/components/schemas/StateRecord'
+          description: All discovered states
+        transitions:
+          type: array
+          items:
+            $ref: '#/components/schemas/TransitionRecord'
+          description: All recorded transitions
+        stats:
+          type: object
+          required:
+            - stateCount
+            - transitionCount
+            - averageDegree
+            - isolatedStates
+          properties:
+            stateCount:
+              type: number
+              minimum: 0
+            transitionCount:
+              type: number
+              minimum: 0
+            averageDegree:
+              type: number
+              minimum: 0
+            isolatedStates:
+              type: number
+              minimum: 0
+            lastCapture:
+              type: string
+              format: date-time
+          description: Graph statistics
+        metadata:
+          type: object
+          required:
+            - captureTool
+            - totalCaptureTime
+            - totalSessions
+          properties:
+            captureTool:
+              type: string
+            androidVersion:
+              type: string
+            appVersion:
+              type: string
+            deviceInfo:
+              type: string
+            totalCaptureTime:
+              type: number
+              minimum: 0
+            totalSessions:
+              type: number
+              minimum: 0
+          description: Graph metadata
+
+    SnapshotRequest:
+      type: object
+      description: State capture request
+      properties:
+        forceScreenshot:
+          type: boolean
+          default: false
+          description: Force screenshot capture even if exists
+        tags:
+          type: array
+          items:
+            type: string
+          description: Tags to apply to captured state
+
+    SnapshotResponse:
+      type: object
+      required:
+        - state
+        - merged
+      properties:
+        state:
+          $ref: '#/components/schemas/StateRecord'
+          description: Captured or existing state
+        merged:
+          type: boolean
+          description: Whether state was merged with existing
+        mergedInto:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: ID of existing state if merged
+
+    CreateTransitionRequest:
+      type: object
+      required:
+        - action
+      properties:
+        fromStateId:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: Source state ID
+        action:
+          $ref: '#/components/schemas/UserAction'
+          description: Action performed
+        toStateId:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: Destination state ID (optional, can be bound later)
+        evidence:
+          type: object
+          properties:
+            beforeDigest:
+              type: string
+            afterDigest:
+              type: string
+            notes:
+              type: string
+          description: Transition evidence
+
+    MergeStatesRequest:
+      type: object
+      required:
+        - sourceId
+        - targetId
+      properties:
+        sourceId:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: Source state ID (to be merged)
+        targetId:
+          type: string
+          pattern: '^[a-f0-9]{64}$'
+          description: Target state ID (to keep)
+
+    MergeStatesResponse:
+      type: object
+      required:
+        - success
+        - mergedCount
+        - updatedCount
+      properties:
+        success:
+          type: boolean
+          description: Whether merge was successful
+        mergedCount:
+          type: number
+          minimum: 0
+          description: Number of states merged
+        updatedTransitions:
+          type: array
+          items:
+            type: string
+          description: IDs of updated transitions
+        removedTransitions:
+          type: array
+          items:
+            type: string
+          description: IDs of removed transitions (self-loops)
+
+    CurrentStateResponse:
+      type: object
+      required:
+        - confidence
+      properties:
+        state:
+          $ref: '#/components/schemas/StateRecord'
+          description: Best match current state
+        confidence:
+          type: number
+          minimum: 0
+          maximum: 1
+          description: Match confidence score
+        candidates:
+          type: array
+          items:
+            type: object
+            properties:
+              state:
+                $ref: '#/components/schemas/StateRecord'
+              similarity:
+                type: number
+                minimum: 0
+                maximum: 1
+          description: Alternative candidates with similarity scores
+
+    SessionsResponse:
+      type: object
+      required:
+        - sessions
+      properties:
+        sessions:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              timestamp:
+                type: string
+                format: date-time
+              eventCount:
+                type: number
+              duration:
+                type: number
+          description: List of capture sessions
+
+    SessionResponse:
+      type: object
+      required:
+        - id
+        - events
+      properties:
+        id:
+          type: string
+          description: Session ID
+        events:
+          type: array
+          items:
+            type: object
+            properties:
+              id:
+                type: string
+              timestamp:
+                type: string
+                format: date-time
+              type:
+                type: string
+                enum: [state_capture, action_execute, transition_create, error, info]
+              severity:
+                type: string
+                enum: [debug, info, warn, error]
+              message:
+                type: string
+              stateId:
+                type: string
+              transitionId:
+                type: string
+              data:
+                type: object
+                additionalProperties: true
+              screenshot:
+                type: string
+          description: Session events
+
+    ErrorDetail:
+      type: object
+      required:
+        - error
+        - message
+      properties:
+        error:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable error message
+        details:
+          type: object
+          additionalProperties: true
+          description: Additional error details
+
+  responses:
+    BadRequest:
+      description: Bad request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorDetail'
+
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorDetail'
+
+    InternalServerError:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorDetail'
+
+tags:
+  - name: Graph Management
+    description: Operations for managing the UI graph
+  - name: State Capture
+    description: UI state capture operations
+  - name: State Detection
+    description: Current state detection
+  - name: State Management
+    description: Individual state operations
+  - name: Transition Management
+    description: Transition creation and management
+  - name: Session Management
+    description: Capture session operations

@@ -8,6 +8,8 @@ import automationRouter from './automation';
 import { emulatorRestartHandler } from './emulatorRestart';
 import { logsRouter } from './logs';
 import gpsRouter from './gps';
+import healthRouter from '../../routes/health';
+import graphRouter from '../../routes/graph';
 
 const routes = Router();
 
@@ -26,5 +28,14 @@ routes.use('/apps', appsRouter);
 
 // Automation & Logging
 routes.use('/automation', automationRouter);
+
+// UI Discovery & Graph Management
+routes.use('/graph', graphRouter);
+routes.use('/state', graphRouter);
+routes.use('/sessions', graphRouter);
+routes.use('/device', graphRouter);
+
+// Health Check Endpoints (constitution compliance)
+routes.use('/healthz', healthRouter);
 
 export const apiRouter = routes;

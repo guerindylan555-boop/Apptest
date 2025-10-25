@@ -11,6 +11,12 @@ export interface FeatureFlagsState {
   /** Enable Frida server controls and script injection */
   enableFrida: boolean;
 
+  /** Enable discovery panel for UI state capture */
+  discoveryPanel: boolean;
+
+  /** Enable legacy GPS panel (deprecated) */
+  gpsPanel: boolean;
+
   /** Whether feature flags have been loaded from backend */
   loaded: boolean;
 
@@ -28,6 +34,8 @@ export interface FeatureFlagsState {
  */
 export const useFeatureFlagsStore = create<FeatureFlagsState>((set) => ({
   enableFrida: false,
+  discoveryPanel: true,  // Enable new discovery functionality
+  gpsPanel: false,       // Disable legacy GPS panel
   loaded: false,
 
   setFlags: (flags) => set((state) => ({ ...state, ...flags })),
@@ -40,4 +48,18 @@ export const useFeatureFlagsStore = create<FeatureFlagsState>((set) => ({
  */
 export function useFridaEnabled(): boolean {
   return useFeatureFlagsStore((state) => state.enableFrida);
+}
+
+/**
+ * Hook to check if Discovery panel is enabled
+ */
+export function useDiscoveryPanel(): boolean {
+  return useFeatureFlagsStore((state) => state.discoveryPanel);
+}
+
+/**
+ * Hook to check if GPS panel is enabled
+ */
+export function useGpsPanel(): boolean {
+  return useFeatureFlagsStore((state) => state.gpsPanel);
 }

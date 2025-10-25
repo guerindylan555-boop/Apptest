@@ -1,0 +1,24 @@
+# Ignore container build context
+node_modules/
+.git
+.gitignore
+Dockerfile*
+docker-compose*.yml
+docker-compose*.yaml
+.dockerignore
+
+# Environment and logs
+.env*
+*.log
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+Thumbs.db
+
+# Development artifacts
+dist/
+build/
+.tsbuildinfo
