@@ -206,8 +206,14 @@ const EmulatorPage = () => {
                     cursor: 'pointer',
                     transition: 'background-color 0.2s'
                   }}
-                  onMouseOver={(e) => e.target.style.backgroundColor = '#2563eb'}
-                  onMouseOut={(e) => e.target.style.backgroundColor = '#3b82f6'}
+                  onMouseOver={(e) => {
+                    const target = e.target as HTMLButtonElement;
+                    target.style.backgroundColor = '#2563eb';
+                  }}
+                  onMouseOut={(e) => {
+                    const target = e.target as HTMLButtonElement;
+                    target.style.backgroundColor = '#3b82f6';
+                  }}
                 >
                   Refresh
                 </button>
