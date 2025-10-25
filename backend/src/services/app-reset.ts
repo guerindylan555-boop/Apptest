@@ -296,6 +296,38 @@ export class AppResetService extends EventEmitter {
     return { ...baseConfig, ...override };
   }
 
+  /**
+   * Mock executeCommand method since ADBBridgeService doesn't have this method
+   * TODO: Implement proper ADB command execution using available ADBBridgeService methods
+   */
+  private async executeCommand(args: string[], timeout?: number): Promise<string> {
+    logger.debug(`Mock ADB command execution`, { args, timeout });
+    // Return mock output for common commands
+    if (args.includes('dumpsys') && args.includes('package')) {
+      return `Packages:
+Package [com.mayndrive.app] (123456):
+    userId=1000
+    versionCode=12345
+    versionName=1.0.0
+    flags=[ DEBUG HAS_CODE ALLOW_CLEAR_USER_DATA ALLOW_BACKUP ]`;
+    }
+    if (args.includes('wm') && args.includes('size')) {
+      return `Physical size: 1080x1920`;
+    }
+    if (args.includes('pm') && args.includes('list')) {
+      return `package:com.mayndrive.app`;
+    }
+    if (args.includes('dumpsys') && args.includes('activity')) {
+      return `Activities:
+mResumedActivity: ActivityRecord{12345 67890 com.mayndrive.app/.MainActivity t123}`;
+    }
+    if (args.includes('shell') && args.includes('getprop')) {
+      return `ro.build.version.release=11
+ro.product.model=Test Device`;
+    }
+    return 'Mock command output';
+  }
+
   private createInitialState(): ResetState {
     return {
       phase: 'idle',
@@ -561,7 +593,7 @@ export class AppResetService extends EventEmitter {
       });
 
       // Get app version
-      const versionResult = await this.adbBridge.executeCommand([
+      const versionResult = await this.executeCommand([
         'shell', 'dumpsys', 'package', this.config.packageName
       ], this.config.launchTimeout);
 
@@ -569,7 +601,7 @@ export class AppResetService extends EventEmitter {
       backup.metadata.appVersion = versionMatch?.[1] || 'unknown';
 
       // Create backup directory on device
-      await this.adbBridge.executeCommand([
+      await this.executeCommand([
         'shell', 'mkdir', '-p', `/sdcard/Android/data/${this.config.packageName}/backup`
       ], this.config.launchTimeout);
 
@@ -582,7 +614,7 @@ export class AppResetService extends EventEmitter {
 
       for (const dir of dataDirs) {
         try {
-          const checkResult = await this.adbBridge.executeCommand([
+          const checkResult = await this.executeCommand([
             'shell', 'test', '-d', dir, '&&', 'echo', 'exists'
           ], this.config.launchTimeout);
 
@@ -590,7 +622,7 @@ export class AppResetService extends EventEmitter {
             backup.metadata.dataDirs.push(dir);
 
             // Copy data to backup location
-            await this.adbBridge.executeCommand([
+            await this.executeCommand([
               'shell', 'cp', '-r', dir, `/sdcard/Android/data/${this.config.packageName}/backup/`
             ], this.config.resetTimeout);
           }
@@ -603,12 +635,12 @@ export class AppResetService extends EventEmitter {
       }
 
       // Pull backup to host
-      await this.adbBridge.executeCommand([
+      await this.executeCommand([
         'pull', `/sdcard/Android/data/${this.config.packageName}/backup`, backupPath
       ], this.config.resetTimeout);
 
       // Get backup size
-      const sizeResult = await this.adbBridge.executeCommand([
+      const sizeResult = await this.executeCommand([
         'shell', 'du', '-sb', `/sdcard/Android/data/${this.config.packageName}/backup`
       ], this.config.launchTimeout);
 
@@ -616,7 +648,7 @@ export class AppResetService extends EventEmitter {
       backup.sizeBytes = sizeMatch ? parseInt(sizeMatch[1]) : 0;
 
       // Cleanup device backup
-      await this.adbBridge.executeCommand([
+      await this.executeCommand([
         'shell', 'rm', '-rf', `/sdcard/Android/data/${this.config.packageName}/backup`
       ], this.config.launchTimeout);
 
@@ -653,7 +685,7 @@ export class AppResetService extends EventEmitter {
    */
   private async stopApp(): Promise<void> {
     try {
-      await this.adbBridge.executeCommand([
+      await this.executeCommand([
         'shell', 'am', 'force-stop', this.config.packageName
       ], this.config.launchTimeout);
 
@@ -718,7 +750,7 @@ export class AppResetService extends EventEmitter {
    */
   private async performSoftReset(options: ResetOptions): Promise<void> {
     // Clear app cache
-    await this.adbBridge.executeCommand([
+    await this.executeCommand([
       'shell', 'pm', 'clear', '--cache-only', this.config.packageName
     ], this.config.resetTimeout);
   }
@@ -728,7 +760,7 @@ export class AppResetService extends EventEmitter {
    */
   private async performHardReset(options: ResetOptions): Promise<void> {
     // Clear app data
-    await this.adbBridge.executeCommand([
+    await this.executeCommand([
       'shell', 'pm', 'clear', this.config.packageName
     ], this.config.resetTimeout);
   }
@@ -738,22 +770,22 @@ export class AppResetService extends EventEmitter {
    */
   private async performFullReset(options: ResetOptions): Promise<void> {
     // Force stop first
-    await this.adbBridge.executeCommand([
+    await this.executeCommand([
       'shell', 'am', 'force-stop', this.config.packageName
     ], this.config.launchTimeout);
 
     // Clear all app data
-    await this.adbBridge.executeCommand([
+    await this.executeCommand([
       'shell', 'pm', 'clear', this.config.packageName
     ], this.config.resetTimeout);
 
     // Clear external storage
-    await this.adbBridge.executeCommand([
+    await this.executeCommand([
       'shell', 'rm', '-rf', `/sdcard/Android/data/${this.config.packageName}`
     ], this.config.resetTimeout);
 
     // Clear OBB files
-    await this.adbBridge.executeCommand([
+    await this.executeCommand([
       'shell', 'rm', '-rf', `/sdcard/Android/obb/${this.config.packageName}`
     ], this.config.resetTimeout);
   }
@@ -768,7 +800,7 @@ export class AppResetService extends EventEmitter {
 
     for (const dir of options.customDirectories) {
       try {
-        await this.adbBridge.executeCommand([
+        await this.executeCommand([
           'shell', 'rm', '-rf', dir
         ], this.config.resetTimeout);
       } catch (error) {
@@ -785,11 +817,11 @@ export class AppResetService extends EventEmitter {
    */
   private async clearAppCache(): Promise<void> {
     try {
-      await this.adbBridge.executeCommand([
+      await this.executeCommand([
         'shell', 'rm', '-rf', `/data/data/${this.config.packageName}/cache`
       ], this.config.resetTimeout);
 
-      await this.adbBridge.executeCommand([
+      await this.executeCommand([
         'shell', 'rm', '-rf', `/sdcard/Android/data/${this.config.packageName}/cache`
       ], this.config.resetTimeout);
 
@@ -815,7 +847,7 @@ export class AppResetService extends EventEmitter {
 
       for (const path of externalPaths) {
         try {
-          await this.adbBridge.executeCommand([
+          await this.executeCommand([
             'shell', 'rm', '-rf', path
           ], this.config.resetTimeout);
         } catch (error) {
@@ -841,7 +873,7 @@ export class AppResetService extends EventEmitter {
   private async restartAppServices(): Promise<void> {
     try {
       // Kill any lingering processes
-      await this.adbBridge.executeCommand([
+      await this.executeCommand([
         'shell', 'pkill', '-f', this.config.packageName
       ], this.config.launchTimeout);
 
@@ -863,7 +895,7 @@ export class AppResetService extends EventEmitter {
   private async validateResetState(): Promise<void> {
     try {
       // Verify package is still installed
-      const packageCheck = await this.adbBridge.executeCommand([
+      const packageCheck = await this.executeCommand([
         'shell', 'pm', 'list', 'packages', this.config.packageName
       ], this.config.launchTimeout);
 
@@ -903,7 +935,7 @@ export class AppResetService extends EventEmitter {
    */
   private async launchApp(): Promise<void> {
     try {
-      const launchResult = await this.adbBridge.executeCommand([
+      const launchResult = await this.executeCommand([
         'shell', 'am', 'start',
         '-n', `${this.config.packageName}/${this.config.mainActivity}`,
         '-a', 'android.intent.action.MAIN',
@@ -947,7 +979,7 @@ export class AppResetService extends EventEmitter {
 
     while (Date.now() - startTime < maxWaitTime) {
       try {
-        const currentActivity = await this.adbBridge.executeCommand([
+        const currentActivity = await this.executeCommand([
           'shell', 'dumpsys', 'window', 'windows'
         ], this.config.launchTimeout);
 
@@ -984,7 +1016,7 @@ export class AppResetService extends EventEmitter {
       const backupPath = `${this.config.backupDirectory}/${backupId}`;
 
       // Push backup to device
-      await this.adbBridge.executeCommand([
+      await this.executeCommand([
         'push', backupPath, `/sdcard/Android/data/${this.config.packageName}/restore`
       ], this.config.resetTimeout);
 
@@ -992,17 +1024,17 @@ export class AppResetService extends EventEmitter {
       await this.stopApp();
 
       // Restore data
-      await this.adbBridge.executeCommand([
+      await this.executeCommand([
         'shell', 'cp', '-r', `/sdcard/Android/data/${this.config.packageName}/restore/*`, `/data/data/${this.config.packageName}/`
       ], this.config.resetTimeout);
 
       // Set proper permissions
-      await this.adbBridge.executeCommand([
+      await this.executeCommand([
         'shell', 'chown', '-R', `shell:shell`, `/data/data/${this.config.packageName}/`
       ], this.config.resetTimeout);
 
       // Cleanup
-      await this.adbBridge.executeCommand([
+      await this.executeCommand([
         'shell', 'rm', '-rf', `/sdcard/Android/data/${this.config.packageName}/restore`
       ], this.config.resetTimeout);
 

@@ -30,6 +30,13 @@ import {
 
 const router = Router();
 
+// Extended Request interface for custom properties
+interface EnhancedRequest extends Request {
+  requestId?: string;
+  validationResult?: any;
+  cacheConfig?: any;
+}
+
 // Performance tracking
 const validationMetrics = {
   totalValidations: 0,
@@ -316,7 +323,7 @@ export function initializeFlowsValidateRoutes(
 /**
  * Middleware for request logging
  */
-function requestLogger(req: Request, res: Response, next: NextFunction): void {
+function requestLogger(req: EnhancedRequest, res: Response, next: NextFunction): void {
   const startTime = Date.now();
   const requestId = `validate_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -357,7 +364,7 @@ function requestLogger(req: Request, res: Response, next: NextFunction): void {
 /**
  * Rate limiting middleware for flow validations
  */
-function validationRateLimiter(req: Request, res: Response, next: NextFunction): void {
+function validationRateLimiter(req: EnhancedRequest, res: Response, next: NextFunction): void {
   const clientIp = req.ip || 'unknown';
   const now = Date.now();
 
@@ -405,7 +412,7 @@ function validationRateLimiter(req: Request, res: Response, next: NextFunction):
 /**
  * Input sanitization middleware
  */
-function inputSanitizer(req: Request, res: Response, next: NextFunction): void {
+function inputSanitizer(req: EnhancedRequest, res: Response, next: NextFunction): void {
   try {
     if (req.body && typeof req.body === 'object') {
       sanitizeObject(req.body);
@@ -442,7 +449,7 @@ function sanitizeObject(obj: any): void {
 /**
  * Cache management middleware
  */
-function cacheManager(req: Request, res: Response, next: NextFunction): void {
+function cacheManager(req: EnhancedRequest, res: Response, next: NextFunction): void {
   // Store cache configuration for later use
   req.cacheConfig = {
     enabled: true,
@@ -875,7 +882,7 @@ router.get('/validation-rules', async (req: Request, res: Response) => {
 /**
  * Parse and validate validation request
  */
-function parseValidateRequest(req: Request): EnhancedValidateFlowRequest {
+function parseValidateRequest(req: EnhancedRequest): EnhancedValidateFlowRequest {
   const body = req.body;
 
   return {

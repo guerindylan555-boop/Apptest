@@ -35,8 +35,7 @@ import {
   shouldMergeStates,
   isValidSHA256
 } from '../utils/hash';
-import { LogLevel, LogContext, PerformanceTimer, ServiceLogger } from './logger';
-import logger from './logger';
+import { LogLevel, LogContext, PerformanceTimer, ServiceLogger, logger } from './logger';
 
 // ============================================================================
 // Type Definitions
@@ -299,7 +298,7 @@ export class StateDeduplicationService {
       });
 
       // Convert to State instance if needed
-      const stateObj = state instanceof State ? state : State.fromExisting(state);
+      const stateObj = state // State is an interface, not a class;
 
       // Calculate state digest if not present
       if (!stateObj.digest || !isValidSHA256(stateObj.digest)) {
@@ -460,7 +459,7 @@ export class StateDeduplicationService {
     try {
       // Convert all states to State instances
       const stateObjects = states.map(state =>
-        state instanceof State ? state : State.fromExisting(state)
+        state // State is an interface, not a class
       );
 
       // Group by activity if enabled
@@ -568,8 +567,8 @@ export class StateDeduplicationService {
 
     try {
       // Convert to State instances if needed
-      const s1 = state1 instanceof State ? state1 : State.fromExisting(state1);
-      const s2 = state2 instanceof State ? state2 : State.fromExisting(state2);
+      const s1 = state1 // State is an interface, not a class;
+      const s2 = state2 // State is an interface, not a class;
 
       // Quick check for different packages/activities
       if (s1.package !== s2.package || s1.activity !== s2.activity) {
@@ -694,7 +693,7 @@ export class StateDeduplicationService {
       }
 
       if (states.length === 1) {
-        const state = states[0] instanceof State ? states[0] : State.fromExisting(states[0]);
+        const state = states[0] // State is an interface, not a class;
         timer.end({ result: 'single_state' });
         return state;
       }
@@ -707,7 +706,7 @@ export class StateDeduplicationService {
 
       // Convert all to State instances
       const stateObjects = states.map(state =>
-        state instanceof State ? state : State.fromExisting(state)
+        state // State is an interface, not a class
       );
 
       // Verify all states are from the same package/activity

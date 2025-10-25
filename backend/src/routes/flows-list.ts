@@ -28,6 +28,12 @@ import {
 
 const router = Router();
 
+// Extended Request interface for custom properties
+interface EnhancedRequest extends Request {
+  requestId?: string;
+  cacheKey?: string;
+}
+
 // Performance tracking
 const performanceMetrics = {
   requestCount: 0,
@@ -152,7 +158,7 @@ interface ErrorResponse {
 /**
  * Middleware for request logging and monitoring
  */
-function requestLogger(req: Request, res: Response, next: NextFunction): void {
+function requestLogger(req: EnhancedRequest, res: Response, next: NextFunction): void {
   const startTime = Date.now();
   const requestId = `req_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -202,7 +208,7 @@ function requestLogger(req: Request, res: Response, next: NextFunction): void {
 /**
  * Rate limiting middleware
  */
-function rateLimiter(req: Request, res: Response, next: NextFunction): void {
+function rateLimiter(req: EnhancedRequest, res: Response, next: NextFunction): void {
   const clientIp = req.ip || 'unknown';
   const now = Date.now();
 
@@ -250,7 +256,7 @@ function rateLimiter(req: Request, res: Response, next: NextFunction): void {
 /**
  * Cache middleware for GET requests
  */
-function cacheMiddleware(req: Request, res: Response, next: NextFunction): void {
+function cacheMiddleware(req: EnhancedRequest, res: Response, next: NextFunction): void {
   if (req.method !== 'GET') {
     return next();
   }
@@ -277,7 +283,7 @@ function cacheMiddleware(req: Request, res: Response, next: NextFunction): void 
 /**
  * Generate cache key from request
  */
-function generateCacheKey(req: Request): string {
+function generateCacheKey(req: EnhancedRequest): string {
   const url = req.url;
   const query = JSON.stringify(req.query);
   const headers = JSON.stringify({
@@ -669,7 +675,7 @@ router.get('/stats', async (req: Request, res: Response) => {
 /**
  * Parse and validate list request from Express request
  */
-function parseListRequest(req: Request): FlowListRequest {
+function parseListRequest(req: EnhancedRequest): FlowListRequest {
   const query = req.query;
 
   const listRequest: FlowListRequest = {

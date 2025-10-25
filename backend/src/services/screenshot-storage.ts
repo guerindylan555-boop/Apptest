@@ -27,7 +27,7 @@ import { createHash } from 'crypto';
 import * as path from 'path';
 import { existsSync, mkdirSync, constants } from 'fs';
 import { join, dirname, resolve } from 'path';
-import * as sharp from 'sharp';
+// import * as sharp from 'sharp'; // Commented out since Sharp is not currently used
 import { createServiceLogger } from './logger';
 import { jsonStorage, StorageResult } from './json-storage';
 import { uiCaptureService, UICaptureOptions } from './ui-capture';

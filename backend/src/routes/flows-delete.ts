@@ -322,7 +322,7 @@ function requestLogger(req: EnhancedRequest, res: Response, next: NextFunction):
 /**
  * Rate limiting middleware for flow deletions
  */
-function deletionRateLimiter(req: Request, res: Response, next: NextFunction): void {
+function deletionRateLimiter(req: EnhancedRequest, res: Response, next: NextFunction): void {
   const clientIp = req.ip || 'unknown';
   const now = Date.now();
 
@@ -370,7 +370,7 @@ function deletionRateLimiter(req: Request, res: Response, next: NextFunction): v
 /**
  * Input sanitization middleware
  */
-function inputSanitizer(req: Request, res: Response, next: NextFunction): void {
+function inputSanitizer(req: EnhancedRequest, res: Response, next: NextFunction): void {
   try {
     if (req.body && typeof req.body === 'object') {
       sanitizeObject(req.body);
@@ -407,7 +407,7 @@ function sanitizeObject(obj: any): void {
 /**
  * Dependency checking middleware
  */
-function dependencyChecker(req: Request, res: Response, next: NextFunction): void {
+function dependencyChecker(req: EnhancedRequest, res: Response, next: NextFunction): void {
   // Store dependency check state for later use
   req.dependencyCheck = {
     checked: false,
@@ -873,7 +873,7 @@ router.post('/recover', async (req: EnhancedRequest, res: Response) => {
 /**
  * Parse and validate delete request
  */
-function parseDeleteRequest(req: Request): DeleteFlowRequest {
+function parseDeleteRequest(req: EnhancedRequest): DeleteFlowRequest {
   const body = req.body;
 
   return {

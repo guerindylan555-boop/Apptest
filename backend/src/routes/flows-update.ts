@@ -30,6 +30,12 @@ import {
 
 const router = Router();
 
+// Extended Request interface for custom properties
+interface EnhancedRequest extends Request {
+  requestId?: string;
+  conflictDetection?: any;
+}
+
 // Performance tracking
 const updateMetrics = {
   totalUpdates: 0,
@@ -223,7 +229,7 @@ export function initializeFlowsUpdateRoutes(
 /**
  * Middleware for request logging
  */
-function requestLogger(req: Request, res: Response, next: NextFunction): void {
+function requestLogger(req: EnhancedRequest, res: Response, next: NextFunction): void {
   const startTime = Date.now();
   const requestId = `update_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -264,7 +270,7 @@ function requestLogger(req: Request, res: Response, next: NextFunction): void {
 /**
  * Rate limiting middleware for flow updates
  */
-function updateRateLimiter(req: Request, res: Response, next: NextFunction): void {
+function updateRateLimiter(req: EnhancedRequest, res: Response, next: NextFunction): void {
   const clientIp = req.ip || 'unknown';
   const now = Date.now();
 
@@ -312,7 +318,7 @@ function updateRateLimiter(req: Request, res: Response, next: NextFunction): voi
 /**
  * Input sanitization middleware
  */
-function inputSanitizer(req: Request, res: Response, next: NextFunction): void {
+function inputSanitizer(req: EnhancedRequest, res: Response, next: NextFunction): void {
   try {
     if (req.body && typeof req.body === 'object') {
       sanitizeObject(req.body);
@@ -349,7 +355,7 @@ function sanitizeObject(obj: any): void {
 /**
  * Conflict detection middleware
  */
-function conflictDetector(req: Request, res: Response, next: NextFunction): void {
+function conflictDetector(req: EnhancedRequest, res: Response, next: NextFunction): void {
   // Store conflict detection state for later use
   req.conflictDetection = {
     checked: false,
@@ -806,7 +812,7 @@ router.post('/:flowId/rollback', async (req: Request, res: Response) => {
 /**
  * Parse and validate update request
  */
-function parseUpdateRequest(req: Request): EnhancedUpdateFlowRequest {
+function parseUpdateRequest(req: EnhancedRequest): EnhancedUpdateFlowRequest {
   const body = req.body;
   const flowId = req.params.flowId;
 

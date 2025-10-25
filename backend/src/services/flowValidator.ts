@@ -310,10 +310,8 @@ export class FlowValidator extends EventEmitter {
     const startTime = performance.now();
 
     try {
-      // Convert to FlowDefinition if needed
-      const flowInstance = flow instanceof FlowDefinition
-        ? flow
-        : FlowDefinition.fromExisting(flow);
+      // Use the flow directly since FlowDefinition is an interface
+      const flowInstance = flow;
 
       // Check cache first
       if (context.enableCaching !== false) {
@@ -2922,9 +2920,8 @@ export class FlowValidator extends EventEmitter {
       }
     }
 
-    const predicateInstance = predicate instanceof StatePredicate
-      ? predicate
-      : new StatePredicate(predicate);
+    // StatePredicate is an interface, not a class
+    const predicateInstance = predicate;
 
     const matchingStates: StateRecord[] = [];
     let totalConfidence = 0;
@@ -3247,8 +3244,9 @@ export class FlowValidator extends EventEmitter {
     // Simplified transition logic
     // In a real implementation, this would be more sophisticated
 
-    const from = fromPredicate instanceof StatePredicate ? fromPredicate : new StatePredicate(fromPredicate);
-    const to = toPredicate instanceof StatePredicate ? toPredicate : new StatePredicate(toPredicate);
+    // StatePredicate is an interface, not a class
+    const from = fromPredicate;
+    const to = toPredicate;
 
     // Exact state ID match
     if (from.type === 'exact' && to.type === 'exact' &&
@@ -4214,19 +4212,15 @@ export class FlowValidator extends EventEmitter {
 
     // Convert steps to FlowStep instances
     flow.steps = data.steps.map(step =>
-      step instanceof FlowStep ? step : FlowStep.fromExisting(step)
+      step // FlowStep is an interface, not a class
     );
 
-    // Convert entry point to StatePredicate instance
-    flow.entryPoint = data.entryPoint instanceof StatePredicate
-      ? data.entryPoint
-      : new StatePredicate(data.entryPoint);
+    // StatePredicate is an interface, not a class
+    flow.entryPoint = data.entryPoint;
 
-    // Convert exit point to StatePredicate instance
+    // StatePredicate is an interface, not a class
     if (data.exitPoint) {
-      flow.exitPoint = data.exitPoint instanceof StatePredicate
-        ? data.exitPoint
-        : new StatePredicate(data.exitPoint);
+      flow.exitPoint = data.exitPoint;
     }
 
     return flow;
