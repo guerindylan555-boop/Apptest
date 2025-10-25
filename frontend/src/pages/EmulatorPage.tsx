@@ -159,15 +159,17 @@ const EmulatorPage = () => {
         flexDirection: 'column',
         padding: '1.5rem 2rem',
         gap: '1.5rem',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        height: 'calc(100vh - 80px)' // Account for header height
       }}>
         {/* Top Section - Video Stream and Discovery Panel */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 480px',
           gap: '1.5rem',
-          flex: 1,
-          minHeight: 0
+          flex: '0 1 auto', // Don't grow beyond content
+          maxHeight: '60vh', // Maximum height for this section
+          minHeight: '400px' // Minimum height
         }}>
           {/* Video Stream Section */}
           <div style={{
@@ -222,13 +224,15 @@ const EmulatorPage = () => {
             {/* Stream Viewer Direct */}
             <div style={{
               flex: 1,
-              minHeight: '400px',
+              maxHeight: '450px', // Maximum height for stream
+              minHeight: '350px', // Minimum height for stream
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
               borderRadius: '0.75rem',
               overflow: 'hidden',
-              border: '1px solid #334155'
+              border: '1px solid #334155',
+              backgroundColor: '#000'
             }}>
               <StreamViewer state={emulatorState} streamTicket={streamTicket} />
             </div>
@@ -236,8 +240,8 @@ const EmulatorPage = () => {
 
           {/* Discovery Panel Section */}
           <div style={{
-            height: '100%',
-            minHeight: '0',
+            height: '450px', // Fixed height matching stream
+            minHeight: '350px',
             overflow: 'hidden'
           }}>
             {discoveryEnabled ? (
@@ -300,7 +304,8 @@ const EmulatorPage = () => {
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
-          gap: '1.5rem'
+          gap: '1.5rem',
+          flex: '0 0 auto' // Don't grow
         }}>
           {/* Controls Section */}
           <div style={{
