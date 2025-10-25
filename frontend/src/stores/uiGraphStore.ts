@@ -159,6 +159,13 @@ export interface ScreenNode {
   status: 'active' | 'deprecated' | 'duplicate';
 }
 
+export interface SelectorCandidate {
+  id: string;
+  type: 'resource-id' | 'content-desc' | 'text' | 'accessibility' | 'xpath' | 'coords';
+  value: string;
+  confidence: number;
+}
+
 export interface ActionEdge {
   id: string;
   fromNodeId: string;
@@ -194,6 +201,7 @@ export interface CaptureWorkflowState {
   selectedSelectors: string[];
   nodeName: string;
   nodeHints: string[];
+  selectors: SelectorCandidate[];
 }
 
 export interface UIGraphState {
@@ -246,6 +254,9 @@ interface UIGraphStore extends UIGraphState, CaptureWorkflowState {
   runDetection: (xmlDump: string) => Promise<DetectionResult | null>;
   acceptDetection: (nodeId: string) => void;
   rejectDetection: (action: 'map_new' | 'merge' | 'retry') => void;
+
+  // Optimistic edge creation
+  createOptimisticEdge: (fromNodeId: string, action: any, notes?: string) => Promise<ActionEdge | null>;
 
   // Computed getters
   getNodeById: (nodeId: string) => ScreenNode | undefined;
