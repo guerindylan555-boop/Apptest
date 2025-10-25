@@ -244,7 +244,7 @@ interface UIGraphStore extends UIGraphState, CaptureWorkflowState {
   cancelCapture: () => void;
   setCaptureScreenshot: (screenshot: string) => void;
   setCaptureXmlDump: (xml: string) => void;
-  setAvailableSelectors: (selectors: any[]) => void;
+  setAvailableSelectors: (selectors: SelectorCandidate[]) => void;
   toggleSelectorSelection: (selectorId: string) => void;
   setNodeName: (name: string) => void;
   setNodeHints: (hints: string[]) => void;
