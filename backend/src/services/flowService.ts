@@ -22,6 +22,7 @@ import {
   ValidateFlowRequest,
   ListFlowsRequest,
   FlowValidationError,
+  FlowValidationWarning,
   StatePredicate,
   FlowStep,
   UserAction,
@@ -82,9 +83,9 @@ export class FlowService {
       metadata: {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        author: request.flow.author,
-        tags: request.flow.tags || [],
-        estimatedDuration: request.flow.estimatedDuration,
+        author: (request.flow as any).author,
+        tags: (request.flow as any).tags || [],
+        estimatedDuration: (request.flow as any).estimatedDuration,
         complexity: 0, // Will be calculated during validation
         executionCount: 0
       },
@@ -217,7 +218,7 @@ export class FlowService {
     this.executionLogs.set(executionId, []);
 
     // Start execution in background
-    this.startFlowExecution(context, request.startFromStep, request.stopAtStep)
+    this.startFlowExecution(context, request.config?.startFromStep, request.config?.stopAtStep)
       .catch(error => {
         console.error(`Flow execution ${executionId} failed:`, error);
         context.status = 'failed';
@@ -587,7 +588,7 @@ export class FlowService {
     }
   }
 
-  private validateFlowSteps(flow: FlowDefinition, errors: FlowValidationError[], warnings: FlowValidationError[]): void {
+  private validateFlowSteps(flow: FlowDefinition, errors: FlowValidationError[], warnings: FlowValidationWarning[]): void {
     if (!flow.steps) return;
 
     flow.steps.forEach((step, index) => {
@@ -624,8 +625,10 @@ export class FlowService {
       if (!step.preconditions || step.preconditions.length === 0) {
         warnings.push({
           type: 'reliability',
+          severity: 'warning' as const,
           message: `Step ${index + 1} has no preconditions`,
           stepId: step.id,
+          code: 'NO_PRECONDITIONS',
           suggestion: 'Add preconditions to ensure step executes in correct context'
         });
       }
@@ -633,8 +636,10 @@ export class FlowService {
       if (step.timeout && step.timeout > FLOW_CONFIG.maxFlowTimeout) {
         warnings.push({
           type: 'performance',
+          severity: 'warning' as const,
           message: `Step ${index + 1} timeout exceeds maximum (${FLOW_CONFIG.maxFlowTimeout}ms)`,
           stepId: step.id,
+          code: 'TIMEOUT_EXCEEDS_MAXIMUM',
           suggestion: 'Consider breaking down into smaller steps'
         });
       }
@@ -911,7 +916,7 @@ export class FlowService {
     return errors;
   }
 
-  private validateActions(flow: FlowDefinition, errors: FlowValidationError[], warnings: FlowValidationError[]): void {
+  private validateActions(flow: FlowDefinition, errors: FlowValidationError[], warnings: FlowValidationWarning[]): void {
     for (const step of flow.steps) {
       if (!step.action) continue;
 
@@ -950,15 +955,17 @@ export class FlowService {
       if (['tap', 'type', 'long_press'].includes(action.type) && !action.target) {
         warnings.push({
           type: 'reliability',
+          severity: 'warning' as const,
           message: `${action.type} action without target selector may be unreliable`,
           stepId: step.id,
+          code: 'NO_TARGET_SELECTOR',
           suggestion: 'Add target selector for better reliability'
         });
       }
     }
   }
 
-  private validateFlowLogic(flow: FlowDefinition, errors: FlowValidationError[], warnings: FlowValidationError[]): void {
+  private validateFlowLogic(flow: FlowDefinition, errors: FlowValidationError[], warnings: FlowValidationWarning[]): void {
     // Check for unreachable steps
     const reachableSteps = new Set<string>();
     const visitedSteps = new Set<string>();
@@ -999,8 +1006,10 @@ export class FlowService {
       if (!reachableSteps.has(step.id)) {
         warnings.push({
           type: 'logic',
+          severity: 'warning' as const,
           message: `Step "${step.name}" may be unreachable from entry point`,
           stepId: step.id,
+          code: 'UNREACHABLE_STEP',
           suggestion: 'Check preconditions and flow structure'
         });
       }
@@ -1039,8 +1048,10 @@ export class FlowService {
       if (hasCycle(stepId)) {
         warnings.push({
           type: 'logic',
+          severity: 'warning' as const,
           message: `Potential infinite loop detected involving step "${stepId}"`,
           stepId: stepId,
+          code: 'POTENTIAL_INFINITE_LOOP',
           suggestion: 'Review flow logic to prevent cycles'
         });
       }
@@ -1183,7 +1194,7 @@ export class FlowService {
   private async executeStep(context: FlowExecutionContext, step: FlowStep): Promise<any> {
     const startTime = Date.now();
 
-    const stepExecution = {
+    const stepExecution: any = {
       stepId: step.id,
       status: 'running' as const,
       startedAt: new Date().toISOString(),

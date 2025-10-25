@@ -7,6 +7,9 @@
 
 import { UserAction, StateRecord } from './graph';
 
+// Re-export UserAction for compatibility
+export { UserAction };
+
 // ============================================================================
 // Core Flow Types
 // ============================================================================
@@ -274,6 +277,9 @@ export interface FlowExecutionResult {
 
   /** Execution logs */
   logs: FlowExecutionLog[];
+
+  /** Step execution history */
+  stepHistory?: FlowStepExecution[];
 }
 
 export interface FlowExecutionLog {
@@ -349,13 +355,29 @@ export interface FlowValidationError {
 
 export interface FlowValidationWarning {
   /** Warning type */
-  type: 'performance' | 'reliability' | 'best_practice';
+  type: 'syntax' | 'semantic' | 'logic' | 'reference' | 'performance' | 'reliability' | 'best_practice';
+
+  /** Error severity */
+  severity: 'error' | 'warning';
 
   /** Warning message */
   message: string;
 
   /** Affected step ID */
   stepId?: string;
+
+  /** Error location in flow definition */
+  location?: {
+    line?: number;
+    column?: number;
+    property?: string;
+  };
+
+  /** Error code for programmatic handling */
+  code: string;
+
+  /** Additional error details */
+  details?: Record<string, any>;
 
   /** Warning suggestion */
   suggestion?: string;
