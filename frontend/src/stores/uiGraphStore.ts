@@ -109,7 +109,7 @@ export interface DetectionResult {
 }
 
 // Store interface
-interface UIGraphStore extends UIGraphState {
+interface UIGraphStore extends UIGraphState, CaptureWorkflowState {
   // Actions
   loadGraph: () => Promise<void>;
   selectNode: (nodeId: string | undefined) => void;
@@ -159,12 +159,14 @@ export const useUIGraphStore = create<UIGraphStore>()(
       error: undefined,
 
       // Capture workflow initial state
-      captureWorkflow: {
-        isActive: false,
-        selectedSelectors: [],
-        nodeName: '',
-        nodeHints: [],
-      },
+      isActive: false,
+      currentNode: undefined,
+      screenshot: undefined,
+      xmlDump: undefined,
+      availableSelectors: [],
+      selectedSelectors: [],
+      nodeName: '',
+      nodeHints: [],
 
       // Basic actions
       loadGraph: async () => {
@@ -229,81 +231,57 @@ export const useUIGraphStore = create<UIGraphStore>()(
       clearError: () => set({ error: undefined }),
 
       // Capture workflow actions
-      startCapture: () => set((state) => ({
-        captureWorkflow: {
-          ...state.captureWorkflow,
-          isActive: true,
-          selectedSelectors: [],
-          nodeName: '',
-          nodeHints: [],
-          currentNode: undefined,
-          screenshot: undefined,
-          xmlDump: undefined,
-          availableSelectors: [],
-        },
-      })),
-
-      cancelCapture: () => set((state) => ({
-        captureWorkflow: {
-          ...state.captureWorkflow,
-          isActive: false,
-        },
-      })),
-
-      setCaptureScreenshot: (screenshot) => set((state) => ({
-        captureWorkflow: {
-          ...state.captureWorkflow,
-          screenshot,
-        },
-      })),
-
-      setCaptureXmlDump: (xmlDump) => set((state) => ({
-        captureWorkflow: {
-          ...state.captureWorkflow,
-          xmlDump,
-        },
-      })),
-
-      setAvailableSelectors: (selectors) => set((state) => ({
-        captureWorkflow: {
-          ...state.captureWorkflow,
-          availableSelectors: selectors,
-        },
-      })),
-
-      toggleSelectorSelection: (selectorId) => set((state) => {
-        const selected = state.captureWorkflow.selectedSelectors;
-        const isSelected = selected.includes(selectorId);
-
-        return {
-          captureWorkflow: {
-            ...state.captureWorkflow,
-            selectedSelectors: isSelected
-              ? selected.filter(id => id !== selectorId)
-              : [...selected, selectorId],
-          },
-        };
+      startCapture: () => set({
+        isActive: true,
+        selectedSelectors: [],
+        nodeName: '',
+        nodeHints: [],
+        currentNode: undefined,
+        screenshot: undefined,
+        xmlDump: undefined,
+        availableSelectors: [],
       }),
 
-      setNodeName: (name) => set((state) => ({
-        captureWorkflow: {
-          ...state.captureWorkflow,
-          nodeName: name,
-        },
-      })),
+      cancelCapture: () => set({
+        isActive: false,
+      }),
 
-      setNodeHints: (hints) => set((state) => ({
-        captureWorkflow: {
-          ...state.captureWorkflow,
-          nodeHints: hints,
-        },
-      })),
+      setCaptureScreenshot: (screenshot) => set({
+        screenshot,
+      }),
+
+      setCaptureXmlDump: (xmlDump) => set({
+        xmlDump,
+      }),
+
+      setAvailableSelectors: (selectors) => set({
+        availableSelectors: selectors,
+      }),
+
+      toggleSelectorSelection: (selectorId) => {
+        const state = get();
+        const selected = state.selectedSelectors;
+        const isSelected = selected.includes(selectorId);
+
+        set({
+          selectedSelectors: isSelected
+            ? selected.filter(id => id !== selectorId)
+            : [...selected, selectorId],
+        });
+      },
+
+      setNodeName: (name) => set({
+        nodeName: name,
+      }),
+
+      setNodeHints: (hints) => set({
+        nodeHints: hints,
+      }),
 
       saveCapturedNode: async () => {
         const state = get();
-        const { captureWorkflow } = state;
 
-        if (!captureWorkflow.nodeName || !captureWorkflow.selectedSelectors.length) {
+        if (!state.nodeName || !state.selectedSelectors.length) {
           set({ error: 'Node name and at least one selector are required' });
           return;
         }
@@ -313,11 +291,11 @@ export const useUIGraphStore = create<UIGraphStore>()(
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              name: captureWorkflow.nodeName,
-              hints: captureWorkflow.nodeHints,
-              selectedSelectorIds: captureWorkflow.selectedSelectors,
-              screenshot: captureWorkflow.screenshot,
-              xmlDump: captureWorkflow.xmlDump,
+              name: state.nodeName,
+              hints: state.nodeHints,
+              selectedSelectorIds: state.selectedSelectors,
+              screenshot: state.screenshot,
+              xmlDump: state.xmlDump,
             }),
           });
 
@@ -329,12 +307,7 @@ export const useUIGraphStore = create<UIGraphStore>()(
           get().addNode(newNode);
 
           // Reset capture workflow
-          set((state) => ({
-            captureWorkflow: {
-              ...state.captureWorkflow,
-              isActive: false,
-            },
-          }));
+          set({ isActive: false });
         } catch (error) {
           set({
             error: error instanceof Error ? error.message : 'Failed to save node',
