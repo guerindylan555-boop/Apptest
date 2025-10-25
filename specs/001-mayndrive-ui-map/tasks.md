@@ -56,12 +56,12 @@
 
 ### Implementation
 
-- [ ] T017 [P] [US2] Implement the weighted scoring engine in `backend/src/services/state-detector/scoring.ts` (hash match + selector weights + layout similarity).
-- [ ] T018 [US2] Build `StateDetectorService` in `backend/src/services/state-detector/stateDetectorService.ts` to run scoring, apply thresholds, and log telemetry.
-- [ ] T019 [US2] Expose `POST /state-detection` in `backend/src/api/state-detection.ts` returning top-K candidates + UNKNOWN prompts per OpenAPI contract.
-- [ ] T020 [P] [US2] Create the CLI helper `scripts/detector/run-detector.ts` to analyze `var/captures/<nodeId>/ui.xml` dumps locally.
-- [ ] T021 [P] [US2] Add the Detection Panel UI in `frontend/src/components/detector/DetectionPanel.tsx` to upload dumps, display scores, and accept/merge decisions.
-- [ ] T022 [US2] Integrate detection workflows into `frontend/src/pages/DiscoveryPage.tsx` so operators can re-detect after each action and resolve UNKNOWN states.
+- [X] T017 [P] [US2] Implement the weighted scoring engine in `backend/src/services/state-detector/scoring.ts` (hash match + selector weights + layout similarity).
+- [X] T018 [US2] Build `StateDetectorService` in `backend/src/services/state-detector/stateDetectorService.ts` to run scoring, apply thresholds, and log telemetry.
+- [X] T019 [US2] Expose `POST /state-detection` in `backend/src/api/state-detection.ts` returning top-K candidates + UNKNOWN prompts per OpenAPI contract.
+- [X] T020 [P] [US2] Create the CLI helper `scripts/detector/run-detector.ts` to analyze `var/captures/<nodeId>/ui.xml` dumps locally.
+- [X] T021 [P] [US2] Add the Detection Panel UI in `frontend/src/components/detector/DetectionPanel.tsx` to upload dumps, display scores, and accept/merge decisions.
+- [X] T022 [US2] Integrate detection workflows into `frontend/src/pages/DiscoveryPage.tsx` so operators can re-detect after each action and resolve UNKNOWN states.
 
 **Checkpoint**: Detector delivers ≥90% top-1 accuracy and flags UNKNOWN with operator prompts.
 
@@ -75,12 +75,12 @@
 
 ### Implementation
 
-- [ ] T023 [P] [US3] Implement YAML flow parsing + repository utilities in `backend/src/services/flows/flowRepository.ts` (load/save/list under `var/flows/`).
-- [ ] T024 [US3] Build `FlowRunner` in `backend/src/services/flows/flowRunner.ts` to compute precondition paths, execute steps, and invoke detector/recovery hooks.
-- [ ] T025 [US3] Add endpoints `GET/POST /flows`, `POST /flows/{name}/validate`, and `POST /flows/{name}/run` in `backend/src/api/flows.ts` per OpenAPI.
-- [ ] T026 [P] [US3] Add the flow lint CLI `scripts/flows/lint-flow.ts` to validate references, recovery coverage, and YAML schema compliance.
-- [ ] T027 [P] [US3] Build the Flow Builder page at `frontend/src/pages/FlowsPage.tsx` to edit YAML-backed flows, variables, and recovery rules.
-- [ ] T028 [US3] Add the runtime control drawer in `frontend/src/components/flows/RunFlowDrawer.tsx` for selecting flows, injecting variables, and monitoring execution logs.
+- [X] T023 [P] [US3] Implement YAML flow parsing + repository utilities in `backend/src/services/flows/flowRepository.ts` (load/save/list under `var/flows/`).
+- [X] T024 [US3] Build `FlowRunner` in `backend/src/services/flows/flowRunner.ts` to compute precondition paths, execute steps, and invoke detector/recovery hooks.
+- [X] T025 [US3] Add endpoints `GET/POST /flows`, `POST /flows/{name}/validate`, and `POST /flows/{name}/run` in `backend/src/api/flows.ts` per OpenAPI.
+- [X] T026 [P] [US3] Add the flow lint CLI `scripts/flows/lint-flow.ts` to validate references, recovery coverage, and YAML schema compliance.
+- [X] T027 [P] [US3] Build the Flow Builder page at `frontend/src/pages/FlowsPage.tsx` to edit YAML-backed flows, variables, and recovery rules.
+- [X] T028 [US3] Add the runtime control drawer in `frontend/src/components/flows/RunFlowDrawer.tsx` for selecting flows, injecting variables, and monitoring execution logs.
 
 **Checkpoint**: Flows can be authored, validated, and executed with state-aware recovery from any detected node.
 
@@ -90,9 +90,9 @@
 
 **Purpose**: Finalize documentation, telemetry, and smoke validation spanning multiple stories.
 
-- [ ] T029 [P] Capture detector + flow telemetry aggregation in `backend/src/services/state-detector/telemetryLogger.ts` and surface summaries in `var/graphs/index.json`.
-- [ ] T030 Update `quickstart.md` and `docs/MAYNDRIVE_AUTOMATION.md` with the end-to-end capture → detect → flow workflow plus new CLI commands.
-- [ ] T031 [P] Add a smoke script `scripts/flows/run-baseline.sh` that chains login/unlock/lock flows to validate success criteria before releases.
+- [X] T029 [P] Capture detector + flow telemetry aggregation in `backend/src/services/state-detector/telemetryLogger.ts` and surface summaries in `var/graphs/index.json`.
+- [X] T030 Update `quickstart.md` and `docs/MAYNDRIVE_AUTOMATION.md` with the end-to-end capture → detect → flow workflow plus new CLI commands.
+- [X] T031 [P] Add a smoke script `scripts/flows/run-baseline.sh` that chains login/unlock/lock flows to validate success criteria before releases.
 
 ---
 

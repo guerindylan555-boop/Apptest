@@ -8,6 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUIGraphStore } from '../stores/uiGraphStore';
 import CapturePanel from '../components/discovery/CapturePanel';
+import { DetectionPanel } from '../components/detector/DetectionPanel';
 
 interface NodeAction {
   nodeId: string;
@@ -36,6 +37,7 @@ const DiscoveryPage: React.FC = () => {
   } = useUIGraphStore();
 
   const [showCapturePanel, setShowCapturePanel] = useState(false);
+  const [showDetectionPanel, setShowDetectionPanel] = useState(false);
   const [showActionDialog, setShowActionDialog] = useState(false);
   const [selectedActionNode, setSelectedActionNode] = useState<string>('');
   const [newAction, setNewAction] = useState<NodeAction>({
@@ -78,6 +80,21 @@ const DiscoveryPage: React.FC = () => {
   const handleCaptureComplete = (nodeId: string) => {
     console.log('Node captured:', nodeId);
     loadGraph(); // Refresh graph to show new node
+  };
+
+  const handleDetectionComplete = (result: any) => {
+    console.log('Detection completed:', result);
+    // Graph will be updated by the store automatically
+  };
+
+  const handleNodeSelect = (nodeId: string) => {
+    selectNode(nodeId);
+  };
+
+  const handleNewNode = (dumpPath: string) => {
+    // Switch to capture panel with the dump path for creating a new node
+    setShowDetectionPanel(false);
+    setShowCapturePanel(true);
   };
 
   const getStatusColor = (status: string) => {
@@ -127,6 +144,15 @@ const DiscoveryPage: React.FC = () => {
                 <span className="font-medium">{edges.length}</span> edges
               </div>
               <button
+                onClick={() => setShowDetectionPanel(true)}
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors flex items-center space-x-2"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span>Detect State</span>
+              </button>
+              <button
                 onClick={() => setShowCapturePanel(true)}
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors flex items-center space-x-2"
               >
@@ -175,12 +201,20 @@ const DiscoveryPage: React.FC = () => {
               Start building your UI graph by capturing screens from the MaynDrive app.
               Each captured screen becomes a node that you can connect with actions.
             </p>
-            <button
-              onClick={() => setShowCapturePanel(true)}
-              className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-            >
-              Capture First Screen
-            </button>
+            <div className="flex justify-center space-x-4">
+              <button
+                onClick={() => setShowDetectionPanel(true)}
+                className="px-6 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+              >
+                Detect Current State
+              </button>
+              <button
+                onClick={() => setShowCapturePanel(true)}
+                className="px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+              >
+                Capture First Screen
+              </button>
+            </div>
           </div>
         ) : (
           // Node Grid
@@ -257,32 +291,45 @@ const DiscoveryPage: React.FC = () => {
                   )}
 
                   {/* Actions */}
-                  <div className="mt-4 pt-3 border-t border-gray-100 flex justify-between items-center">
-                    <div className="flex space-x-2">
-                      {outgoingEdges.slice(0, 3).map((edge) => (
-                        <div
-                          key={edge.id}
-                          className="flex items-center space-x-1 text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded"
-                          title={edge.notes}
-                        >
-                          <span>{getActionIcon(edge.action.kind)}</span>
-                          <span>{edge.action.kind}</span>
-                        </div>
-                      ))}
-                      {outgoingEdges.length > 3 && (
-                        <span className="text-xs text-gray-500">
-                          +{outgoingEdges.length - 3} more
-                        </span>
-                      )}
+                  <div className="mt-4 pt-3 border-t border-gray-100">
+                    <div className="flex justify-between items-center mb-2">
+                      <div className="flex space-x-2">
+                        {outgoingEdges.slice(0, 3).map((edge) => (
+                          <div
+                            key={edge.id}
+                            className="flex items-center space-x-1 text-xs bg-blue-50 text-blue-700 px-2 py-1 rounded"
+                            title={edge.notes}
+                          >
+                            <span>{getActionIcon(edge.action.kind)}</span>
+                            <span>{edge.action.kind}</span>
+                          </div>
+                        ))}
+                        {outgoingEdges.length > 3 && (
+                          <span className="text-xs text-gray-500">
+                            +{outgoingEdges.length - 3} more
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAddAction(node.id);
+                        }}
+                        className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                      >
+                        + Add Action
+                      </button>
                     </div>
+
+                    {/* Detection Action */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleAddAction(node.id);
+                        setShowDetectionPanel(true);
                       }}
-                      className="text-sm text-blue-600 hover:text-blue-800 font-medium"
+                      className="w-full text-sm text-purple-600 hover:text-purple-800 font-medium py-1 border border-purple-200 rounded hover:bg-purple-50 transition-colors"
                     >
-                      + Add Action
+                      🔍 Re-detect from this node
                     </button>
                   </div>
                 </div>
@@ -405,6 +452,15 @@ const DiscoveryPage: React.FC = () => {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Detection Panel Modal */}
+      {showDetectionPanel && (
+        <DetectionPanel
+          onDetectionComplete={handleDetectionComplete}
+          onNodeSelect={handleNodeSelect}
+          onNewNode={handleNewNode}
+        />
       )}
 
       {/* Capture Panel Modal */}
