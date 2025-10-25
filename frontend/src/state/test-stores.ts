@@ -78,7 +78,14 @@ export function testStoreInteractions() {
   // Test Settings Store interactions
   const settingsStore = useSettingsStore.getState();
   settingsStore.updateSettings({
-    ui: { theme: 'dark' }
+    ui: {
+      theme: 'dark',
+      language: 'en',
+      compactMode: false,
+      showGrid: true,
+      showElementBounds: false,
+      screenshotQuality: 'high'
+    }
   });
 
   console.log('Store interactions tested successfully!');
