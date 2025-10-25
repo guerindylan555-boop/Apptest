@@ -1,0 +1,6 @@
+{
+  "scripts": {
+    "test:deduplication": "ts-node tests/integration/state-dedup.test.ts",
+    "test:deduplication:debug": "DEBUG=true ts-node tests/integration/state-dedup.test.ts"
+  }
+}

@@ -1,460 +1,154 @@
-# Data Model: UI Map & Discovery System
-
-**Feature**: AutoApp UI Map & Intelligent Flow Engine (Phase 1: Discovery)
-**Date**: 2025-10-25
-**Schema Version**: 1.0.0
-
-## Overview
-
-This document defines the data model for UI state discovery, graph management, and transition tracking. The model supports LLM-readable JSON artifacts, state deduplication, and transition recording for the MaynDrive app automation system.
-
-## Core Entities
-
-### Selector
-
-Represents a canonical UI element selector for reliable element identification.
-
-```typescript
-type Selector = {
-  /** Resource ID (highest priority selector) */
-  rid?: string;
-
-  /** Content description (accessibility label) */
-  desc?: string;
-
-  /** Visible text content */
-  text?: string;
-
-  /** UI element class name */
-  cls?: string;
-
-  /** Element bounds [left, top, right, bottom] */
-  bounds?: [number, number, number, number];
-
-  /** Additional XPath-like selector for complex elements */
-  xpath?: string;
-};
-```
-
-**Validation Rules**:
-- At least one selector field must be present
-- Bounds must be valid coordinates (left < right, top < bottom)
-- Resource ID takes precedence over other selectors
-- Text and desc are normalized (trimmed, lowercase for matching)
-
-### StateRecord
-
-Represents a unique UI state with all necessary information for identification and replay.
-
-```typescript
-type StateRecord = {
-  /** SHA256 hash: package + activity + normalized digest */
-  id: string;
-
-  /** Android package name */
-  package: string;
-
-  /** Current activity name */
-  activity: string;
-
-  /** Normalized hash of UI hierarchy */
-  digest: string;
-
-  /** Canonical selectors for interactive elements */
-  selectors: Selector[];
-
-  /** Visible text content (non-empty, trimmed) */
-  visibleText: string[];
-
-  /** Optional screenshot filename */
-  screenshot?: string;
-
-  /** User-defined tags for organization */
-  tags?: string[];
-
-  /** Creation timestamp */
-  createdAt: string;
-
-  /** Last update timestamp */
-  updatedAt: string;
-
-  /** State metadata */
-  metadata?: {
-    captureMethod: 'adb' | 'frida';
-    captureDuration: number; // ms
-    elementCount: number;
-    hierarchyDepth: number;
-  };
-};
-```
-
-**Validation Rules**:
-- ID must be valid SHA256 hash
-- Package and activity must match Android naming conventions
-- Digest must be consistent with normalized XML
-- Selectors array must be unique (no duplicate bounds/text combinations)
-- Screenshot filename must exist in screenshots directory
-
-### UserAction
-
-Represents a user interaction that can be performed on UI elements.
-
-```typescript
-type UserAction = {
-  /** Action type */
-  type: 'tap' | 'type' | 'swipe' | 'back' | 'intent' | 'long_press';
-
-  /** Target element selector */
-  target?: Selector;
-
-  /** Text to type (for 'type' actions) */
-  text?: string;
-
-  /** Swipe direction and distance (for 'swipe' actions) */
-  swipe?: {
-    direction: 'up' | 'down' | 'left' | 'right';
-    distance: number;
-  };
-
-  /** Intent details (for 'intent' actions) */
-  intent?: {
-    action: string;
-    package?: string;
-    component?: string;
-    extras?: Record<string, any>;
-  };
-
-  /** Action metadata */
-  metadata?: {
-    duration?: number; // for long_press
-    confidence?: number; // 0-1, selector confidence
-  };
-};
-```
-
-**Validation Rules**:
-- Tap/LongPress actions require target selector
-- Type actions require both target and text
-- Swipe actions require swipe configuration
-- Intent actions require intent action
-- Confidence must be between 0 and 1
-
-### TransitionRecord
-
-Represents a directed edge between two UI states via a specific action.
-
-```typescript
-type TransitionRecord = {
-  /** SHA256 hash: fromState + toState + action */
-  id: string;
-
-  /** Source state ID */
-  from: string;
-
-  /** Destination state ID */
-  to: string;
-
-  /** Action that triggered this transition */
-  action: UserAction;
-
-  /** Evidence for transition validity */
-  evidence?: {
-    /** Digest before action execution */
-    beforeDigest: string;
-
-    /** Digest after action completion */
-    afterDigest: string;
-
-    /** Action execution timestamp */
-    timestamp: string;
-
-    /** User notes or observations */
-    notes?: string;
-
-    /** Screenshot before action */
-    beforeScreenshot?: string;
-
-    /** Screenshot after action */
-    afterScreenshot?: string;
-  };
-
-  /** Transition confidence score */
-  confidence?: number;
-
-  /** Creation timestamp */
-  createdAt: string;
-
-  /** User-defined tags */
-  tags?: string[];
-};
-```
-
-**Validation Rules**:
-- From and To states must be valid StateRecord IDs
-- Action must be valid UserAction
-- BeforeDigest must match from state digest
-- AfterDigest must match to state digest
-- Confidence must be between 0 and 1
-
-### SessionEvent
-
-Represents a timestamped log entry for debugging and analysis.
-
-```typescript
-type SessionEvent = {
-  /** Unique event identifier */
-  id: string;
-
-  /** Event timestamp (ISO 8601) */
-  timestamp: string;
-
-  /** Event type */
-  type: 'state_capture' | 'action_execute' | 'transition_create' | 'error' | 'info';
-
-  /** Event severity */
-  severity: 'debug' | 'info' | 'warn' | 'error';
-
-  /** Human-readable message */
-  message: string;
-
-  /** Associated state ID (if applicable) */
-  stateId?: string;
-
-  /** Associated transition ID (if applicable) */
-  transitionId?: string;
-
-  /** Action performed (if applicable) */
-  action?: UserAction;
-
-  /** Additional event data */
-  data?: Record<string, any>;
-
-  /** Screenshot reference (if captured) */
-  screenshot?: string;
-};
-```
-
-## Graph Structure
-
-### UIGraph
-
-The complete UI graph containing all states and transitions.
-
-```typescript
-type UIGraph = {
-  /** Graph schema version */
-  version: string;
-
-  /** Graph creation timestamp */
-  createdAt: string;
-
-  /** Last modification timestamp */
-  updatedAt: string;
-
-  /** Package name this graph represents */
-  packageName: string;
-
-  /** All discovered states */
-  states: StateRecord[];
-
-  /** All recorded transitions */
-  transitions: TransitionRecord[];
-
-  /** Graph statistics */
-  stats: {
-    stateCount: number;
-    transitionCount: number;
-    averageDegree: number;
-    isolatedStates: number;
-    lastCapture?: string;
-  };
-
-  /** Graph metadata */
-  metadata: {
-    captureTool: string;
-    androidVersion?: string;
-    appVersion?: string;
-    deviceInfo?: string;
-    totalCaptureTime: number; // ms
-    totalSessions: number;
-  };
-};
-```
-
-## Data Relationships
-
-### Primary Keys
-- `StateRecord.id`: SHA256(package + activity + digest)
-- `TransitionRecord.id`: SHA256(from + to + action)
-- `SessionEvent.id`: UUID v4
-
-### Foreign Keys
-- `TransitionRecord.from` → `StateRecord.id`
-- `TransitionRecord.to` → `StateRecord.id`
-- `SessionEvent.stateId` → `StateRecord.id`
-- `SessionEvent.transitionId` → `TransitionRecord.id`
-
-### Indexes for Performance
-```typescript
-// States by activity for fast lookup
-type StatesByActivity = Record<string, StateRecord[]>;
-
-// Transitions by source state
-type TransitionsBySource = Record<string, TransitionRecord[]>;
-
-// Selectors by text for element finding
-type SelectorsByText = Record<string, Selector[]>;
-```
-
-## File Formats
-
-### graph.json
-```json
-{
-  "version": "1.0.0",
-  "createdAt": "2025-10-25T15:30:00.000Z",
-  "updatedAt": "2025-10-25T16:45:00.000Z",
-  "packageName": "fr.mayndrive.app",
-  "states": [...],
-  "transitions": [...],
-  "stats": {
-    "stateCount": 42,
-    "transitionCount": 89,
-    "averageDegree": 2.1,
-    "isolatedStates": 3,
-    "lastCapture": "2025-10-25T16:45:00.000Z"
-  },
-  "metadata": {
-    "captureTool": "AutoApp Discovery v1.0",
-    "androidVersion": "30",
-    "appVersion": "3.2.1",
-    "deviceInfo": "Pixel_4_API_30",
-    "totalCaptureTime": 12500,
-    "totalSessions": 8
-  }
-}
-```
-
-### sessions/{timestamp}.jsonl
-```jsonl
-{"id":"evt-1","timestamp":"2025-10-25T16:45:01.000Z","type":"state_capture","severity":"info","message":"Captured state: MainActivity","stateId":"abc123","data":{"captureDuration":850}}
-{"id":"evt-2","timestamp":"2025-10-25T16:45:02.500Z","type":"action_execute","severity":"info","message":"Tapped login button","stateId":"abc123","action":{"type":"tap","target":{"rid":"btn_login"}}}
-{"id":"evt-3","timestamp":"2025-10-25T16:45:03.200Z","type":"transition_create","severity":"info","message":"Created transition to Dashboard","transitionId":"trans-1","data":{"confidence":0.95}}
-```
-
-## State Management Operations
-
-### State Deduplication
-```typescript
-function shouldMergeStates(state1: StateRecord, state2: StateRecord): boolean {
-  // States can merge if:
-  // 1. Same package and activity
-  // 2. Digests are identical OR
-  // 3. Jaccard similarity of selectors >= 0.9
-
-  if (state1.package !== state2.package || state1.activity !== state2.activity) {
-    return false;
-  }
-
-  if (state1.digest === state2.digest) {
-    return true;
-  }
-
-  // Calculate Jaccard similarity of selector sets
-  const similarity = calculateJaccardSimilarity(state1.selectors, state2.selectors);
-  return similarity >= 0.9;
-}
-```
-
-### Transition Validation
-```typescript
-function validateTransition(
-  transition: TransitionRecord,
-  states: Map<string, StateRecord>
-): boolean {
-  const fromState = states.get(transition.from);
-  const toState = states.get(transition.to);
-
-  if (!fromState || !toState) {
-    return false;
-  }
-
-  // Verify evidence matches actual states
-  if (transition.evidence?.beforeDigest !== fromState.digest) {
-    return false;
-  }
-
-  if (transition.evidence?.afterDigest !== toState.digest) {
-    return false;
-  }
-
-  return true;
-}
-```
-
-## Performance Considerations
-
-### State ID Calculation
-```typescript
-function calculateStateId(packageName: string, activity: string, digest: string): string {
-  const crypto = require('crypto');
-  const input = `${packageName}:${activity}:${digest}`;
-  return crypto.createHash('sha256').update(input).digest('hex');
-}
-```
-
-### Graph Validation Performance
-- O(N) for state existence checks using Map lookups
-- O(1) for transition validation using hash maps
-- O(N log N) for graph sorting and statistics
-- Target: <2s validation for 50 states, 100 transitions
-
-### Memory Usage
-- Each StateRecord: ~2-5KB (depending on selectors and text)
-- Each TransitionRecord: ~1-3KB
-- Graph with 500 states, 2000 transitions: ~15-25MB in memory
-- JSON file size: ~5-10MB for large graphs
-
-## Integration Points
-
-### Backend API Integration
-```typescript
-// GET /api/graph/current-state
-interface CurrentStateResponse {
-  state?: StateRecord;
-  confidence: number;
-  candidates: Array<{
-    state: StateRecord;
-    similarity: number;
-  }>;
-}
-
-// POST /api/graph/snapshot
-interface SnapshotRequest {
-  forceScreenshot?: boolean;
-  tags?: string[];
-}
-
-interface SnapshotResponse {
-  state: StateRecord;
-  merged: boolean;
-  mergedInto?: string; // ID of existing state if merged
-}
-```
-
-### Frontend Component Integration
-```typescript
-// React hook for state management
-interface UseGraphReturn {
-  graph: UIGraph | null;
-  currentState: StateRecord | null;
-  isLoading: boolean;
-  captureState: (options?: SnapshotRequest) => Promise<SnapshotResponse>;
-  createTransition: (action: UserAction) => Promise<TransitionRecord>;
-  mergeStates: (sourceId: string, targetId: string) => Promise<boolean>;
-}
-```
-
----
-
-*Data model complete. Ready for API contract definition and implementation.*
+# Data Model — AutoApp UI Map & Intelligent Flow Engine
+
+## 1. State
+| Field | Type | Description | Validation |
+|-------|------|-------------|------------|
+| `id` | string (UUID) | Stable identifier for the captured state node | Required, unique across graph |
+| `package` | string | Android package detected for the activity | Required |
+| `activity` | string | Fully-qualified activity name | Required |
+| `digest` | string (sha256) | Hash of view-hierarchy XML + selectors | Required; used for deduplication |
+| `selectors` | Selector[] | Top-level interactable elements | 1–N entries, normalized bounds/resource-id |
+| `visibleText` | string[] | Key text strings found on screen | Optional |
+| `screenshot` | string (path/hash) | Reference to screenshot asset | Optional but recommended |
+| `tags` | string[] | User-supplied labels | Optional |
+| `metadata.captureMethod` | enum (`adb`,`frida`) | Capture channel | Default `adb` |
+| `metadata.captureDuration` | number (ms) | Snapshot time | Must be ≥0 |
+| `metadata.elementCount` | number | Count of nodes in hierarchy | ≥0 |
+| `metadata.hierarchyDepth` | number | Deepest node depth | ≥0 |
+| `createdAt` / `updatedAt` | ISO timestamp | Lifecycle tracking | Required |
+
+Relationships: State nodes live inside a single UI Graph and are referenced by transitions, flow predicates, and session events.
+
+## 2. Selector
+| Field | Type | Description | Validation |
+| `rid` | string | Android resource-id | Optional |
+| `text` | string | Visible text | Optional |
+| `desc` | string | Content description | Optional |
+| `cls` | string | Fully-qualified class | Optional |
+| `bounds` | `[number, number, number, number]` | Screen bounds (left,top,right,bottom) | Optional; enforce 0 ≤ value ≤ screen size |
+| `xpath` | string | Hierarchy path | Optional |
+
+Selectors inherit state metadata. Used in flows (actions + predicates).
+
+## 3. Action
+| Field | Type | Description |
+| `type` | enum(`tap`,`type`,`swipe`,`back`,`intent`,`long_press`) | Interaction type |
+| `target` | Selector | Element to act upon | Required for tap/type/long_press |
+| `text` | string | Input text for `type` | Required when `type=type` |
+| `swipe.direction` | enum(`up`,`down`,`left`,`right`) | Swipe direction |
+| `swipe.distance` | number (0–1) | Normalized distance |
+| `intent.*` | strings/object | Android intent parameters |
+| `metadata.duration` | number | Duration override (ms) |
+| `metadata.confidence` | number | 0–1 guidance |
+| `semanticSelector` | object | Semantic hints (type/purpose/nearText) |
+
+## 4. Transition
+| Field | Type | Description | Validation |
+| `id` | string | Stable identifier | Required |
+| `from` | state.id | Source node | Required |
+| `to` | state.id | Destination node | Required |
+| `action` | Action | Triggering action | Required |
+| `evidence.beforeDigest/afterDigest` | string | Optional hashed proof | Must match state digests when provided |
+| `evidence.timestamp` | ISO timestamp | Capture time | Optional |
+| `evidence.notes` | string | Analyst notes | Optional |
+| `confidence` | number (0–1) | Transition certainty | Optional |
+| `tags` | string[] | Classifications | Optional |
+| `createdAt` | ISO timestamp | | Required |
+
+Transitions belong to a UI Graph and power flow validation.
+
+## 5. UI Graph (UTG)
+| Field | Type | Description |
+| `version` | semver | Schema version |
+| `createdAt` / `updatedAt` | ISO timestamp | Graph lifecycle |
+| `packageName` | string | Target Android package |
+| `states` | State[] | Captured nodes |
+| `transitions` | Transition[] | Directed edges |
+| `stats.stateCount` | number | Derived count |
+| `stats.transitionCount` | number | Derived |
+| `stats.averageDegree` | number | Derived (out+in / states) |
+| `stats.isolatedStates` | number | Derived |
+| `stats.lastCapture` | ISO timestamp | Latest snapshot |
+| `metadata.captureTool` | string | e.g., `uiautomator2` |
+| `metadata.androidVersion` | string | Optional |
+| `metadata.appVersion` | string | Optional |
+| `metadata.deviceInfo` | string | Optional |
+| `metadata.totalCaptureTime` | number | Accumulated ms |
+| `metadata.totalSessions` | number | Capture sessions |
+
+Constraints: Graphs limited to 500 states / 2000 transitions (NFR).
+
+## 6. FlowDefinition
+| Field | Type | Description |
+| `id` | string | Flow identifier (slug) |
+| `name` | string | Human-friendly name |
+| `description` | string | Optional summary |
+| `version` | semver | Flow schema version |
+| `packageName` | string | Target package |
+| `steps` | FlowStep[] | Ordered execution steps |
+| `entryPoint` | StatePredicate | Starting condition |
+| `exitPoint` | StatePredicate | Optional completion check |
+| `metadata.createdAt/updatedAt` | ISO timestamp | Audit fields |
+| `metadata.author` | string | Owner |
+| `metadata.tags` | string[] | Labels (login/unlock/etc.) |
+| `metadata.estimatedDuration` | number (s) | Perf hint |
+| `metadata.complexity` | number (1–5) | Custom scale |
+| `metadata.executionCount` | number | Historical runs |
+| `metadata.successRate` | number (0–1) | Historical success |
+| `config.defaultTimeout` | number (s) | Wait per step |
+| `config.retryAttempts` | number | Step retries |
+| `config.allowParallel` | boolean | Future use |
+| `config.priority` | enum(`low`,`medium`,`high`) | Scheduling hint |
+
+## 7. FlowStep
+| Field | Type | Description |
+| `id` | string | Step identifier |
+| `name` | string | Step title |
+| `description` | string | Optional detail |
+| `preconditions` | StatePredicate[] | Must all match before executing |
+| `action` | Action | Interaction to perform |
+| `expectedState` | StatePredicate | Post-condition |
+| `timeout` | number (s) | Override for this step |
+| `critical` | boolean | If failure aborts flow |
+| `metadata.confidence` | number | 0–1 |
+| `metadata.notes` / `tags` | string[] | Additional annotations |
+
+## 8. StatePredicate
+Represents logical expressions used across flows, validation, and recovery.
+| Field | Type | Description |
+| `type` | enum(`exact`,`contains`,`matches`,`fuzzy`) | Matching strategy |
+| `stateId` | string | Direct reference (exact) |
+| `activity` | string | Activity name constraint |
+| `containsText` | string[] | Text fragments required |
+| `matches.activity/text/selectors` | string | Regex expressions |
+| `fuzzyThreshold` | number (0–1) | For digest similarity |
+| `hasSelectors` | Array<{`rid`,`text`,`desc`}> | Sub-selector hints |
+
+Predicates can be combined using AND/OR/NOT expressions defined in flow metadata.
+
+## 9. FlowExecution (runtime telemetry)
+| Field | Type | Description |
+| `executionId` | string | Run identifier |
+| `flowId` | string | FlowDefinition ID |
+| `status` | enum(`pending`,`running`,`completed`,`failed`,`paused`,`cancelled`) | Lifecycle |
+| `startedAt` / `completedAt` | ISO timestamp | Timing |
+| `duration` | number (ms) | Derived |
+| `currentStep` | number | Index |
+| `stepHistory` | Array<StepResult> | Ordered log |
+| `summary` | object | Aggregated counts (total/success/failed/skipped/avgDuration) |
+| `logs` | SessionEvent[] | Linked runtime events |
+
+## 10. SessionEvent
+| Field | Type | Description |
+| `id` | string | Event id |
+| `timestamp` | ISO timestamp | When event occurred |
+| `level` | enum(`debug`,`info`,`warn`,`error`) | Severity |
+| `message` | string | Human-readable message |
+| `stepId` | string | FlowStep reference |
+| `data` | object | Arbitrary structured payload (selector snapshots, errors, screenshot refs) |
+
+## Relationships Summary
+- **UI Graph** aggregates **States** and **Transitions**.
+- **Flows** reference graph nodes through **StatePredicates** and **FlowSteps**.
+- **FlowExecutions** emit **SessionEvents** tied to FlowSteps and graph states.
+- **Selectors** and **Actions** bridge UI capture data with replay instructions.

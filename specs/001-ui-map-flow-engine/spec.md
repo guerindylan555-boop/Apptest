@@ -104,10 +104,14 @@ As a Claude Code user, I want to interact with the UI graph and flows through na
 ### Non-Functional Requirements
 
 - **NFR-001**: System MUST support graphs up to 500 states with sub-2-second validation performance
-- **NFR-002**: System MUST operate without external network dependencies for core functionality
-  - WebRTC streaming is internal-only within Docker Compose network (existing functionality preserved)
-  - No external internet connectivity required for state capture, graph operations, or flow execution
-  - External WebRTC access continues through existing Traefik proxy configuration
+- ~~**NFR-002**: System MUST operate without external network dependencies for core functionality~~
+  - ~~WebRTC streaming is internal-only within Docker Compose network (existing functionality preserved)~~
+  - ~~No external internet connectivity required for state capture, graph operations, or flow execution~~
+  - ~~External WebRTC access continues through existing Traefik proxy configuration~~
+- **NFR-002**: System MUST be fully accessible through remote Dockploy deployment for MaynDrive automation
+  - All APIs accessible via Traefik proxy through Dockploy domain
+  - WebRTC streaming works remotely through Dockploy configuration
+  - Full remote workflow support for MaynDrive automation operations
 - **NFR-003**: System MUST provide CLI interface compatible with standard shell scripting
 - **NFR-004**: System MUST maintain JSON file compatibility across minor version updates
 - **NFR-005**: System MUST handle concurrent access to graph files with proper conflict detection

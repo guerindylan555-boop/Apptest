@@ -1,4 +1,41 @@
 services:
+  traefik:
+    image: traefik:v3.1
+    container_name: apptest-traefik
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--providers.docker.network=apptest-network"
+      - "--providers.file.directory=/etc/traefik/dynamic"
+      - "--providers.file.watch=true"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.websocket.address=:8080"
+      - "--log.level=INFO"
+      - "--log.format=json"
+      - "--accesslog=true"
+      - "--accesslog.filepath=/var/log/traefik/access.log"
+      - "--ping=true"
+      - "--metrics.prometheus=true"
+    ports:
+      - "80:80"       # HTTP
+      - "443:443"     # HTTPS
+      - "8080:8080"   # Traefik Dashboard and WebSocket support
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./infra/traefik/traefik.yml:/etc/traefik/traefik.yml:ro
+      - ./infra/traefik/dynamic:/etc/traefik/dynamic:ro
+      - traefik-logs:/var/log/traefik
+      - traefik-acme:/etc/traefik/acme
+    networks:
+      - apptest-network
+    restart: unless-stopped
+    depends_on:
+      - backend
+      - frontend
+      - envoy
+
   backend:
     build:
       context: .
@@ -17,9 +54,9 @@ services:
       - ENABLE_DISCOVERY=true
       - DISCOVERY_PANEL=true
       - GPS_PANEL=false
-      - GRAPH_PATH=/app/data/graph.json
-      - SESSIONS_DIR=/app/data/sessions
-      - SCREENSHOTS_DIR=/app/data/screenshots
+      - GRAPH_PATH=/var/autoapp/graph.json
+      - SESSIONS_DIR=/var/autoapp/sessions
+      - SCREENSHOTS_DIR=/var/autoapp/screenshots
       - ADB_HOST=host.docker.internal
       - ANDROID_SERIAL=emulator-5554
       - SNAPSHOT_TIMEOUT_MS=5000
@@ -36,6 +73,40 @@ services:
       - discovery-data:/app/data  # Discovery artifacts storage
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    labels:
+      # Enable Traefik for backend service
+      - "traefik.enable=true"
+      - "traefik.docker.network=apptest-network"
+
+      # HTTP Router for API endpoints
+      - "traefik.http.routers.backend-api.rule=Host(`localhost`, `127.0.0.1`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.backend-api.entrypoints=web"
+      - "traefik.http.routers.backend-api.priority=100"
+
+      # HTTPS Router for API endpoints
+      - "traefik.http.routers.backend-api-secure.rule=Host(`localhost`, `127.0.0.1`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.backend-api-secure.entrypoints=websecure"
+      - "traefik.http.routers.backend-api-secure.tls=true"
+      - "traefik.http.routers.backend-api-secure.priority=100"
+
+      # Apply middlewares to API routes
+      - "traefik.http.routers.backend-api.middlewares=cors-headers@file,api-ratelimit@file,api-strip-prefix@file,compress@file,security-headers@file"
+      - "traefik.http.routers.backend-api-secure.middlewares=cors-headers@file,api-ratelimit@file,api-strip-prefix@file,compress@file,security-headers@file"
+
+      # Service configuration
+      - "traefik.http.services.backend-api.loadbalancer.server.port=3001"
+      - "traefik.http.services.backend-api.loadbalancer.server.scheme=http"
+
+      # Health check configuration
+      - "traefik.http.services.backend-api.loadbalancer.healthcheck.path=/api/healthz"
+      - "traefik.http.services.backend-api.loadbalancer.healthcheck.interval=30s"
+      - "traefik.http.services.backend-api.loadbalancer.healthcheck.timeout=5s"
+
+      # Health endpoint specific router
+      - "traefik.http.routers.backend-health.rule=Host(`localhost`, `127.0.0.1`) && (Path(`/api/healthz`) || Path(`/api/health`))"
+      - "traefik.http.routers.backend-health.entrypoints=web,websecure"
+      - "traefik.http.routers.backend-health.middlewares=health-check@file"
+      - "traefik.http.routers.backend-health.tls=true"
     networks:
       - apptest-network
     restart: unless-stopped
@@ -66,6 +137,34 @@ services:
       - "9000:8080"
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    labels:
+      # Enable Traefik for Envoy service (WebRTC streaming)
+      - "traefik.enable=true"
+      - "traefik.docker.network=apptest-network"
+
+      # HTTP Router for WebRTC streaming
+      - "traefik.http.routers.webrtc.rule=Host(`localhost`, `127.0.0.1`) && PathPrefix(`/`)"
+      - "traefik.http.routers.webrtc.entrypoints=websocket"
+      - "traefik.http.routers.webrtc.priority=90"
+
+      # HTTPS Router for WebRTC streaming
+      - "traefik.http.routers.webrtc-secure.rule=Host(`localhost`, `127.0.0.1`) && PathPrefix(`/`)"
+      - "traefik.http.routers.webrtc-secure.entrypoints=websecure"
+      - "traefik.http.routers.webrtc-secure.tls=true"
+      - "traefik.http.routers.webrtc-secure.priority=90"
+
+      # Apply WebSocket middlewares
+      - "traefik.http.routers.webrtc.middlewares=websocket-headers@file,cors-headers@file"
+      - "traefik.http.routers.webrtc-secure.middlewares=websocket-headers@file,cors-headers@file"
+
+      # Service configuration
+      - "traefik.http.services.webrtc.loadbalancer.server.port=8080"
+      - "traefik.http.services.webrtc.loadbalancer.server.scheme=http"
+
+      # Health check for Envoy
+      - "traefik.http.services.webrtc.loadbalancer.healthcheck.path=/healthz"
+      - "traefik.http.services.webrtc.loadbalancer.healthcheck.interval=30s"
+      - "traefik.http.services.webrtc.loadbalancer.healthcheck.timeout=5s"
     networks:
       - apptest-network
     restart: unless-stopped
@@ -96,6 +195,34 @@ services:
     container_name: apptest-frontend
     ports:
       - "5173:80"
+    labels:
+      # Enable Traefik for frontend service
+      - "traefik.enable=true"
+      - "traefik.docker.network=apptest-network"
+
+      # HTTP Router for frontend application
+      - "traefik.http.routers.frontend.rule=Host(`localhost`, `127.0.0.1`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.routers.frontend.priority=10"
+
+      # HTTPS Router for frontend application
+      - "traefik.http.routers.frontend-secure.rule=Host(`localhost`, `127.0.0.1`)"
+      - "traefik.http.routers.frontend-secure.entrypoints=websecure"
+      - "traefik.http.routers.frontend-secure.tls=true"
+      - "traefik.http.routers.frontend-secure.priority=10"
+
+      # Apply middlewares to frontend routes
+      - "traefik.http.routers.frontend.middlewares=compress@file,security-headers@file"
+      - "traefik.http.routers.frontend-secure.middlewares=compress@file,security-headers@file"
+
+      # Service configuration
+      - "traefik.http.services.frontend.loadbalancer.server.port=80"
+      - "traefik.http.services.frontend.loadbalancer.server.scheme=http"
+
+      # Health check for frontend
+      - "traefik.http.services.frontend.loadbalancer.healthcheck.path=/"
+      - "traefik.http.services.frontend.loadbalancer.healthcheck.interval=30s"
+      - "traefik.http.services.frontend.loadbalancer.healthcheck.timeout=5s"
     networks:
       - apptest-network
     restart: unless-stopped
@@ -109,3 +236,5 @@ networks:
 volumes:
   emulator-home:  # Shared volume for ADB keys and console auth token
   discovery-data:  # Discovery artifacts storage
+  traefik-logs:   # Traefik access logs
+  traefik-acme:   # Traefik SSL certificates storage

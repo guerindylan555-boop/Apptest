@@ -230,9 +230,19 @@ const EmulatorPage = () => {
               overflow: 'hidden',
               border: '1px solid #334155',
               backgroundColor: '#000',
-              minHeight: '300px' // Minimum height but allow growth
+              minHeight: '300px', // Minimum height but allow growth
+              maxHeight: 'calc(100vh - 320px)'
             }}>
-              <StreamViewer state={emulatorState} streamTicket={streamTicket} />
+              <div style={{
+                width: 'min(100%, 560px)',
+                maxHeight: '100%',
+                aspectRatio: '9 / 16',
+                display: 'flex',
+                flex: '0 0 auto',
+                justifyContent: 'center'
+              }}>
+                <StreamViewer state={emulatorState} streamTicket={streamTicket} />
+              </div>
             </div>
           </div>
 

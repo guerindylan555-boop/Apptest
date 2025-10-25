@@ -5,7 +5,8 @@
  * Replaces GPS panel in the application layout.
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import clsx from 'clsx';
 import {
   CameraIcon,
   ArrowRightIcon,
@@ -21,14 +22,13 @@ import {
   PlayIcon,
   PlusIcon,
   DocumentTextIcon,
-  FolderIcon,
-  Cog6ToothIcon,
-  ChevronRightIcon,
-  StopIcon
+  TrashIcon,
+  ChevronRightIcon
 } from '@heroicons/react/24/outline';
 import { useDiscovery } from '../../hooks/useDiscovery';
 import { useFlow } from '../../hooks/useFlow';
 import FlowEditor from './FlowEditor';
+import '../../styles/discovery-panel.css';
 // Type definitions for the UI Discovery system
 interface Selector {
   rid?: string;
@@ -51,7 +51,7 @@ interface UserAction {
     action: string;
     package?: string;
     component?: string;
-    extras?: Record<string, any>;
+    extras?: Record<string, unknown>;
   };
   metadata?: {
     duration?: number;
@@ -96,6 +96,7 @@ interface TransitionRecord {
   tags?: string[];
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface UIGraph {
   version: string;
   createdAt: string;
@@ -190,7 +191,7 @@ interface FlowExecution {
   completedAt?: string;
   duration?: number;
   currentStep?: number;
-  stepHistory: any[];
+  stepHistory: unknown[];
   summary?: {
     totalSteps: number;
     successfulSteps: number;
@@ -204,7 +205,7 @@ interface FlowExecution {
     level: 'debug' | 'info' | 'warn' | 'error';
     message: string;
     stepId?: string;
-    data?: any;
+    data?: unknown;
   }>;
 }
 
@@ -236,8 +237,6 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
     updateFlow,
     deleteFlow,
     executeFlow,
-    getFlowExecutionStatus,
-    getFlowExecutionResult,
     refreshFlows,
     clearFlowError
   } = useFlow(15000); // Refresh every 15 seconds
@@ -253,9 +252,669 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
   // Flow state
   const [activeTab, setActiveTab] = useState<'discovery' | 'flows'>('discovery');
   const [selectedFlow, setSelectedFlow] = useState<FlowDefinition | null>(null);
-  const [selectedExecution, setSelectedExecution] = useState<FlowExecution | null>(null);
   const [showFlowEditor, setShowFlowEditor] = useState(false);
-  const [showFlowExecutor, setShowFlowExecutor] = useState(false);
+
+  const stateList = useMemo(() => graph?.states ?? [], [graph]);
+  const flowsList = useMemo(() => flows ?? [], [flows]);
+  const executionsList: FlowExecution[] = useMemo(() => executions ?? [], [executions]);
+  const transitionsPreview = useMemo(
+    () => (graph?.transitions ?? []).slice(0, 6),
+    [graph]
+  );
+
+  const activityGroups = useMemo(() => {
+    if (!graph) return [];
+    const groups = graph.states.reduce<Record<string, StateRecord[]>>((acc, state) => {
+      acc[state.activity] = acc[state.activity] ? [...acc[state.activity], state] : [state];
+      return acc;
+    }, {});
+    return Object.entries(groups)
+      .map(([activity, states]) => ({
+        activity,
+        states,
+        count: states.length
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 4);
+  }, [graph]);
+
+  const discoveryStats = useMemo(() => {
+    const statesCount = graph?.stats?.stateCount ?? graph?.states?.length ?? 0;
+    const transitionsCount = graph?.stats?.transitionCount ?? graph?.transitions?.length ?? 0;
+    return {
+      states: statesCount,
+      transitions: transitionsCount,
+      averageDegree: graph?.stats?.averageDegree ?? 0,
+      isolatedStates: graph?.stats?.isolatedStates ?? 0,
+      lastCapture: graph?.stats?.lastCapture ?? graph?.updatedAt
+    };
+  }, [graph]);
+
+  const selectorPreview = useMemo(() => {
+    const source = selectedState ?? currentState;
+    return source?.selectors.slice(0, 10) ?? [];
+  }, [selectedState, currentState]);
+
+  useEffect(() => {
+    if (!selectedState && currentState) {
+      setSelectedState(currentState);
+    }
+  }, [currentState, selectedState]);
+
+  useEffect(() => {
+    if (!selectedFlow && flowsList.length > 0) {
+      setSelectedFlow(flowsList[0]);
+    }
+  }, [flowsList, selectedFlow]);
+
+  const handleStateSelection = (state: StateRecord) => {
+    if (mergeMode && selectedState && selectedState.id !== state.id) {
+      setMergeTarget(state);
+      return;
+    }
+    setSelectedState(state);
+  };
+
+  const handleExportGraph = () => {
+    if (!graph) return;
+    const data = JSON.stringify(graph, null, 2);
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `graph-${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const renderStateLibrary = () => {
+    if (!stateList.length) {
+      return (
+        <p className="discovery-panel__empty">
+          Capture at least one screen to build the discovery graph.
+        </p>
+      );
+    }
+
+    return (
+      <ul className="discovery-panel__state-list">
+        {stateList.map((state) => {
+          const isSelected = selectedState?.id === state.id;
+          const isCurrent = currentState?.id === state.id;
+          const isTarget = mergeTarget?.id === state.id;
+
+          return (
+            <li
+              key={state.id}
+              className={clsx('discovery-panel__state-row', {
+                'is-selected': isSelected,
+                'is-current': isCurrent,
+                'is-target': isTarget
+              })}
+              onClick={() => handleStateSelection(state)}
+            >
+              <div>
+                <p className="discovery-panel__state-name">{state.activity}</p>
+                <p className="discovery-panel__state-meta">
+                  {new Date(state.updatedAt).toLocaleTimeString()}
+                </p>
+              </div>
+              <div className="discovery-panel__state-tags">
+                <span className="discovery-panel__chip">
+                  {state.selectors.length} nodes
+                </span>
+                {isCurrent && (
+                  <span className="discovery-panel__chip discovery-panel__chip--accent">
+                    live
+                  </span>
+                )}
+                {isTarget && (
+                  <span className="discovery-panel__chip discovery-panel__chip--warning">
+                    target
+                  </span>
+                )}
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  };
+
+  const renderSelectorList = () => {
+    if (!selectorPreview.length) {
+      return (
+        <p className="discovery-panel__empty">
+          No interactive elements recorded for this state yet.
+        </p>
+      );
+    }
+
+    return (
+      <ul className="discovery-panel__selector-list">
+        {selectorPreview.map((selector, index) => (
+          <li key={selector.rid ?? selector.text ?? index} className="discovery-panel__selector-row">
+            <div>
+              {selector.rid && (
+                <p className="discovery-panel__mono">{selector.rid}</p>
+              )}
+              {selector.text && (
+                <p className="discovery-panel__selector-text">&ldquo;{selector.text}&rdquo;</p>
+              )}
+              {selector.desc && (
+                <p className="discovery-panel__selector-desc">{selector.desc}</p>
+              )}
+              {selector.cls && (
+                <p className="discovery-panel__selector-meta">
+                  {selector.cls.split('.').pop()}
+                </p>
+              )}
+            </div>
+            {selector.bounds && (
+              <span className="discovery-panel__chip discovery-panel__chip--outline">
+                [{selector.bounds[0]}, {selector.bounds[1]}]
+              </span>
+            )}
+          </li>
+        ))}
+      </ul>
+    );
+  };
+
+  const renderGraphOverview = () => {
+    if (!graph) {
+      return (
+        <p className="discovery-panel__empty">
+          Graph data is not available yet.
+        </p>
+      );
+    }
+
+    return (
+      <>
+        <div className="discovery-panel__stat-grid discovery-panel__stat-grid--compact">
+          <div className="discovery-panel__stat">
+            <p className="discovery-panel__stat-label">States</p>
+            <p className="discovery-panel__stat-value">{discoveryStats.states}</p>
+          </div>
+          <div className="discovery-panel__stat">
+            <p className="discovery-panel__stat-label">Transitions</p>
+            <p className="discovery-panel__stat-value">{discoveryStats.transitions}</p>
+          </div>
+          <div className="discovery-panel__stat">
+            <p className="discovery-panel__stat-label">Avg Degree</p>
+            <p className="discovery-panel__stat-value">
+              {discoveryStats.averageDegree.toFixed(1)}
+            </p>
+          </div>
+          <div className="discovery-panel__stat">
+            <p className="discovery-panel__stat-label">Isolated</p>
+            <p className="discovery-panel__stat-value">{discoveryStats.isolatedStates}</p>
+          </div>
+        </div>
+
+        <div className="discovery-panel__activity-groups">
+          {activityGroups.map((group) => (
+            <div key={group.activity} className="discovery-panel__activity-card">
+              <p className="discovery-panel__activity-name">{group.activity}</p>
+              <p className="discovery-panel__activity-count">
+                {group.count} state{group.count === 1 ? '' : 's'}
+              </p>
+            </div>
+          ))}
+          {!activityGroups.length && (
+            <p className="discovery-panel__empty">
+              Capture a few screens to build activity clusters.
+            </p>
+          )}
+        </div>
+
+        {transitionsPreview.length > 0 && (
+          <div className="discovery-panel__timeline">
+            {transitionsPreview.map((transition) => (
+              <div key={transition.id} className="discovery-panel__timeline-row">
+                <div>
+                  <p className="discovery-panel__timeline-label">{transition.action.type}</p>
+                  <p className="discovery-panel__timeline-meta">
+                    {formatDate(transition.createdAt)}
+                  </p>
+                </div>
+                <div className="discovery-panel__timeline-state">
+                  <span>{transition.from.slice(0, 6)}</span>
+                  <ChevronRightIcon className="discovery-panel__icon discovery-panel__icon--muted" />
+                  <span>{transition.to.slice(0, 6)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </>
+    );
+  };
+
+  const renderDiscoveryContent = () => {
+    if (isLoading && !stateList.length) {
+      return (
+        <div className="discovery-panel__placeholder">
+          <span className="discovery-panel__spinner" aria-hidden />
+          <p>Loading discovery data…</p>
+        </div>
+      );
+    }
+
+    if (!graph || (!stateList.length && !currentState)) {
+      return (
+        <div className="discovery-panel__placeholder">
+          <div className="discovery-panel__placeholder-icon">
+            <Squares2X2Icon className="discovery-panel__icon discovery-panel__icon--muted" />
+          </div>
+          <p className="discovery-panel__placeholder-title">No states captured yet</p>
+          <p className="discovery-panel__placeholder-text">
+            Take your first snapshot to start building the UI map.
+          </p>
+        </div>
+      );
+    }
+
+    const referenceState = selectedState ?? currentState;
+
+    return (
+      <div className="discovery-panel__layout">
+        <div className="discovery-panel__column discovery-panel__column--primary">
+          <section className="discovery-panel__card discovery-panel__card--highlight">
+            <div className="discovery-panel__card-header">
+              <div>
+                <p className="discovery-panel__eyebrow">Current Snapshot</p>
+                <h3 className="discovery-panel__card-title">
+                  {currentState?.activity ?? 'No active state'}
+                </h3>
+              </div>
+              <button
+                type="button"
+                className="discovery-panel__button discovery-panel__button--ghost discovery-panel__button--small"
+                onClick={() => {
+                  void getCurrentState?.();
+                }}
+              >
+                <ArrowPathIcon className="discovery-panel__icon" />
+                Sync
+              </button>
+            </div>
+            <div className="discovery-panel__meta-grid">
+              <div>
+                <p className="discovery-panel__meta-label">Package</p>
+                <p className="discovery-panel__meta-value">
+                  {currentState?.package ?? graph?.packageName ?? 'unknown'}
+                </p>
+              </div>
+              <div>
+                <p className="discovery-panel__meta-label">Captured</p>
+                <p className="discovery-panel__meta-value">
+                  {currentState?.updatedAt ? formatDate(currentState.updatedAt) : 'Not captured'}
+                </p>
+              </div>
+              <div>
+                <p className="discovery-panel__meta-label">Element Count</p>
+                <p className="discovery-panel__meta-value">
+                  {currentState?.metadata?.elementCount ?? '—'}
+                </p>
+              </div>
+            </div>
+          </section>
+
+          <section className="discovery-panel__card">
+            <div className="discovery-panel__card-header">
+              <div>
+                <p className="discovery-panel__eyebrow">Focused State</p>
+                <h3 className="discovery-panel__card-title">
+                  {referenceState ? referenceState.activity : 'Select a state'}
+                </h3>
+              </div>
+              {referenceState && (
+                <span className="discovery-panel__chip discovery-panel__chip--outline">
+                  {referenceState.selectors.length} selectors
+                </span>
+              )}
+            </div>
+
+            {referenceState ? (
+              <>
+                <div className="discovery-panel__meta-grid">
+                  <div>
+                    <p className="discovery-panel__meta-label">Digest</p>
+                    <p className="discovery-panel__meta-value discovery-panel__mono">
+                      {referenceState.digest.slice(0, 8)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="discovery-panel__meta-label">Captured</p>
+                    <p className="discovery-panel__meta-value">
+                      {formatDate(referenceState.updatedAt)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="discovery-panel__meta-label">Capture Method</p>
+                    <p className="discovery-panel__meta-value">
+                      {referenceState.metadata?.captureMethod ?? 'n/a'}
+                    </p>
+                  </div>
+                </div>
+
+                {referenceState.tags && referenceState.tags.length > 0 && (
+                  <div className="discovery-panel__tags">
+                    {referenceState.tags.map((tag) => (
+                      <span key={tag} className="discovery-panel__chip discovery-panel__chip--accent">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <h4 className="discovery-panel__section-title">Interactive elements</h4>
+                {renderSelectorList()}
+              </>
+            ) : (
+              <p className="discovery-panel__empty">
+                Select a state from the library to inspect it.
+              </p>
+            )}
+          </section>
+
+          {showGraphMini && (
+            <section className="discovery-panel__card">
+              <div className="discovery-panel__card-header">
+                <div>
+                  <p className="discovery-panel__eyebrow">Graph Overview</p>
+                  <h3 className="discovery-panel__card-title">State coverage</h3>
+                </div>
+                <button
+                  type="button"
+                  className="discovery-panel__button discovery-panel__button--ghost discovery-panel__button--small"
+                  onClick={handleExportGraph}
+                >
+                  <DocumentArrowDownIcon className="discovery-panel__icon" />
+                  Export
+                </button>
+              </div>
+              {renderGraphOverview()}
+            </section>
+          )}
+        </div>
+
+        <div className="discovery-panel__column discovery-panel__column--secondary">
+          <section className="discovery-panel__card">
+            <div className="discovery-panel__card-header">
+              <div>
+                <p className="discovery-panel__eyebrow">Discovery Stats</p>
+                <h3 className="discovery-panel__card-title">Coverage snapshot</h3>
+              </div>
+              {discoveryStats.lastCapture && (
+                <span className="discovery-panel__meta-label">
+                  Updated {formatDate(discoveryStats.lastCapture)}
+                </span>
+              )}
+            </div>
+            <div className="discovery-panel__stat-grid">
+              <div className="discovery-panel__stat">
+                <p className="discovery-panel__stat-label">States</p>
+                <p className="discovery-panel__stat-value">{discoveryStats.states}</p>
+              </div>
+              <div className="discovery-panel__stat">
+                <p className="discovery-panel__stat-label">Transitions</p>
+                <p className="discovery-panel__stat-value">{discoveryStats.transitions}</p>
+              </div>
+              <div className="discovery-panel__stat">
+                <p className="discovery-panel__stat-label">Avg Degree</p>
+                <p className="discovery-panel__stat-value">
+                  {discoveryStats.averageDegree.toFixed(1)}
+                </p>
+              </div>
+              <div className="discovery-panel__stat">
+                <p className="discovery-panel__stat-label">Isolated</p>
+                <p className="discovery-panel__stat-value">{discoveryStats.isolatedStates}</p>
+              </div>
+            </div>
+          </section>
+
+          <section className="discovery-panel__card discovery-panel__card--scroll">
+            <div className="discovery-panel__card-header">
+              <div>
+                <p className="discovery-panel__eyebrow">State Library</p>
+                <h3 className="discovery-panel__card-title">{stateList.length} captured</h3>
+              </div>
+            </div>
+            {renderStateLibrary()}
+          </section>
+        </div>
+      </div>
+    );
+  };
+
+  const renderFlowView = () => {
+    return (
+      <div className="discovery-panel__layout discovery-panel__layout--flow">
+        <div className="discovery-panel__column discovery-panel__column--secondary">
+          <section className="discovery-panel__card">
+            <div className="discovery-panel__card-header">
+              <div>
+                <p className="discovery-panel__eyebrow">Flow Library</p>
+                <h3 className="discovery-panel__card-title">Automation blueprints</h3>
+              </div>
+              <button
+                type="button"
+                className="discovery-panel__button discovery-panel__button--primary discovery-panel__button--small"
+                onClick={handleCreateFlow}
+                disabled={flowLoading}
+              >
+                <PlusIcon className="discovery-panel__icon" />
+                New flow
+              </button>
+            </div>
+            {flowLoading ? (
+              <div className="discovery-panel__placeholder discovery-panel__placeholder--dense">
+                <span className="discovery-panel__spinner" aria-hidden />
+                <p>Loading flows…</p>
+              </div>
+            ) : flowsList.length ? (
+              <ul className="discovery-panel__flow-list">
+                {flowsList.map((flow) => (
+                  <li
+                    key={flow.id}
+                    className={clsx('discovery-panel__flow-row', {
+                      'is-active': selectedFlow?.id === flow.id
+                    })}
+                    onClick={() => setSelectedFlow(flow)}
+                  >
+                    <div>
+                      <p className="discovery-panel__flow-name">{flow.name}</p>
+                      {flow.description && (
+                        <p className="discovery-panel__flow-description">{flow.description}</p>
+                      )}
+                      <div className="discovery-panel__flow-meta">
+                        <span>{flow.steps.length} steps</span>
+                        <span>v{flow.version}</span>
+                        {typeof flow.metadata?.successRate === 'number' && (
+                          <span>{Math.round(flow.metadata.successRate * 100)}% success</span>
+                        )}
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      className="discovery-panel__button discovery-panel__button--ghost discovery-panel__button--icon"
+                      onClick={(event) => {
+                        event.stopPropagation();
+                        handleExecuteFlow(flow.id);
+                      }}
+                      disabled={flowLoading}
+                      title="Execute flow"
+                    >
+                      <PlayIcon className="discovery-panel__icon" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="discovery-panel__empty">
+                No flows defined. Create one to automate this UI.
+              </p>
+            )}
+          </section>
+
+          <section className="discovery-panel__card">
+            <div className="discovery-panel__card-header">
+              <div>
+                <p className="discovery-panel__eyebrow">Recent activity</p>
+                <h3 className="discovery-panel__card-title">Flow executions</h3>
+              </div>
+            </div>
+            {executionsList.length > 0 ? (
+              <ul className="discovery-panel__execution-list">
+                {executionsList.slice(0, 5).map((execution) => (
+                  <li key={execution.executionId} className="discovery-panel__execution-row">
+                    <div className="discovery-panel__execution-status">
+                      {getFlowStatusIcon(execution.status)}
+                      <div>
+                        <p className="discovery-panel__execution-id">
+                          {execution.executionId.substring(0, 8)}…
+                        </p>
+                        <p className="discovery-panel__execution-meta">
+                          {formatDate(execution.startedAt)}
+                          {execution.duration && ` • ${formatDuration(execution.duration)}`}
+                        </p>
+                      </div>
+                    </div>
+                    {execution.summary && (
+                      <span className="discovery-panel__chip discovery-panel__chip--outline">
+                        {execution.summary.successfulSteps}/{execution.summary.totalSteps} steps
+                      </span>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="discovery-panel__empty">
+                No execution history available.
+              </p>
+            )}
+          </section>
+        </div>
+
+        <div className="discovery-panel__column discovery-panel__column--primary">
+          <section className="discovery-panel__card discovery-panel__card--highlight">
+            {selectedFlow ? (
+              <>
+                <div className="discovery-panel__card-header">
+                  <div>
+                    <p className="discovery-panel__eyebrow">Flow details</p>
+                    <h3 className="discovery-panel__card-title">{selectedFlow.name}</h3>
+                    {selectedFlow.description && (
+                      <p className="discovery-panel__card-subtitle">{selectedFlow.description}</p>
+                    )}
+                  </div>
+                  <div className="discovery-panel__button-group">
+                    <button
+                      type="button"
+                      className="discovery-panel__button discovery-panel__button--ghost discovery-panel__button--icon"
+                      onClick={() => setShowFlowEditor(true)}
+                      title="Edit flow"
+                    >
+                      <PencilIcon className="discovery-panel__icon" />
+                    </button>
+                    <button
+                      type="button"
+                      className="discovery-panel__button discovery-panel__button--ghost discovery-panel__button--icon"
+                      onClick={() => handleDeleteFlow(selectedFlow.id)}
+                      title="Delete flow"
+                    >
+                      <TrashIcon className="discovery-panel__icon discovery-panel__icon--danger" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="discovery-panel__meta-grid">
+                  <div>
+                    <p className="discovery-panel__meta-label">Package</p>
+                    <p className="discovery-panel__meta-value">{selectedFlow.packageName}</p>
+                  </div>
+                  <div>
+                    <p className="discovery-panel__meta-label">Last updated</p>
+                    <p className="discovery-panel__meta-value">
+                      {formatDate(selectedFlow.metadata.updatedAt)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="discovery-panel__meta-label">Complexity</p>
+                    <p className="discovery-panel__meta-value">
+                      {selectedFlow.metadata.complexity ?? 0}
+                    </p>
+                  </div>
+                </div>
+
+                {selectedFlow.metadata.tags && selectedFlow.metadata.tags.length > 0 && (
+                  <div className="discovery-panel__tags discovery-panel__tags--wrap">
+                    {selectedFlow.metadata.tags.map((tag) => (
+                      <span key={tag} className="discovery-panel__chip discovery-panel__chip--accent">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                <div className="discovery-panel__flow-actions">
+                  <button
+                    type="button"
+                    className="discovery-panel__button discovery-panel__button--positive"
+                    onClick={() => handleExecuteFlow(selectedFlow.id)}
+                    disabled={flowLoading}
+                  >
+                    <PlayIcon className="discovery-panel__icon" />
+                    Execute flow
+                  </button>
+                  <button
+                    type="button"
+                    className="discovery-panel__button discovery-panel__button--ghost"
+                    onClick={() => setShowFlowEditor(true)}
+                  >
+                    <PencilIcon className="discovery-panel__icon" />
+                    Edit
+                  </button>
+                </div>
+
+                <h4 className="discovery-panel__section-title">
+                  Steps ({selectedFlow.steps.length})
+                </h4>
+                <ul className="discovery-panel__steps">
+                  {selectedFlow.steps.map((step, index) => (
+                    <li key={step.id} className="discovery-panel__step-row">
+                      <div className="discovery-panel__step-index">#{index + 1}</div>
+                      <div>
+                        <p className="discovery-panel__step-name">{step.name}</p>
+                        <p className="discovery-panel__step-meta">
+                          {step.action.type}
+                          {step.critical && ' • critical'}
+                        </p>
+                        {step.description && (
+                          <p className="discovery-panel__step-desc">{step.description}</p>
+                        )}
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            ) : (
+              <div className="discovery-panel__placeholder discovery-panel__placeholder--dense">
+                <DocumentTextIcon className="discovery-panel__icon discovery-panel__icon--muted" />
+                <p className="discovery-panel__placeholder-title">Select a flow</p>
+                <p className="discovery-panel__placeholder-text">
+                  Choose a flow from the list to inspect steps, or create a new one.
+                </p>
+              </div>
+            )}
+          </section>
+        </div>
+      </div>
+    );
+  };
 
   // Handle state capture
   const handleCaptureState = async () => {
@@ -358,6 +1017,22 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
         } : {
           type: 'contains',
           containsText: ['']
+        },
+        metadata: {
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          author: 'autoapp',
+          tags: [],
+          estimatedDuration: 0,
+          complexity: 0,
+          executionCount: 0,
+          successRate: 0
+        },
+        config: {
+          defaultTimeout: 30,
+          retryAttempts: 0,
+          allowParallel: false,
+          priority: 'low'
         }
       };
 
@@ -388,8 +1063,7 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
 
   const handleExecuteFlow = async (flowId: string) => {
     try {
-      const executionId = await executeFlow(flowId);
-      // Refresh executions after a short delay
+      await executeFlow(flowId);
       setTimeout(() => refreshFlows(), 1000);
     } catch (error) {
       console.error('Failed to execute flow:', error);
@@ -413,639 +1087,187 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
   const getFlowStatusIcon = (status: string) => {
     switch (status) {
       case 'running':
-        return <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>;
+        return <span className="discovery-panel__spinner discovery-panel__spinner--small" aria-hidden />;
       case 'completed':
-        return <CheckCircleIcon className="w-4 h-4 text-green-500" />;
+        return <CheckCircleIcon className="discovery-panel__icon discovery-panel__icon--success" />;
       case 'failed':
-        return <XCircleIcon className="w-4 h-4 text-red-500" />;
+        return <XCircleIcon className="discovery-panel__icon discovery-panel__icon--danger" />;
       case 'pending':
-        return <div className="w-4 h-4 bg-yellow-400 rounded-full"></div>;
+        return <span className="discovery-panel__dot discovery-panel__dot--warning" />;
       default:
-        return <div className="w-4 h-4 bg-gray-300 rounded-full"></div>;
+        return <span className="discovery-panel__dot" />;
     }
   };
 
-  // Get status icon
-  const getStatusIcon = (status: string) => {
+  const getStatusIcon = (status?: 'capturing' | 'loading' | 'success' | 'warning' | 'error') => {
     switch (status) {
       case 'capturing':
       case 'loading':
-        return (
-          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-        );
+        return <span className="discovery-panel__spinner discovery-panel__spinner--small" aria-hidden />;
       case 'success':
-        return <CheckCircleIcon className="w-4 h-4 text-green-500" />;
+        return <CheckCircleIcon className="discovery-panel__icon discovery-panel__icon--success" />;
       case 'warning':
-        return <ExclamationTriangleIcon className="w-4 h-4 text-yellow-500" />;
+        return <ExclamationTriangleIcon className="discovery-panel__icon discovery-panel__icon--warning" />;
       case 'error':
-        return <XCircleIcon className="w-4 h-4 text-red-500" />;
+        return <XCircleIcon className="discovery-panel__icon discovery-panel__icon--danger" />;
       default:
-        return <EyeIcon className="w-4 h-4 text-gray-400" />;
+        return <EyeIcon className="discovery-panel__icon discovery-panel__icon--muted" />;
     }
   };
 
   return (
-    <div className={`h-full flex flex-col bg-gray-900 ${className}`}>
-      {/* Header with Tabs */}
-      <div className="border-b border-gray-700">
-        <div className="flex items-center justify-between p-4 border-b border-gray-800">
-          <h2 className="text-lg font-semibold text-gray-100">Discovery & Flows</h2>
-          <div className="flex items-center space-x-2">
-            {(isCapturing || flowError) && getStatusIcon(isCapturing ? 'capturing' : 'error')}
-            <button
-              onClick={() => activeTab === 'discovery' ? refreshGraph() : refreshFlows()}
-              disabled={isLoading || flowLoading}
-              className="p-1 text-gray-400 hover:text-gray-200 disabled:opacity-50 transition-colors"
-              title="Refresh"
-            >
-              <ArrowPathIcon className="w-4 h-4" />
-            </button>
+    <section className={clsx('discovery-panel', className)}>
+      <header className="discovery-panel__header">
+        <div>
+          <h2 className="discovery-panel__title">Discovery & Flows</h2>
+          <p className="discovery-panel__subtitle">
+            Inspect live UI states and promote them into reusable automation flows.
+          </p>
+        </div>
+        <div className="discovery-panel__header-actions">
+          <div className="discovery-panel__status-pill">
+            {getStatusIcon(isCapturing ? 'capturing' : isLoading ? 'loading' : undefined)}
+            <span>{isCapturing ? 'Capturing…' : isLoading ? 'Syncing' : 'Idle'}</span>
           </div>
+          <div className="discovery-panel__status-pill discovery-panel__status-pill--muted">
+            <DocumentTextIcon className="discovery-panel__icon discovery-panel__icon--muted" />
+            <span>{flowsList.length} flows</span>
+          </div>
+          <button
+            type="button"
+            className="discovery-panel__button discovery-panel__button--ghost discovery-panel__button--small"
+            onClick={() => (activeTab === 'discovery' ? refreshGraph() : refreshFlows())}
+            disabled={activeTab === 'discovery' ? isLoading : flowLoading}
+          >
+            <ArrowPathIcon className="discovery-panel__icon" />
+            Refresh
+          </button>
         </div>
+      </header>
 
-        {/* Tab Navigation */}
-        <div className="flex bg-gray-800">
-          <button
-            onClick={() => setActiveTab('discovery')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'discovery'
-                ? 'border-blue-500 text-blue-400 bg-gray-700'
-                : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-600'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <Squares2X2Icon className="w-4 h-4" />
-              <span>Discovery</span>
-            </div>
-          </button>
-          <button
-            onClick={() => setActiveTab('flows')}
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeTab === 'flows'
-                ? 'border-blue-500 text-blue-400 bg-gray-700'
-                : 'border-transparent text-gray-400 hover:text-gray-200 hover:border-gray-600'
-            }`}
-          >
-            <div className="flex items-center space-x-2">
-              <DocumentTextIcon className="w-4 h-4" />
-              <span>Flows</span>
-              {flows && flows.length > 0 && (
-                <span className="bg-blue-900 text-blue-300 px-2 py-0.5 rounded-full text-xs">
-                  {flows.length}
-                </span>
-              )}
-            </div>
-          </button>
-        </div>
+      <div className="discovery-panel__tabs">
+        <button
+          type="button"
+          className={clsx('discovery-panel__tab', { 'is-active': activeTab === 'discovery' })}
+          onClick={() => setActiveTab('discovery')}
+        >
+          <Squares2X2Icon className="discovery-panel__icon" />
+          Discovery
+        </button>
+        <button
+          type="button"
+          className={clsx('discovery-panel__tab', { 'is-active': activeTab === 'flows' })}
+          onClick={() => setActiveTab('flows')}
+        >
+          <DocumentTextIcon className="discovery-panel__icon" />
+          Flows
+          {flowsList.length > 0 && (
+            <span className="discovery-panel__badge">{flowsList.length}</span>
+          )}
+        </button>
       </div>
 
-      {/* Error Display */}
       {(error || flowError) && (
-        <div className="mx-4 mt-4 p-3 bg-red-900 border border-red-700 rounded-md">
-          <div className="flex items-start">
-            <XCircleIcon className="w-5 h-5 text-red-400 mt-0.5 mr-2" />
-            <div className="flex-1">
-              <p className="text-sm text-red-200">
-                {activeTab === 'discovery' ? error : flowError}
-              </p>
-              <button
-                onClick={() => activeTab === 'discovery' ? clearError() : clearFlowError()}
-                className="mt-1 text-xs text-red-300 hover:text-red-100 transition-colors"
-              >
-                Dismiss
-              </button>
-            </div>
+        <div className="discovery-panel__alert">
+          <div className="discovery-panel__alert-content">
+            <XCircleIcon className="discovery-panel__icon discovery-panel__icon--danger" />
+            <span>{activeTab === 'discovery' ? error : flowError}</span>
           </div>
+          <button
+            type="button"
+            className="discovery-panel__link"
+            onClick={() => (activeTab === 'discovery' ? clearError() : clearFlowError())}
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
-      {/* Action Buttons */}
-      <div className="p-4 border-b border-gray-700">
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={handleCaptureState}
-            disabled={isCapturing}
-            className={`flex items-center justify-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-              isCapturing
-                ? 'bg-gray-700 text-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 text-white hover:bg-blue-700 disabled:opacity-50'
-            }`}
-          >
-            <CameraIcon className="w-4 h-4 mr-2" />
-            {transitionMode ? 'Complete Transition' : 'Snapshot State'}
-          </button>
+      <div className="discovery-panel__actions">
+        <button
+          type="button"
+          className="discovery-panel__button discovery-panel__button--primary"
+          onClick={handleCaptureState}
+          disabled={isCapturing}
+        >
+          <CameraIcon className="discovery-panel__icon" />
+          {transitionMode ? 'Complete Transition' : 'Snapshot State'}
+        </button>
 
-          <button
-            onClick={handleTransitionMode}
-            className={`flex items-center justify-center px-3 py-2 text-sm font-medium rounded-md transition-colors ${
-              transitionMode
-                ? 'bg-orange-600 text-white hover:bg-orange-700'
-                : 'bg-gray-600 text-white hover:bg-gray-700'
-            }`}
-          >
-            <ArrowRightIcon className="w-4 h-4 mr-2" />
-            {transitionMode ? 'Cancel Transition' : 'Mark Transition'}
-          </button>
-
-          {!mergeMode ? (
-            <button
-              onClick={() => setMergeMode(true)}
-              disabled={!graph || graph.states.length < 2}
-              className="flex items-center justify-center px-3 py-2 text-sm font-medium bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              <ArrowsRightLeftIcon className="w-4 h-4 mr-2" />
-              Merge States
-            </button>
-          ) : (
-            <>
-              <button
-                onClick={handleMergeStates}
-                disabled={!mergeTarget || !selectedState}
-                className="flex items-center justify-center px-3 py-2 text-sm font-medium bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-700 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <CheckCircleIcon className="w-4 h-4 mr-2" />
-                Confirm Merge
-              </button>
-              <button
-                onClick={() => {
-                  setMergeMode(false);
-                  setMergeTarget(null);
-                  setSelectedState(null);
-                }}
-                className="flex items-center justify-center px-3 py-2 text-sm font-medium bg-gray-600 text-white rounded-md hover:bg-gray-700"
-              >
-                Cancel
-              </button>
-            </>
+        <button
+          type="button"
+          className={clsx(
+            'discovery-panel__button',
+            transitionMode ? 'discovery-panel__button--warning' : 'discovery-panel__button--ghost'
           )}
+          onClick={handleTransitionMode}
+        >
+          <ArrowRightIcon className="discovery-panel__icon" />
+          {transitionMode ? 'Cancel Transition' : 'Mark Transition'}
+        </button>
 
-          <button
-            onClick={() => setShowGraphMini(!showGraphMini)}
-            className="flex items-center justify-center px-3 py-2 text-sm font-medium bg-gray-600 text-white rounded-md hover:bg-gray-700"
-          >
-            <Squares2X2Icon className="w-4 h-4 mr-2" />
-            {showGraphMini ? 'Hide' : 'Show'} Graph
-          </button>
-        </div>
-
-        {/* Mode Indicators */}
-        {transitionMode && transitionStart && (
-          <div className="mt-3 p-2 bg-orange-900 border border-orange-700 rounded-md">
-            <p className="text-xs text-orange-200">
-              Transition mode: From {transitionStart.activity}
-            </p>
-          </div>
-        )}
-
-        {mergeMode && (
-          <div className="mt-3 p-2 bg-purple-900 border border-purple-700 rounded-md">
-            <p className="text-xs text-purple-200">
-              Merge mode: Select target state to merge {selectedState?.activity || 'selected state'} into
-            </p>
-          </div>
-        )}
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 overflow-y-auto bg-gray-900" style={{ minHeight: '0' }}>
-        {activeTab === 'discovery' ? (
+        {mergeMode ? (
           <>
-            {/* Loading State */}
-            {isLoading && !currentState && (
-              <div className="flex items-center justify-center h-32">
-                <div className="text-center">
-                  <div className="inline-flex items-center space-x-2 text-gray-400">
-                    <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                    <span className="text-sm">Loading discovery data...</span>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Empty State for Discovery */}
-            {!isLoading && !currentState && (
-              <div className="flex items-center justify-center h-32">
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-gray-700 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <Squares2X2Icon className="w-6 h-6 text-gray-400" />
-                  </div>
-                  <h3 className="text-sm font-medium text-gray-100 mb-1">No State Captured</h3>
-                  <p className="text-xs text-gray-400 mb-3">
-                    Capture the current UI state to begin discovery
-                  </p>
-                  <button
-                    onClick={handleCaptureState}
-                    className="inline-flex items-center px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-                  >
-                    <CameraIcon className="w-3 h-3 mr-1" />
-                    Capture State
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {/* Current State Display */}
-            {currentState && (
-          <div className="p-4 border-b border-gray-700">
-            <h3 className="text-sm font-semibold text-gray-100 mb-2">Current State</h3>
-            <div className="space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-gray-400">Activity:</span>
-                <span className="font-mono text-gray-200">{currentState.activity}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Package:</span>
-                <span className="font-mono text-xs truncate ml-2 text-gray-200">{currentState.package}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-400">Elements:</span>
-                <span className="text-gray-200">{currentState.selectors.length}</span>
-              </div>
-              {currentState.metadata?.captureDuration && (
-                <div className="flex justify-between">
-                  <span className="text-gray-400">Capture Time:</span>
-                  <span className="text-gray-200">{formatDuration(currentState.metadata.captureDuration)}</span>
-                </div>
-              )}
-              <div className="flex justify-between">
-                <span className="text-gray-400">Captured:</span>
-                <span className="text-gray-200">{formatDate(currentState.createdAt)}</span>
-              </div>
-            </div>
-
-            {/* Screenshot */}
-            {currentState.screenshot && (
-              <div className="mt-3">
-                <img
-                  src={`/api/state/${currentState.id}/screenshot`}
-                  alt="Current state screenshot"
-                  className="w-full h-32 object-cover border border-gray-600 rounded"
-                />
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Interactive Elements */}
-        {currentState && currentState.selectors.length > 0 && (
-          <div className="p-4 border-b border-gray-700">
-            <h3 className="text-sm font-semibold text-gray-100 mb-2">Interactive Elements</h3>
-            <div className="space-y-2 max-h-48 overflow-y-auto">
-              {currentState.selectors.slice(0, 10).map((selector: Selector, index: number) => (
-                <div key={index} className="p-2 bg-gray-800 rounded text-xs border border-gray-700">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1 min-w-0">
-                      {selector.rid && (
-                        <div className="font-mono text-blue-400 truncate">
-                          {selector.rid}
-                        </div>
-                      )}
-                      {selector.text && (
-                        <div className="text-gray-300 truncate">
-                          "{selector.text}"
-                        </div>
-                      )}
-                      {selector.desc && (
-                        <div className="text-gray-500 truncate">
-                          {selector.desc}
-                        </div>
-                      )}
-                      <div className="text-gray-400">
-                        {selector.cls?.split('.').pop()}
-                      </div>
-                    </div>
-                    {selector.bounds && (
-                      <div className="ml-2 text-gray-400 text-xs">
-                        [{selector.bounds[0]}, {selector.bounds[1]}]
-                      </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              {currentState.selectors.length > 10 && (
-                <p className="text-xs text-gray-500 text-center">
-                  ... and {currentState.selectors.length - 10} more
-                </p>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Graph Mini-Map */}
-        {showGraphMini && graph && (
-          <div className="p-4">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-gray-100">Graph Overview</h3>
-              <span className="text-xs text-gray-400">
-                {graph.states.length} states, {graph.transitions.length} transitions
-              </span>
-            </div>
-
-            {/* Simple graph visualization */}
-            <div className="bg-gray-800 rounded p-3 min-h-32 border border-gray-700">
-              {graph.states.length === 0 ? (
-                <p className="text-xs text-gray-400 text-center">
-                  No states captured yet. Take your first snapshot!
-                </p>
-              ) : (
-                <div className="space-y-2">
-                  {/* Group states by activity */}
-                  {Array.from(new Set(graph.states.map(s => s.activity))).map(activity => {
-                    const activityStates = graph.states.filter(s => s.activity === activity);
-                    return (
-                      <div key={activity} className="text-xs">
-                        <div className="font-medium text-gray-200 mb-1 truncate">
-                          {activity}
-                        </div>
-                        <div className="flex flex-wrap gap-1">
-                          {activityStates.map((state: StateRecord) => (
-                            <div
-                              key={state.id}
-                              onClick={() => {
-                                if (mergeMode && selectedState && selectedState.id !== state.id) {
-                                  setMergeTarget(state);
-                                } else if (!mergeMode) {
-                                  setSelectedState(state);
-                                }
-                              }}
-                              className={`px-2 py-1 rounded cursor-pointer transition-colors ${
-                                selectedState?.id === state.id
-                                  ? 'bg-blue-900 border-blue-600 text-blue-200'
-                                  : mergeTarget?.id === state.id
-                                  ? 'bg-purple-900 border-purple-600 text-purple-200'
-                                  : currentState?.id === state.id
-                                  ? 'bg-green-900 border-green-600 text-green-200'
-                                  : 'bg-gray-700 border-gray-600 text-gray-200'
-                              } border text-xs`}
-                              title={`${state.activity}\n${state.selectors.length} elements`}
-                            >
-                              {state.selectors.length}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Export buttons */}
-            <div className="mt-3 flex space-x-2">
-              <button
-                onClick={() => {
-                  const dataStr = JSON.stringify(graph, null, 2);
-                  const dataBlob = new Blob([dataStr], { type: 'application/json' });
-                  const url = URL.createObjectURL(dataBlob);
-                  const link = document.createElement('a');
-                  link.href = url;
-                  link.download = `graph-${new Date().toISOString().split('T')[0]}.json`;
-                  link.click();
-                  URL.revokeObjectURL(url);
-                }}
-                className="flex items-center px-2 py-1 text-xs bg-gray-700 text-white rounded hover:bg-gray-600 border border-gray-600"
-              >
-                <DocumentArrowDownIcon className="w-3 h-3 mr-1" />
-                Export Graph
-              </button>
-            </div>
-          </div>
-        )}
+            <button
+              type="button"
+              className="discovery-panel__button discovery-panel__button--positive"
+              onClick={handleMergeStates}
+              disabled={!mergeTarget || !selectedState}
+            >
+              <CheckCircleIcon className="discovery-panel__icon" />
+              Confirm Merge
+            </button>
+            <button
+              type="button"
+              className="discovery-panel__button discovery-panel__button--ghost"
+              onClick={() => {
+                setMergeMode(false);
+                setMergeTarget(null);
+                setSelectedState(null);
+              }}
+            >
+              <XCircleIcon className="discovery-panel__icon" />
+              Cancel
+            </button>
           </>
         ) : (
-          <>
-            {/* Flow Management UI */}
-            <div className="p-4 border-b border-gray-700">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-gray-100">Flow Management</h3>
-                <button
-                  onClick={handleCreateFlow}
-                  disabled={flowLoading}
-                  className="flex items-center px-3 py-1.5 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                >
-                  <PlusIcon className="w-3 h-3 mr-1" />
-                  Create Flow
-                </button>
-              </div>
-
-              {/* Flow List */}
-              <div className="space-y-2">
-                {flowLoading ? (
-                  <div className="flex items-center justify-center h-32">
-                    <div className="text-center">
-                      <div className="inline-flex items-center space-x-2 text-gray-400">
-                        <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
-                        <span className="text-sm">Loading flows...</span>
-                      </div>
-                    </div>
-                  </div>
-                ) : flows && flows.length > 0 ? (
-                  flows.map((flow: FlowDefinition) => (
-                    <div
-                      key={flow.id}
-                      className="border border-gray-600 rounded-lg p-3 hover:bg-gray-700 cursor-pointer transition-colors"
-                      onClick={() => setSelectedFlow(flow)}
-                    >
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center space-x-2">
-                            <h4 className="text-sm font-medium text-gray-100 truncate">{flow.name}</h4>
-                            <span className="text-xs text-gray-400">v{flow.version}</span>
-                          </div>
-                          {flow.description && (
-                            <p className="text-xs text-gray-300 mt-1 line-clamp-2">{flow.description}</p>
-                          )}
-                          <div className="flex items-center space-x-4 mt-2 text-xs text-gray-400">
-                            <span>{flow.steps.length} steps</span>
-                            <span>Complexity: {flow.metadata.complexity || 0}</span>
-                            {flow.metadata.executionCount !== undefined && (
-                              <span>Runs: {flow.metadata.executionCount}</span>
-                            )}
-                            {flow.metadata.successRate !== undefined && (
-                              <span>Success: {Math.round(flow.metadata.successRate * 100)}%</span>
-                            )}
-                          </div>
-                          {flow.metadata.tags && flow.metadata.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {flow.metadata.tags.map((tag, index) => (
-                                <span
-                                  key={index}
-                                  className="px-1.5 py-0.5 bg-gray-700 text-gray-300 rounded text-xs border border-gray-600"
-                                >
-                                  {tag}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex items-center space-x-1 ml-3">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleExecuteFlow(flow.id);
-                            }}
-                            disabled={flowLoading}
-                            className="p-1 text-green-400 hover:text-green-300 disabled:opacity-50"
-                            title="Execute Flow"
-                          >
-                            <PlayIcon className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setShowFlowEditor(true);
-                            }}
-                            className="p-1 text-blue-400 hover:text-blue-300"
-                            title="Edit Flow"
-                          >
-                            <PencilIcon className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleDeleteFlow(flow.id);
-                            }}
-                            className="p-1 text-red-400 hover:text-red-300"
-                            title="Delete Flow"
-                          >
-                            <XCircleIcon className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-8">
-                    <FolderIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-sm text-gray-400 mb-4">No flows created yet</p>
-                    <button
-                      onClick={handleCreateFlow}
-                      disabled={flowLoading}
-                      className="inline-flex items-center px-4 py-2 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50"
-                    >
-                      <PlusIcon className="w-4 h-4 mr-2" />
-                      Create Your First Flow
-                    </button>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Flow Details */}
-            {selectedFlow && (
-              <div className="p-4 border-b border-gray-700">
-                <h3 className="text-sm font-semibold text-gray-100 mb-3">Flow Details</h3>
-                <div className="space-y-3">
-                  <div className="bg-gray-800 rounded p-3 border border-gray-700">
-                    <h4 className="text-xs font-medium text-gray-200 mb-2">Entry Point</h4>
-                    <div className="text-xs text-gray-300">
-                      <span className="font-medium">Type:</span> {selectedFlow.entryPoint.type}
-                      {selectedFlow.entryPoint.stateId && (
-                        <div>
-                          <span className="font-medium">State:</span>
-                          <span className="font-mono ml-1">{selectedFlow.entryPoint.stateId.substring(0, 8)}...</span>
-                        </div>
-                      )}
-                      {selectedFlow.entryPoint.activity && (
-                        <div>
-                          <span className="font-medium">Activity:</span> {selectedFlow.entryPoint.activity}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="bg-gray-800 rounded p-3 border border-gray-700">
-                    <h4 className="text-xs font-medium text-gray-200 mb-2">Steps ({selectedFlow.steps.length})</h4>
-                    <div className="space-y-1 max-h-32 overflow-y-auto">
-                      {selectedFlow.steps.map((step, index) => (
-                        <div key={step.id} className="flex items-center space-x-2 text-xs">
-                          <span className="text-gray-400">#{index + 1}</span>
-                          <span className="font-medium">{step.name}</span>
-                          <ChevronRightIcon className="w-3 h-3 text-gray-400" />
-                          <span className="text-gray-300">{step.action.type}</span>
-                          {step.critical && (
-                            <span className="px-1 py-0.5 bg-red-900 text-red-300 rounded border border-red-700">Critical</span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  <div className="flex space-x-2">
-                    <button
-                      onClick={() => handleExecuteFlow(selectedFlow.id)}
-                      disabled={flowLoading}
-                      className="flex items-center px-3 py-1.5 text-xs bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50"
-                    >
-                      <PlayIcon className="w-3 h-3 mr-1" />
-                      Execute Flow
-                    </button>
-                    <button
-                      onClick={() => setShowFlowEditor(true)}
-                      className="flex items-center px-3 py-1.5 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
-                    >
-                      <PencilIcon className="w-3 h-3 mr-1" />
-                      Edit Flow
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Flow Executions */}
-            {executions && executions.length > 0 && (
-              <div className="p-4 border-b border-gray-700">
-                <h3 className="text-sm font-semibold text-gray-100 mb-3">Recent Executions</h3>
-                <div className="space-y-2">
-                  {executions.slice(0, 5).map((execution: FlowExecution) => (
-                    <div
-                      key={execution.executionId}
-                      className="flex items-center justify-between p-2 bg-gray-800 rounded border border-gray-700"
-                    >
-                      <div className="flex items-center space-x-2">
-                        {getFlowStatusIcon(execution.status)}
-                        <div>
-                          <div className="text-xs font-medium text-gray-200">{execution.executionId.substring(0, 8)}...</div>
-                          <div className="text-xs text-gray-400">
-                            {formatDate(execution.startedAt)}
-                            {execution.duration && ` • ${formatDuration(execution.duration)}`}
-                          </div>
-                        </div>
-                      </div>
-                      {execution.summary && (
-                        <div className="text-xs text-gray-400">
-                          {execution.summary.successfulSteps}/{execution.summary.totalSteps} steps
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Flow Library Info */}
-            <div className="p-4">
-              <h3 className="text-sm font-semibold text-gray-100 mb-3">Flow Library</h3>
-              <div className="bg-blue-900 border border-blue-700 rounded p-3">
-                <div className="flex items-center space-x-2 mb-2">
-                  <DocumentTextIcon className="w-4 h-4 text-blue-400" />
-                  <span className="text-xs font-medium text-blue-200">Flow Management</span>
-                </div>
-                <p className="text-xs text-blue-300">
-                  Create and manage reusable UI automation flows. Flows capture sequences of actions and state transitions
-                  that can be executed automatically for testing and navigation.
-                </p>
-                <div className="mt-2 grid grid-cols-2 gap-2 text-xs text-blue-400">
-                  <div>• {flows?.length || 0} flows created</div>
-                  <div>• {executions?.length || 0} executions</div>
-                </div>
-              </div>
-            </div>
-          </>
+          <button
+            type="button"
+            className="discovery-panel__button discovery-panel__button--ghost"
+            onClick={() => setMergeMode(true)}
+            disabled={!graph || stateList.length < 2}
+          >
+            <ArrowsRightLeftIcon className="discovery-panel__icon" />
+            Merge States
+          </button>
         )}
+
+        <button
+          type="button"
+          className="discovery-panel__button discovery-panel__button--ghost"
+          onClick={() => setShowGraphMini((value) => !value)}
+        >
+          <Squares2X2Icon className="discovery-panel__icon" />
+          {showGraphMini ? 'Hide Graph' : 'Show Graph'}
+        </button>
       </div>
 
-      {/* Flow Editor Modal */}
+      {transitionMode && transitionStart && (
+        <div className="discovery-panel__mode-banner discovery-panel__mode-banner--warning">
+          Transition mode enabled. Starting from <strong>{transitionStart.activity}</strong>
+        </div>
+      )}
+
+      {mergeMode && (
+        <div className="discovery-panel__mode-banner discovery-panel__mode-banner--purple">
+          Select the destination state to merge <strong>{selectedState?.activity ?? 'source state'}</strong> into.
+        </div>
+      )}
+
+      <div className="discovery-panel__content">
+        {activeTab === 'discovery' ? renderDiscoveryContent() : renderFlowView()}
+      </div>
+
       <FlowEditor
         flow={selectedFlow}
         graph={graph}
@@ -1053,7 +1275,7 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
         onClose={() => setShowFlowEditor(false)}
         onSave={handleSaveFlow}
       />
-    </div>
+    </section>
   );
 };
 

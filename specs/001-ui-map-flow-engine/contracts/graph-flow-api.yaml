@@ -1,0 +1,516 @@
+openapi: 3.0.3
+info:
+  title: AutoApp Graph & Flow API
+  version: 0.1.0
+  description: >
+    REST interface for capturing UI states, managing flows, and executing replay
+    jobs against the MaynDrive emulator. All endpoints are internal (Traefik-private).
+servers:
+  - url: http://backend:3001/api
+    description: Internal docker-compose network
+components:
+  schemas:
+    Selector:
+      type: object
+      properties:
+        rid:
+          type: string
+        text:
+          type: string
+        desc:
+          type: string
+        cls:
+          type: string
+        bounds:
+          type: array
+          items:
+            type: number
+          minItems: 4
+          maxItems: 4
+        xpath:
+          type: string
+    State:
+      type: object
+      required: [id, package, activity, digest, selectors, createdAt, updatedAt]
+      properties:
+        id:
+          type: string
+          format: uuid
+        package:
+          type: string
+        activity:
+          type: string
+        digest:
+          type: string
+        selectors:
+          type: array
+          items:
+            $ref: '#/components/schemas/Selector'
+        visibleText:
+          type: array
+          items:
+            type: string
+        screenshot:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        metadata:
+          type: object
+          properties:
+            captureMethod:
+              type: string
+              enum: [adb, frida]
+            captureDuration:
+              type: integer
+            elementCount:
+              type: integer
+            hierarchyDepth:
+              type: integer
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    Action:
+      type: object
+      required: [type]
+      properties:
+        type:
+          type: string
+          enum: [tap, type, swipe, back, intent, long_press]
+        target:
+          $ref: '#/components/schemas/Selector'
+        text:
+          type: string
+        swipe:
+          type: object
+          properties:
+            direction:
+              type: string
+              enum: [up, down, left, right]
+            distance:
+              type: number
+        intent:
+          type: object
+          additionalProperties: true
+        metadata:
+          type: object
+          properties:
+            duration:
+              type: integer
+            confidence:
+              type: number
+    Transition:
+      type: object
+      required: [id, from, to, action]
+      properties:
+        id:
+          type: string
+        from:
+          type: string
+        to:
+          type: string
+        action:
+          $ref: '#/components/schemas/Action'
+        evidence:
+          type: object
+          properties:
+            beforeDigest:
+              type: string
+            afterDigest:
+              type: string
+            timestamp:
+              type: string
+              format: date-time
+            notes:
+              type: string
+        confidence:
+          type: number
+        tags:
+          type: array
+          items:
+            type: string
+        createdAt:
+          type: string
+          format: date-time
+    StatePredicate:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [exact, contains, matches, fuzzy]
+        stateId:
+          type: string
+        activity:
+          type: string
+        containsText:
+          type: array
+          items:
+            type: string
+        matches:
+          type: object
+          properties:
+            activity:
+              type: string
+            text:
+              type: string
+            selectors:
+              type: string
+        fuzzyThreshold:
+          type: number
+        hasSelectors:
+          type: array
+          items:
+            type: object
+            properties:
+              rid:
+                type: string
+              text:
+                type: string
+              desc:
+                type: string
+    FlowStep:
+      type: object
+      required: [id, name, action]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        preconditions:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatePredicate'
+        action:
+          $ref: '#/components/schemas/Action'
+        expectedState:
+          $ref: '#/components/schemas/StatePredicate'
+        timeout:
+          type: integer
+        critical:
+          type: boolean
+    FlowDefinition:
+      type: object
+      required: [id, name, version, steps, entryPoint]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        version:
+          type: string
+        packageName:
+          type: string
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlowStep'
+        entryPoint:
+          $ref: '#/components/schemas/StatePredicate'
+        exitPoint:
+          $ref: '#/components/schemas/StatePredicate'
+        metadata:
+          type: object
+          properties:
+            createdAt:
+              type: string
+              format: date-time
+            updatedAt:
+              type: string
+              format: date-time
+            author:
+              type: string
+            tags:
+              type: array
+              items:
+                type: string
+            estimatedDuration:
+              type: number
+            complexity:
+              type: number
+            executionCount:
+              type: number
+            successRate:
+              type: number
+        config:
+          type: object
+          properties:
+            defaultTimeout:
+              type: integer
+            retryAttempts:
+              type: integer
+            allowParallel:
+              type: boolean
+            priority:
+              type: string
+              enum: [low, medium, high]
+    FlowExecution:
+      type: object
+      properties:
+        executionId:
+          type: string
+        flowId:
+          type: string
+        status:
+          type: string
+          enum: [pending, running, completed, failed, paused, cancelled]
+        startedAt:
+          type: string
+          format: date-time
+        completedAt:
+          type: string
+          format: date-time
+        duration:
+          type: integer
+        currentStep:
+          type: integer
+        summary:
+          type: object
+          properties:
+            totalSteps:
+              type: integer
+            successfulSteps:
+              type: integer
+            failedSteps:
+              type: integer
+            skippedSteps:
+              type: integer
+            averageStepDuration:
+              type: integer
+paths:
+  /graphs/current:
+    get:
+      summary: Fetch the active UI graph
+      responses:
+        '200':
+          description: Active UTG
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  graphId:
+                    type: string
+                  graph:
+                    type: object
+                    properties:
+                      version:
+                        type: string
+                      states:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/State'
+                      transitions:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/Transition'
+  /graphs/capture:
+    post:
+      summary: Capture current UI state via UIAutomator2
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                forceScreenshot:
+                  type: boolean
+                tags:
+                  type: array
+                  items:
+                    type: string
+      responses:
+        '201':
+          description: Snapshot captured
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  state:
+                    $ref: '#/components/schemas/State'
+                  merged:
+                    type: boolean
+  /graphs/transitions:
+    post:
+      summary: Record a transition between states
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fromStateId, action]
+              properties:
+                fromStateId:
+                  type: string
+                toStateId:
+                  type: string
+                action:
+                  $ref: '#/components/schemas/Action'
+                evidence:
+                  type: object
+                  properties:
+                    notes:
+                      type: string
+      responses:
+        '201':
+          description: Transition recorded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Transition'
+  /flows:
+    get:
+      summary: List flow definitions
+      responses:
+        '200':
+          description: Flow catalog
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FlowDefinition'
+    post:
+      summary: Create or overwrite a flow definition
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlowDefinition'
+      responses:
+        '201':
+          description: Flow stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlowDefinition'
+  /flows/{flowId}:
+    put:
+      summary: Update an existing flow
+      parameters:
+        - in: path
+          name: flowId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlowDefinition'
+      responses:
+        '200':
+          description: Flow updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlowDefinition'
+    delete:
+      summary: Delete a flow definition
+      parameters:
+        - in: path
+          name: flowId
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Flow deleted
+  /flows/{flowId}/validate:
+    post:
+      summary: Validate a flow against the current graph
+      parameters:
+        - in: path
+          name: flowId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Validation report
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  valid:
+                    type: boolean
+                  issues:
+                    type: array
+                    items:
+                      type: string
+                  durationMs:
+                    type: integer
+  /flows/{flowId}/execute:
+    post:
+      summary: Execute a flow (with recovery)
+      parameters:
+        - in: path
+          name: flowId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                startFromStep:
+                  type: integer
+                dryRun:
+                  type: boolean
+      responses:
+        '202':
+          description: Execution started
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlowExecution'
+  /executions:
+    get:
+      summary: List recent flow executions
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+            default: 20
+      responses:
+        '200':
+          description: Execution history
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FlowExecution'
+  /executions/{executionId}:
+    get:
+      summary: Fetch execution status/logs
+      parameters:
+        - in: path
+          name: executionId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Execution detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FlowExecution'
