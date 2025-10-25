@@ -28,6 +28,7 @@ import {
 } from '@heroicons/react/24/outline';
 import { useDiscovery } from '../../hooks/useDiscovery';
 import { useFlow } from '../../hooks/useFlow';
+import FlowEditor from './FlowEditor';
 // Type definitions for the UI Discovery system
 interface Selector {
   rid?: string;
@@ -330,7 +331,8 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
   // Flow handlers
   const handleCreateFlow = async () => {
     try {
-      const newFlow: Partial<FlowDefinition> = {
+      // Create a temporary flow to open in editor
+      const tempFlow: Partial<FlowDefinition> = {
         name: `New Flow ${new Date().toISOString().split('T')[0]}`,
         description: 'Created from current UI state',
         packageName: graph?.packageName || 'unknown',
@@ -359,12 +361,28 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
         }
       };
 
-      const createdFlow = await createFlow(newFlow);
-      setSelectedFlow(createdFlow);
+      setSelectedFlow(tempFlow as FlowDefinition);
       setShowFlowEditor(true);
-      refreshFlows();
     } catch (error) {
       console.error('Failed to create flow:', error);
+    }
+  };
+
+  const handleSaveFlow = async (flowData: FlowDefinition) => {
+    try {
+      if (flowData.id.startsWith('flow-') && !flows?.find(f => f.id === flowData.id)) {
+        // New flow - create it
+        const createdFlow = await createFlow(flowData);
+        setSelectedFlow(createdFlow);
+      } else {
+        // Existing flow - update it
+        await updateFlow(flowData.id, flowData);
+        setSelectedFlow(flowData);
+      }
+      setShowFlowEditor(false);
+      refreshFlows();
+    } catch (error) {
+      console.error('Failed to save flow:', error);
     }
   };
 
@@ -983,6 +1001,15 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
           </>
         )}
       </div>
+
+      {/* Flow Editor Modal */}
+      <FlowEditor
+        flow={selectedFlow}
+        graph={graph}
+        isVisible={showFlowEditor}
+        onClose={() => setShowFlowEditor(false)}
+        onSave={handleSaveFlow}
+      />
     </div>
   );
 };

@@ -89,10 +89,10 @@ description: "Task list for UI Map & Discovery System implementation"
 - [X] T024 [US2] Implement flow endpoints in backend/src/routes/graph.ts (GET/POST /api/flows/*)
 - [X] T025 [US2] Add flow validation logic to ensure predicates resolve to known states
 - [X] T026 [US2] Create flow management UI in DiscoveryPanel component
-- [ ] T027 [US2] Add flow editor with state predicate selection
-- [ ] T028 [US2] Implement semantic selector support for flow actions
-- [ ] T029 [US2] Add precondition validation for flow completeness
-- [ ] T030 [US2] [CRITICAL] Implement internal API endpoints without authentication per FR-012 requirement
+- [X] T027 [US2] Add flow editor with state predicate selection
+- [X] T028 [US2] Implement semantic selector support for flow actions
+- [X] T029 [US2] Add precondition validation for flow completeness
+- [X] T030 [US2] [CRITICAL] Implement internal API endpoints without authentication per FR-012 requirement
   - Create /api/graph/* endpoints accessible without authentication
   - Add /api/flows/* endpoints for internal access only
   - Ensure endpoints are properly documented as internal-only
