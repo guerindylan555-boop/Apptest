@@ -142,7 +142,7 @@ export class StateDetectorService {
    */
   private extractActivity(rootElement: any): string {
     // Try different possible locations for activity name
-    if (rootElement['@_activity') {
+    if (rootElement['@_activity']) {
       return rootElement['@_activity'];
     }
 
@@ -251,7 +251,7 @@ export class StateDetectorService {
 
       if (node.node) {
         const nodes = Array.isArray(node.node) ? node.node : [node.node];
-        const children = nodes.map(child => extractStructure(child, depth + 1)).filter(Boolean);
+        const children = nodes.map((child: any) => extractStructure(child, depth + 1)).filter(Boolean);
         if (children.length > 0) {
           structure += '\n' + children.join('\n');
         }

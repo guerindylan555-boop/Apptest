@@ -34,10 +34,13 @@
   "type": "commonjs",
   "dependencies": {
     "@types/js-yaml": "^4.0.9",
+    "chalk": "^4.1.2",
+    "cli-table3": "^0.6.3",
     "commander": "^12.0.0",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "fast-csv": "^5.0.1",
+    "fast-xml-parser": "^4.4.0",
     "js-yaml": "^4.1.0",
     "multer": "^2.0.2",
     "uuid": "^10.0.0",

@@ -8,7 +8,7 @@
 import React, { useState, useEffect } from 'react';
 import { useUIGraphStore } from '../stores/uiGraphStore';
 import CapturePanel from '../components/discovery/CapturePanel';
-import { DetectionPanel } from '../components/detector/DetectionPanel';
+import { DetectionPanelSimple } from '../components/detector/DetectionPanelSimple';
 
 interface NodeAction {
   nodeId: string;
@@ -456,7 +456,7 @@ const DiscoveryPage: React.FC = () => {
 
       {/* Detection Panel Modal */}
       {showDetectionPanel && (
-        <DetectionPanel
+        <DetectionPanelSimple
           onDetectionComplete={handleDetectionComplete}
           onNodeSelect={handleNodeSelect}
           onNewNode={handleNewNode}

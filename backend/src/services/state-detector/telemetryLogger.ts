@@ -75,6 +75,7 @@ export interface TelemetrySummary {
 }
 
 export class TelemetryLogger {
+  private config: { telemetryDir: string } = { telemetryDir: '' };
   private detectionTelemetryPath: string;
   private flowTelemetryPath: string;
   private summaryPath: string;
@@ -82,8 +83,9 @@ export class TelemetryLogger {
 
   constructor() {
     const telemetryDir = path.join(process.cwd(), 'var', 'telemetry');
+    this.config.telemetryDir = telemetryDir;
     this.detectionTelemetryPath = path.join(telemetryDir, 'detection.json');
-    this.flowTelemetryPath = path.join(telemetryPath, 'flows.json');
+    this.flowTelemetryPath = path.join(telemetryDir, 'flows.json');
     this.summaryPath = path.join(telemetryDir, 'summary.json');
     this.graphIndexPath = path.join(process.cwd(), 'var', 'graphs', 'index.json');
   }

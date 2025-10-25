@@ -275,7 +275,7 @@ export class FlowRunner extends EventEmitter {
 
     // Load the edge from graph store
     const graph = await this.graphStore.loadLatestGraph();
-    const edge = graph.edges.find(e => e.id === step.edgeId);
+    const edge = graph.edges.find((e: ActionEdge) => e.id === step.edgeId);
 
     if (!edge) {
       throw new Error(`Edge not found: ${step.edgeId}`);
@@ -372,7 +372,7 @@ export class FlowRunner extends EventEmitter {
 
       if (result.selectedNodeId) {
         const graph = await this.graphStore.loadLatestGraph();
-        const node = graph.nodes.find(n => n.id === result.selectedNodeId);
+        const node = graph.nodes.find((n: ScreenNode) => n.id === result.selectedNodeId);
         return node || null;
       }
 
@@ -483,7 +483,7 @@ export class FlowRunner extends EventEmitter {
   ): Promise<ScreenNode | null> {
     if (flow.precondition.nodeId) {
       const graph = await this.graphStore.loadLatestGraph();
-      const node = graph.nodes.find(n => n.id === flow.precondition.nodeId);
+      const node = graph.nodes.find((n: ScreenNode) => n.id === flow.precondition.nodeId);
       return node || null;
     }
 
@@ -492,7 +492,7 @@ export class FlowRunner extends EventEmitter {
       // For now, return the start node if provided
       if (context.startNodeId) {
         const graph = await this.graphStore.loadLatestGraph();
-        const node = graph.nodes.find(n => n.id === context.startNodeId);
+        const node = graph.nodes.find((n: ScreenNode) => n.id === context.startNodeId);
         return node || null;
       }
     }

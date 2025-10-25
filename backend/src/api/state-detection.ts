@@ -104,9 +104,9 @@ router.post('/state-detection/feedback', async (req, res) => {
     // Convert relative path back to absolute
     const absoluteDumpPath = path.isAbsolute(dumpPath)
       ? dumpPath
-      : path.join('var', captures, 'temp', path.basename(dumpPath));
+      : path.join('var', 'captures', 'temp', path.basename(dumpPath));
 
-    await stateDetector.updateWithOperatorFeedback(action, selectedNodeId);
+    await stateDetector.updateWithOperatorFeedback(absoluteDumpPath, action, selectedNodeId);
 
     res.json({
       success: true,
@@ -162,7 +162,7 @@ router.post('/state-detection/batch', upload.array('xml', 10), async (req, res) 
     const results = [];
     const errors = [];
 
-    for (const file of req.files) {
+    for (const file of req.files as Express.Multer.File[]) {
       try {
         // Move uploaded file to captures directory with timestamp
         const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
@@ -194,7 +194,7 @@ router.post('/state-detection/batch', upload.array('xml', 10), async (req, res) 
       success: true,
       data: {
         processed: results.length,
-        errors: errors.length,
+        errorCount: errors.length,
         results,
         errors,
       },

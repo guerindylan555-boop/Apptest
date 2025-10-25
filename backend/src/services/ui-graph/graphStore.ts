@@ -489,6 +489,58 @@ export class GraphStore {
       console.warn('Failed to rebuild index:', error);
     }
   }
+
+  /**
+   * Load the latest graph version
+   */
+  async loadLatestGraph(): Promise<UIGraph> {
+    try {
+      const index = await this.getIndex();
+
+      if (index.graphs.length === 0) {
+        // Return empty graph if no graphs exist
+        return {
+          metadata: {
+            version: '1.0.0',
+            lastUpdated: new Date().toISOString(),
+            checksum: '',
+            totalNodes: 0,
+            totalEdges: 0,
+          },
+          nodes: [],
+          edges: [],
+        };
+      }
+
+      // Sort by timestamp and get the latest
+      const sortedGraphs = index.graphs.sort((a, b) =>
+        new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
+      );
+
+      const latestVersion = sortedGraphs[0].version;
+      const graph = await this.getGraph(latestVersion);
+
+      if (!graph) {
+        throw new Error(`Failed to load latest graph version: ${latestVersion}`);
+      }
+
+      return graph;
+    } catch (error) {
+      console.error('Failed to load latest graph:', error);
+      // Return empty graph on error
+      return {
+        metadata: {
+          version: '1.0.0',
+          lastUpdated: new Date().toISOString(),
+          checksum: '',
+          totalNodes: 0,
+          totalEdges: 0,
+        },
+        nodes: [],
+        edges: [],
+      };
+    }
+  }
 }
 
 export const graphStore = new GraphStore();

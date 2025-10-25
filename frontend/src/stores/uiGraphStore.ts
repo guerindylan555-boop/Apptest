@@ -264,6 +264,10 @@ interface UIGraphStore extends UIGraphState, CaptureWorkflowState {
   getEdgesForNode: (nodeId: string) => ActionEdge[];
   getIncomingEdges: (nodeId: string) => ActionEdge[];
   getOutgoingEdges: (nodeId: string) => ActionEdge[];
+
+  // State detection methods
+  detectState: (file: File) => Promise<any>;
+  submitFeedback: (dumpPath: string, action: string, selectedNodeId?: string) => Promise<any>;
 }
 
 // Create the store
@@ -612,7 +616,63 @@ export const useUIGraphStore = create<UIGraphStore>()(
       getIncomingEdges: (nodeId) => get().edges.filter(edge => edge.toNodeId === nodeId),
 
       getOutgoingEdges: (nodeId) => get().edges.filter(edge => edge.fromNodeId === nodeId),
-    }),
+
+      // State detection methods
+      detectState: async (file: File) => {
+        set({ loading: true, error: undefined });
+        try {
+          const formData = new FormData();
+          formData.append('xml', file);
+
+          const response = await fetch('/api/state-detection', {
+            method: 'POST',
+            body: formData,
+          });
+
+          if (!response.ok) {
+            throw new Error(`Detection failed: ${response.statusText}`);
+          }
+
+          const result = await response.json();
+          return result.data;
+        } catch (error) {
+          set({
+            error: error instanceof Error ? error.message : 'Detection failed',
+            loading: false,
+          });
+          throw error;
+        } finally {
+          set({ loading: false });
+        }
+      },
+
+      submitFeedback: async (dumpPath: string, action: string, selectedNodeId?: string) => {
+        try {
+          const response = await fetch('/api/state-detection/feedback', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              dumpPath,
+              action,
+              selectedNodeId,
+            }),
+          });
+
+          if (!response.ok) {
+            throw new Error(`Failed to submit feedback: ${response.statusText}`);
+          }
+
+          return await response.json();
+        } catch (error) {
+          set({
+            error: error instanceof Error ? error.message : 'Failed to submit feedback',
+          });
+          throw error;
+        }
+      },
+      }),
     {
       name: 'ui-graph-store',
     }
