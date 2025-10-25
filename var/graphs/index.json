@@ -1,0 +1,20 @@
+{
+  "metadata": {
+    "version": "1.0.0",
+    "lastUpdated": "2025-10-25T00:00:00.000Z",
+    "checksum": "placeholder-will-be-calculated-on-first-sync",
+    "totalNodes": 0,
+    "totalEdges": 0
+  },
+  "nodes": [],
+  "edges": [],
+  "graphs": [
+    {
+      "version": "initial",
+      "timestamp": "2025-10-25T00:00:00.000Z",
+      "path": "var/graphs/initial/ui-graph.json",
+      "checksum": "placeholder",
+      "description": "Initial empty graph scaffold"
+    }
+  ]
+}

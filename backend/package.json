@@ -32,8 +32,11 @@
   },
   "type": "commonjs",
   "dependencies": {
+    "@types/js-yaml": "^4.0.9",
     "cors": "^2.8.5",
     "express": "^5.1.0",
-    "multer": "^2.0.2"
+    "js-yaml": "^4.1.0",
+    "multer": "^2.0.2",
+    "zod": "^4.1.12"
   }
 }

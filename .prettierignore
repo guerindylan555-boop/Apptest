@@ -1,0 +1,27 @@
+# Ignore build outputs
+dist/
+build/
+coverage/
+
+# Ignore node_modules
+node_modules/
+
+# Ignore var directory for artifact storage
+var/
+
+# Ignore lock files
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+
+# Ignore generated files
+*.min.js
+*.d.ts
+
+# Ignore logs and temporary files
+*.log
+*.tmp
+
+# Ignore OS files
+.DS_Store
+Thumbs.db

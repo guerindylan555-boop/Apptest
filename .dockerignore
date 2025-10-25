@@ -1,0 +1,41 @@
+# Ignore node_modules and other common JS/TS patterns
+node_modules/
+**/node_modules/
+
+# Ignore build outputs
+dist/
+build/
+**/dist/
+**/build/
+
+# Ignore logs and temporary files
+*.log
+*.tmp
+*.swp
+.env*
+
+# Ignore documentation and config from context
+.git/
+.dockerignore
+**/README.md
+**/*.md
+
+# Ignore var directory except for our specific structure
+var/
+!var/captures/
+!var/graphs/
+!var/flows/
+
+# Keep essential patterns for Docker context
+!frontend/package.json
+!frontend/package-lock.json
+!backend/package.json
+!backend/package-lock.json
+!frontend/Dockerfile
+!backend/Dockerfile
+
+# Ignore cache and OS files
+.DS_Store
+Thumbs.db
+coverage/
+.nyc_output/

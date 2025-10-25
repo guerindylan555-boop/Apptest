@@ -1,0 +1,81 @@
+# Example Flow Template for MaynDrive UI Automation
+# Copy this template to create new flows following the naming convention kebab-case.yaml
+
+name: example-flow
+description: "Brief description of what this flow accomplishes"
+version: "1.0.0"
+
+variables:
+  - name: example_variable
+    description: "Description of what this variable represents"
+    type: string
+    required: true
+    prompt: "Provide value for example variable"
+
+precondition:
+  # Specify either nodeId (explicit) or query (resolves to ScreenNode)
+  nodeId: "example-node-id"
+  # OR
+  # query:
+  #   activity: "com.example.Activity"
+  #   requiredTexts: ["Expected text on screen"]
+
+steps:
+  # Example step using edge reference
+  - kind: edgeRef
+    edgeId: "example-edge-id"
+    guard:
+      mustMatchSignatureHash: "optional-hash-check"
+      requiredTexts: ["Expected text after action"]
+    retryPolicy:
+      maxAttempts: 3
+      delayMs: 1000
+    expectNodeId: "next-node-id"
+
+  # Example step with inline action
+  - kind: inline
+    inlineAction:
+      action: tap  # tap | type | wait | back | intent
+      selectorId: "optional-selector-id"
+      text: "text to type (for type action)"
+      keycode: 4  # Android key code (for back action)
+      waitMs: 2000
+    guard:
+      requiredTexts: ["Expected text after inline action"]
+    retryPolicy:
+      maxAttempts: 2
+      delayMs: 500
+
+postcondition:
+  # Verify the final state after flow completion
+  nodeId: "final-node-id"
+  # OR
+  # query:
+  #   activity: "com.example.FinalActivity"
+  #   requiredTexts: ["Success indicator text"]
+
+recovery:
+  # Define recovery rules for different failure scenarios
+  - trigger: unexpected_node
+    allowedActions:
+      - back      # Go back to previous screen
+      - dismiss   # Dismiss dialogs/popups
+      - reopen    # Reopen the app
+      - relogin   # Perform login flow again
+
+  - trigger: system_dialog
+    allowedActions:
+      - dismiss
+      - back
+
+  - trigger: timeout
+    allowedActions:
+      - wait      # Wait and retry
+      - back
+      - dismiss
+
+metadata:
+  owner: "operator-name"
+  lastUpdatedAt: "2025-10-25T00:00:00.000Z"
+  validationStatus: "draft"  # draft | validated | deprecated
+  notes: "Additional notes for operators and LLM editing"

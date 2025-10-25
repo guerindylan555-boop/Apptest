@@ -1,0 +1,22 @@
+# Ignore build outputs
+dist/
+build/
+coverage/
+
+# Ignore node_modules
+node_modules/
+
+# Ignore var directory for artifact storage
+var/
+
+# Ignore temporary and cache files
+*.tmp
+*.cache
+
+# Ignore specific generated files
+*.d.ts
+*.js.map
+
+# Ignore testing artifacts
+.nyc_output/
+coverage/

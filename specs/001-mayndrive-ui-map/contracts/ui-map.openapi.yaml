@@ -1,0 +1,500 @@
+openapi: 3.0.3
+info:
+  title: MaynDrive UI Map API
+  version: 0.1.0
+  description: REST endpoints powering manual discovery, UI graph storage, state detection, and flow execution.
+servers:
+  - url: https://backend.autoapp.local/api
+paths:
+  /ui-graph/nodes:
+    post:
+      summary: Capture a screen node and artifacts
+      operationId: createNode
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScreenNodeInput'
+      responses:
+        '201':
+          description: Node stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScreenNode'
+  /ui-graph/nodes/{nodeId}:
+    get:
+      summary: Fetch a screen node
+      operationId: getNode
+      parameters:
+        - $ref: '#/components/parameters/NodeIdParam'
+      responses:
+        '200':
+          description: Node payload
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScreenNode'
+    put:
+      summary: Update mutable metadata (name, hints, status)
+      operationId: updateNode
+      parameters:
+        - $ref: '#/components/parameters/NodeIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ScreenNodeUpdate'
+      responses:
+        '200':
+          description: Updated node
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ScreenNode'
+  /ui-graph/nodes/{nodeId}/actions:
+    post:
+      summary: Add an outgoing action edge from a node
+      operationId: createEdge
+      parameters:
+        - $ref: '#/components/parameters/NodeIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ActionEdgeInput'
+      responses:
+        '201':
+          description: Edge stored
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActionEdge'
+  /ui-graph:
+    get:
+      summary: Download the current UI graph snapshot
+      operationId: getGraph
+      parameters:
+        - in: query
+          name: includeArtifacts
+          schema:
+            type: boolean
+          description: If true, include artifact paths + checksums
+      responses:
+        '200':
+          description: Graph JSON
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UIGraph'
+  /state-detection:
+    post:
+      summary: Run state detection on a UI dump
+      operationId: detectState
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [xmlPath]
+              properties:
+                xmlPath:
+                  type: string
+                  description: Relative path to dump stored under var/captures
+                forceUnknown:
+                  type: boolean
+                  description: When true, bypass auto-mapping and return UNKNOWN
+      responses:
+        '200':
+          description: Detection output
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StateDetectionResult'
+  /flows:
+    get:
+      summary: List available flow definitions
+      operationId: listFlows
+      responses:
+        '200':
+          description: Flow list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FlowDefinition'
+    post:
+      summary: Create or update a flow definition
+      operationId: upsertFlow
+      requestBody:
+        required: true
+        content:
+          application/yaml:
+            schema:
+              type: string
+              description: Raw YAML definition
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FlowDefinition'
+      responses:
+        '201':
+          description: Flow stored
+  /flows/{flowName}/validate:
+    post:
+      summary: Validate flow references (nodes, edges, variables)
+      operationId: validateFlow
+      parameters:
+        - $ref: '#/components/parameters/FlowNameParam'
+      responses:
+        '200':
+          description: Validation result
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    enum: [ok, error]
+                  issues:
+                    type: array
+                    items:
+                      type: string
+  /flows/{flowName}/run:
+    post:
+      summary: Execute a flow from the current emulator state
+      operationId: runFlow
+      parameters:
+        - $ref: '#/components/parameters/FlowNameParam'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                variables:
+                  type: object
+                  additionalProperties:
+                    type: string
+                startNodeHint:
+                  type: string
+                  description: Optional node id when the detector is bypassed
+      responses:
+        '202':
+          description: Flow execution started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  runId:
+                    type: string
+                  statusUrl:
+                    type: string
+components:
+  parameters:
+    NodeIdParam:
+      in: path
+      name: nodeId
+      required: true
+      schema:
+        type: string
+    FlowNameParam:
+      in: path
+      name: flowName
+      required: true
+      schema:
+        type: string
+        pattern: "^[a-z0-9\-]+$"
+  schemas:
+    ScreenNodeInput:
+      type: object
+      required: [name, signature, selectors, artifacts]
+      properties:
+        name:
+          type: string
+        hints:
+          type: array
+          items:
+            type: string
+        signature:
+          $ref: '#/components/schemas/ScreenSignature'
+        selectors:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/SelectorCandidate'
+        artifacts:
+          $ref: '#/components/schemas/ArtifactBundle'
+        metadata:
+          type: object
+          additionalProperties: true
+    ScreenNode:
+      allOf:
+        - $ref: '#/components/schemas/ScreenNodeInput'
+        - type: object
+          required: [id, status, createdAt, createdBy]
+          properties:
+            id:
+              type: string
+            status:
+              type: string
+              enum: [active, deprecated, duplicate]
+            outgoingEdgeIds:
+              type: array
+              items:
+                type: string
+            incomingEdgeIds:
+              type: array
+              items:
+                type: string
+            createdAt:
+              type: string
+              format: date-time
+            createdBy:
+              type: string
+    ScreenNodeUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+        hints:
+          type: array
+          items:
+            type: string
+        status:
+          type: string
+          enum: [active, deprecated, duplicate]
+    ScreenSignature:
+      type: object
+      required: [activity, resourceIds, requiredTexts, layoutFingerprint, hash]
+      properties:
+        activity:
+          type: string
+        resourceIds:
+          type: array
+          items:
+            type: string
+        requiredTexts:
+          type: array
+          items:
+            type: string
+        layoutFingerprint:
+          type: string
+        hash:
+          type: string
+        version:
+          type: integer
+          default: 1
+    SelectorCandidate:
+      type: object
+      required: [id, type, value, confidence]
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [resource-id, content-desc, text, accessibility, xpath, coords]
+        value:
+          type: string
+        confidence:
+          type: number
+          format: float
+        lastValidatedAt:
+          type: string
+          format: date-time
+    ArtifactBundle:
+      type: object
+      required: [screenshotPath, xmlPath, checksum]
+      properties:
+        screenshotPath:
+          type: string
+        xmlPath:
+          type: string
+        metadataPath:
+          type: string
+        checksum:
+          type: string
+    ActionEdgeInput:
+      type: object
+      required: [action]
+      properties:
+        toNodeId:
+          type: string
+          nullable: true
+        action:
+          $ref: '#/components/schemas/ActionPayload'
+        guard:
+          $ref: '#/components/schemas/GuardClause'
+        notes:
+          type: string
+    ActionEdge:
+      allOf:
+        - $ref: '#/components/schemas/ActionEdgeInput'
+        - type: object
+          required: [id, fromNodeId, createdAt, createdBy, confidence]
+          properties:
+            id:
+              type: string
+            fromNodeId:
+              type: string
+            confidence:
+              type: number
+              format: float
+            createdAt:
+              type: string
+              format: date-time
+            createdBy:
+              type: string
+    ActionPayload:
+      type: object
+      required: [kind]
+      properties:
+        kind:
+          type: string
+          enum: [tap, type, wait, back, intent]
+        selectorId:
+          type: string
+        text:
+          type: string
+        keycode:
+          type: integer
+        delayMs:
+          type: integer
+    GuardClause:
+      type: object
+      properties:
+        mustMatchSignatureHash:
+          type: string
+        requiredTexts:
+          type: array
+          items:
+            type: string
+    UIGraph:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/ScreenNode'
+        edges:
+          type: array
+          items:
+            $ref: '#/components/schemas/ActionEdge'
+        version:
+          type: string
+    FlowDefinition:
+      type: object
+      required: [name, precondition, steps, postcondition]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        version:
+          type: string
+        variables:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlowVariable'
+        precondition:
+          $ref: '#/components/schemas/FlowCondition'
+        steps:
+          type: array
+          items:
+            $ref: '#/components/schemas/FlowStep'
+        postcondition:
+          $ref: '#/components/schemas/FlowCondition'
+        recovery:
+          type: array
+          items:
+            $ref: '#/components/schemas/RecoveryRule'
+    FlowVariable:
+      type: object
+      required: [name, type]
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        type:
+          type: string
+          enum: [string, number, otp, phone, email]
+        required:
+          type: boolean
+          default: true
+        prompt:
+          type: string
+    FlowCondition:
+      type: object
+      properties:
+        nodeId:
+          type: string
+        query:
+          type: string
+    FlowStep:
+      type: object
+      required: [kind]
+      properties:
+        kind:
+          type: string
+          enum: [edgeRef, inline]
+        edgeId:
+          type: string
+        inlineAction:
+          $ref: '#/components/schemas/ActionPayload'
+        guard:
+          $ref: '#/components/schemas/GuardClause'
+        retryPolicy:
+          $ref: '#/components/schemas/RetryPolicy'
+        expectNodeId:
+          type: string
+    RecoveryRule:
+      type: object
+      required: [trigger, actions]
+      properties:
+        trigger:
+          type: string
+          enum: [unexpected_node, system_dialog, timeout]
+        actions:
+          type: array
+          items:
+            type: string
+            enum: [back, dismiss, reopen_app, relogin]
+    RetryPolicy:
+      type: object
+      properties:
+        maxAttempts:
+          type: integer
+          default: 2
+        delayMs:
+          type: integer
+          default: 500
+    StateDetectionResult:
+      type: object
+      required: [status, topCandidates]
+      properties:
+        status:
+          type: string
+          enum: [matched, ambiguous, unknown]
+        selectedNodeId:
+          type: string
+        topCandidates:
+          type: array
+          items:
+            type: object
+            properties:
+              nodeId:
+                type: string
+              score:
+                type: number
+        threshold:
+          type: integer
+        prompt:
+          type: string
