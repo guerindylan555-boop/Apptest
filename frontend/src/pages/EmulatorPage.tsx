@@ -173,17 +173,17 @@ const EmulatorPage = () => {
           <div style={{
             display: 'flex',
             flexDirection: 'column',
-            backgroundColor: '#1e293b',
-            borderRadius: '0.75rem',
-            border: '1px solid #334155',
-            overflow: 'hidden'
+            gap: '1rem'
           }}>
+            {/* Stream Header */}
             <div style={{
-              padding: '1rem 1.25rem',
-              borderBottom: '1px solid #334155',
               display: 'flex',
               justifyContent: 'space-between',
-              alignItems: 'center'
+              alignItems: 'center',
+              padding: '0.75rem 1rem',
+              backgroundColor: '#1e293b',
+              borderRadius: '0.75rem',
+              border: '1px solid #334155'
             }}>
               <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '600', color: '#f1f5f9' }}>
                 Device Stream
@@ -219,14 +219,16 @@ const EmulatorPage = () => {
                 </button>
               </div>
             </div>
+            {/* Stream Viewer Direct */}
             <div style={{
               flex: 1,
+              minHeight: '400px',
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
-              padding: '1rem',
-              minHeight: '400px',
-              backgroundColor: '#000'
+              borderRadius: '0.75rem',
+              overflow: 'hidden',
+              border: '1px solid #334155'
             }}>
               <StreamViewer state={emulatorState} streamTicket={streamTicket} />
             </div>
@@ -234,10 +236,9 @@ const EmulatorPage = () => {
 
           {/* Discovery Panel Section */}
           <div style={{
-            display: 'flex',
-            flexDirection: 'column',
             height: '100%',
-            minHeight: 0
+            minHeight: '0',
+            overflow: 'hidden'
           }}>
             {discoveryEnabled ? (
               <div style={{
@@ -247,7 +248,7 @@ const EmulatorPage = () => {
                 border: '1px solid #334155',
                 overflow: 'hidden'
               }}>
-                <DiscoveryPanel />
+                <DiscoveryPanel className="h-full" />
               </div>
             ) : gpsEnabled ? (
               <div style={{

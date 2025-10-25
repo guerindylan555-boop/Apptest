@@ -219,7 +219,9 @@ export const useFlow = (refreshInterval: number = 15000): UseFlowReturn => {
       const response = await apiRequest<{ flows: FlowDefinition[]; pagination: any }>('?limit=100');
       setFlows(response.flows);
     } catch (error) {
-      handleError(error, 'Failed to load flows');
+      console.warn('Flows API not available, using empty array:', error);
+      // Don't set error state for missing flows - just use empty array
+      setFlows([]);
     }
   }, []);
 
@@ -398,13 +400,27 @@ export const useFlow = (refreshInterval: number = 15000): UseFlowReturn => {
 
   // Initial load and auto-refresh
   useEffect(() => {
-    loadFlows();
-    loadExecutions();
+    // Initialize with empty arrays to prevent null states
+    setFlows([]);
+    setExecutions([]);
+
+    // Try to load flows, but don't fail if API is not available
+    loadFlows().catch(err => {
+      console.warn('Initial flow load failed, using empty array:', err);
+    });
+
+    loadExecutions().catch(err => {
+      console.warn('Initial executions load failed, using empty array:', err);
+    });
 
     if (refreshInterval > 0) {
       const interval = setInterval(() => {
-        loadFlows();
-        loadExecutions();
+        loadFlows().catch(err => {
+          console.warn('Periodic flow load failed:', err);
+        });
+        loadExecutions().catch(err => {
+          console.warn('Periodic executions load failed:', err);
+        });
       }, refreshInterval);
 
       return () => clearInterval(interval);
