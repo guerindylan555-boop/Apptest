@@ -1,0 +1,283 @@
+{
+  "environments": {
+    "development": {
+      "baseUrl": "http://localhost:3001",
+      "timeout": 10000,
+      "retryAttempts": 3,
+      "retryDelay": 1000,
+      "dockployDomain": "",
+      "traefikProxy": "",
+      "customHeaders": {
+        "X-Test-Environment": "development",
+        "X-Debug": "true"
+      },
+      "corsOrigins": [
+        "http://localhost:5173",
+        "http://127.0.0.1:5173",
+        "http://localhost:3001",
+        "http://127.0.0.1:3001"
+      ],
+      "expectedEndpoints": [
+        "/api/health",
+        "/api/healthz",
+        "/api/graph",
+        "/api/state/current",
+        "/api/flows",
+        "/api/stream/url"
+      ]
+    },
+    "staging": {
+      "baseUrl": "https://staging.autoapp.dockploy.io",
+      "timeout": 15000,
+      "retryAttempts": 5,
+      "retryDelay": 2000,
+      "dockployDomain": "staging.autoapp.dockploy.io",
+      "traefikProxy": "",
+      "customHeaders": {
+        "X-Test-Environment": "staging",
+        "X-Auth-Token": "${STAGING_AUTH_TOKEN}"
+      },
+      "corsOrigins": [
+        "https://staging.autoapp.dockploy.io",
+        "https://staging.maydrive.fr",
+        "https://localhost:5173"
+      ],
+      "expectedEndpoints": [
+        "/api/health",
+        "/api/healthz",
+        "/api/health/ready",
+        "/api/health/live",
+        "/api/graph",
+        "/api/state/current",
+        "/api/flows",
+        "/api/flows/templates",
+        "/api/stream/url"
+      ]
+    },
+    "production": {
+      "baseUrl": "https://autoapp.dockploy.io",
+      "timeout": 20000,
+      "retryAttempts": 5,
+      "retryDelay": 3000,
+      "dockployDomain": "autoapp.dockploy.io",
+      "traefikProxy": "",
+      "customHeaders": {
+        "X-Test-Environment": "production",
+        "X-Auth-Token": "${PRODUCTION_AUTH_TOKEN}"
+      },
+      "corsOrigins": [
+        "https://autoapp.dockploy.io",
+        "https://maydrive.fr"
+      ],
+      "expectedEndpoints": [
+        "/api/health",
+        "/api/healthz",
+        "/api/health/ready",
+        "/api/health/live",
+        "/api/graph",
+        "/api/state/current",
+        "/api/flows",
+        "/api/flows/templates",
+        "/api/flows/library",
+        "/api/stream/url"
+      ]
+    },
+    "traefik-local": {
+      "baseUrl": "http://traefik.localhost",
+      "timeout": 12000,
+      "retryAttempts": 4,
+      "retryDelay": 1500,
+      "dockployDomain": "",
+      "traefikProxy": "traefik.localhost",
+      "customHeaders": {
+        "X-Test-Environment": "traefik-local",
+        "X-Forwarded-Proto": "https",
+        "X-Forwarded-Host": "autoapp.localhost"
+      },
+      "corsOrigins": [
+        "http://autoapp.localhost",
+        "https://autoapp.localhost",
+        "http://localhost:5173"
+      ],
+      "expectedEndpoints": [
+        "/api/health",
+        "/api/healthz",
+        "/api/graph",
+        "/api/state/current",
+        "/api/flows",
+        "/api/stream/url"
+      ]
+    },
+    "docker-compose": {
+      "baseUrl": "http://backend:3001",
+      "timeout": 8000,
+      "retryAttempts": 3,
+      "retryDelay": 1000,
+      "dockployDomain": "",
+      "traefikProxy": "",
+      "customHeaders": {
+        "X-Test-Environment": "docker-compose",
+        "X-Docker-Network": "autoapp-network"
+      },
+      "corsOrigins": [
+        "http://frontend:5173",
+        "http://localhost:5173"
+      ],
+      "expectedEndpoints": [
+        "/api/health",
+        "/api/healthz",
+        "/api/graph",
+        "/api/state/current",
+        "/api/flows",
+        "/api/stream/url"
+      ]
+    },
+    "custom-domain": {
+      "baseUrl": "https://custom.example.com",
+      "timeout": 15000,
+      "retryAttempts": 5,
+      "retryDelay": 2000,
+      "dockployDomain": "custom.example.com",
+      "traefikProxy": "",
+      "customHeaders": {
+        "X-Test-Environment": "custom-domain",
+        "X-Custom-Domain": "true"
+      },
+      "corsOrigins": [
+        "https://custom.example.com",
+        "https://www.custom.example.com"
+      ],
+      "expectedEndpoints": [
+        "/api/health",
+        "/api/healthz",
+        "/api/graph",
+        "/api/state/current",
+        "/api/flows",
+        "/api/stream/url"
+      ]
+    }
+  },
+  "performanceThresholds": {
+    "development": {
+      "maxResponseTime": 5000,
+      "minSuccessRate": 80,
+      "maxErrorRate": 20
+    },
+    "staging": {
+      "maxResponseTime": 3000,
+      "minSuccessRate": 90,
+      "maxErrorRate": 10
+    },
+    "production": {
+      "maxResponseTime": 2000,
+      "minSuccessRate": 95,
+      "maxErrorRate": 5
+    },
+    "traefik-local": {
+      "maxResponseTime": 4000,
+      "minSuccessRate": 85,
+      "maxErrorRate": 15
+    },
+    "docker-compose": {
+      "maxResponseTime": 6000,
+      "minSuccessRate": 85,
+      "maxErrorRate": 15
+    },
+    "custom-domain": {
+      "maxResponseTime": 3000,
+      "minSuccessRate": 90,
+      "maxErrorRate": 10
+    }
+  },
+  "testScenarios": {
+    "basic-access": {
+      "description": "Basic API accessibility test",
+      "endpoints": [
+        "/api/health",
+        "/api/healthz"
+      ],
+      "methods": ["GET"],
+      "skipCORS": false,
+      "skipWebRTC": true
+    },
+    "full-suite": {
+      "description": "Complete test suite with all endpoints",
+      "endpoints": "all",
+      "methods": ["GET", "POST", "OPTIONS"],
+      "skipCORS": false,
+      "skipWebRTC": false
+    },
+    "cors-only": {
+      "description": "CORS configuration testing only",
+      "endpoints": ["/api/health"],
+      "methods": ["OPTIONS"],
+      "skipCORS": false,
+      "skipWebRTC": true
+    },
+    "health-only": {
+      "description": "Health check endpoints only",
+      "endpoints": [
+        "/api/health",
+        "/api/healthz",
+        "/api/health/ready",
+        "/api/health/live",
+        "/api/health/detailed"
+      ],
+      "methods": ["GET"],
+      "skipCORS": true,
+      "skipWebRTC": true
+    },
+    "api-coverage": {
+      "description": "API endpoint coverage test",
+      "endpoints": [
+        "/api/graph",
+        "/api/state/current",
+        "/api/flows",
+        "/api/device/validate"
+      ],
+      "methods": ["GET", "POST"],
+      "skipCORS": false,
+      "skipWebRTC": true
+    }
+  },
+  "monitoring": {
+    "alerts": {
+      "successRateBelowThreshold": {
+        "enabled": true,
+        "threshold": 80,
+        "channels": ["slack", "email"]
+      },
+      "responseTimeHigh": {
+        "enabled": true,
+        "threshold": 5000,
+        "channels": ["slack"]
+      },
+      "endpointDown": {
+        "enabled": true,
+        "channels": ["slack", "email", "pagerduty"]
+      },
+      "corsFailure": {
+        "enabled": true,
+        "channels": ["slack"]
+      },
+      "webrtcFailure": {
+        "enabled": true,
+        "channels": ["slack", "email"]
+      }
+    },
+    "reporting": {
+      "dailySummary": {
+        "enabled": true,
+        "recipients": ["team@example.com"]
+      },
+      "weeklyReport": {
+        "enabled": true,
+        "recipients": ["stakeholders@example.com", "team@example.com"]
+      },
+      "monthlyTrends": {
+        "enabled": true,
+        "recipients": ["management@example.com"]
+      }
+    }
+  }
+}

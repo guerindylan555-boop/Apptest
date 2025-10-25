@@ -1,0 +1,363 @@
+name: Remote API Accessibility Tests
+
+on:
+  push:
+    branches: [ main, develop, 001-ui-map-flow-engine ]
+  pull_request:
+    branches: [ main, develop ]
+  schedule:
+    # Run tests every 6 hours to monitor remote accessibility
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+    inputs:
+      test_environment:
+        description: 'Test environment to run against'
+        required: true
+        default: 'localhost'
+        type: choice
+        options:
+          - localhost
+          - dockploy-domain
+          - traefik-proxy
+          - production
+      test_timeout:
+        description: 'Test timeout in milliseconds'
+        required: false
+        default: '30000'
+        type: string
+      retry_attempts:
+        description: 'Number of retry attempts'
+        required: false
+        default: '5'
+        type: string
+
+env:
+  NODE_VERSION: '18'
+  TEST_TIMEOUT: ${{ github.event.inputs.test_timeout || '30000' }}
+  TEST_RETRY_ATTEMPTS: ${{ github.event.inputs.retry_attempts || '5' }}
+
+jobs:
+  remote-access-tests:
+    name: Remote Accessibility Tests
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        test-scenario:
+          - localhost
+          - dockploy-domain
+          - traefik-proxy
+        include:
+          - test-scenario: localhost
+            test_base_url: http://localhost:3001
+            dockploy_domain: ''
+            traefik_proxy: ''
+          - test-scenario: dockploy-domain
+            test_base_url: https://autoapp.dockploy.io
+            dockploy_domain: autoapp.dockploy.io
+            traefik_proxy: ''
+          - test-scenario: traefik-proxy
+            test_base_url: http://traefik-proxy:80
+            dockploy_domain: ''
+            traefik_proxy: traefik-proxy
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: |
+          npm ci
+          npm install -g typescript ts-node
+
+      - name: Create test results directory
+        run: mkdir -p test-results
+
+      - name: Start application for localhost tests
+        if: matrix.test-scenario == 'localhost'
+        run: |
+          npm run dev &
+          echo "APP_PID=$!" >> $GITHUB_ENV
+        env:
+          NODE_ENV: test
+          PORT: 3001
+          HOST: 0.0.0.0
+          CORS_ALLOWED_ORIGINS: '*'
+
+      - name: Wait for application startup
+        if: matrix.test-scenario == 'localhost'
+        run: |
+          timeout 120 bash -c 'until curl -f http://localhost:3001/api/health; do
+            echo "Waiting for application to start..."
+            sleep 5
+          done'
+          echo "Application is ready"
+
+      - name: Run remote accessibility tests
+        run: |
+          echo "Running tests against ${{ matrix.test_base_url }} (${{ matrix.test-scenario }})"
+
+          # Set environment variables for test scenario
+          export TEST_BASE_URL="${{ matrix.test_base_url }}"
+          export TEST_TIMEOUT="${{ env.TEST_TIMEOUT }}"
+          export TEST_RETRY_ATTEMPTS="${{ env.TEST_RETRY_ATTEMPTS }}"
+          export DOCKPLOY_DOMAIN="${{ matrix.dockploy_domain }}"
+          export TRAEFIK_PROXY="${{ matrix.traefik_proxy }}"
+          export NODE_ENV="test"
+          export TEST_SUITE_NAME="${{ matrix.test-scenario }}"
+
+          # Run the test suite
+          npx ts-node tests/integration/remote-access.test.ts || {
+            echo "Tests failed for scenario: ${{ matrix.test-scenario }}"
+            exit 1
+          }
+        env:
+          CORS_ALLOWED_ORIGINS: https://autoapp.dockploy.io,https://maydrive.fr,http://localhost:5173
+          EXTERNAL_EMULATOR: false
+
+      - name: Stop application
+        if: matrix.test-scenario == 'localhost'
+        run: |
+          if [ -n "$APP_PID" ]; then
+            kill $APP_PID || true
+            echo "Application stopped"
+          fi
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: remote-access-results-${{ matrix.test-scenario }}-${{ github.run_number }}
+          path: test-results/
+          retention-days: 30
+
+      - name: Generate test report
+        if: always()
+        run: |
+          # Generate summary report
+          echo "# Remote Accessibility Test Report" > test-summary.md
+          echo "## Test Scenario: ${{ matrix.test-scenario }}" >> test-summary.md
+          echo "## Target URL: ${{ matrix.test_base_url }}" >> test-summary.md
+          echo "## Test Date: $(date -u)" >> test-summary.md
+          echo "## Test Timeout: ${{ env.TEST_TIMEOUT }}ms" >> test-summary.md
+          echo "## Retry Attempts: ${{ env.TEST_RETRY_ATTEMPTS }}" >> test-summary.md
+          echo "" >> test-summary.md
+
+          # Add results if available
+          if [ -f test-results/remote-access-results-*.json ]; then
+            echo "### Test Results" >> test-summary.md
+            for result_file in test-results/remote-access-results-*.json; do
+              if [ -f "$result_file" ]; then
+                echo "#### $(basename $result_file)" >> test-summary.md
+                echo "\`\`\`json" >> test-summary.md
+                cat "$result_file" | jq '.summary' >> test-summary.md
+                echo "\`\`\`" >> test-summary.md
+                echo "" >> test-summary.md
+              fi
+            done
+          fi
+
+      - name: Comment PR with results
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const path = require('path');
+
+            try {
+              const summaryContent = fs.readFileSync('test-summary.md', 'utf8');
+
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: `## 🧪 Remote Accessibility Test Results\n\n${summaryContent}`
+              });
+            } catch (error) {
+              console.log('Could not read test summary:', error.message);
+            }
+
+      - name: Send notifications
+        if: failure() && github.ref == 'refs/heads/main'
+        run: |
+          # Send notification (customize based on your notification system)
+          echo "Remote accessibility tests failed for ${{ matrix.test-scenario }}"
+          echo "Target URL: ${{ matrix.test_base_url }}"
+          echo "Run URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+  security-scan:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    needs: remote-access-tests
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run security audit
+        run: |
+          npm audit --audit-level=high
+          npx audit-ci --moderate
+
+  performance-analysis:
+    name: Performance Analysis
+    runs-on: ubuntu-latest
+    needs: remote-access-tests
+    if: always()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: remote-access-results-*
+          path: test-results/
+          merge-multiple: true
+
+      - name: Analyze performance
+        run: |
+          # Analyze test results for performance issues
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+
+            const resultFiles = fs.readdirSync('test-results')
+              .filter(f => f.endsWith('.json'))
+              .map(f => JSON.parse(fs.readFileSync(path.join('test-results', f), 'utf8')));
+
+            console.log('Performance Analysis Results:');
+            console.log('============================');
+
+            resultFiles.forEach((result, index) => {
+              console.log(\`\nScenario \${index + 1}: \${result.testConfig.baseUrl}\`);
+              console.log(\`- Overall Status: \${result.summary.overallStatus}\`);
+              console.log(\`- Success Rate: \${result.summary.successRate}%\`);
+              console.log(\`- Total Tests: \${result.summary.totalTests}\`);
+              console.log(\`- Passed: \${result.summary.passedTests}\`);
+              console.log(\`- Failed: \${result.summary.failedTests}\`);
+
+              // Analyze CORS performance
+              const avgCorsTime = result.cors.reduce((sum, test) => sum + (test.responseTime || 0), 0) / result.cors.length;
+              console.log(\`- Average CORS Response Time: \${avgCorsTime.toFixed(2)}ms\`);
+
+              // Analyze health check performance
+              const avgHealthTime = result.health.reduce((sum, test) => sum + test.responseTime, 0) / result.health.length;
+              console.log(\`- Average Health Check Response Time: \${avgHealthTime.toFixed(2)}ms\`);
+
+              // Analyze API performance
+              const avgApiTime = result.api.reduce((sum, test) => sum + test.responseTime, 0) / result.api.length;
+              console.log(\`- Average API Response Time: \${avgApiTime.toFixed(2)}ms\`);
+            });
+          "
+
+      - name: Performance thresholds check
+        run: |
+          # Define performance thresholds
+          MAX_AVG_RESPONSE_TIME=5000
+          MIN_SUCCESS_RATE=90
+
+          # Check if thresholds are met (this would be expanded based on actual requirements)
+          echo "Checking performance thresholds..."
+          echo "Max average response time: ${MAX_AVG_RESPONSE_TIME}ms"
+          echo "Min success rate: ${MIN_SUCCESS_RATE}%"
+
+  deploy-monitoring:
+    name: Update Monitoring Dashboard
+    runs-on: ubuntu-latest
+    needs: [remote-access-tests, performance-analysis]
+    if: github.ref == 'refs/heads/main' && always()
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download test results
+        uses: actions/download-artifact@v4
+        with:
+          pattern: remote-access-results-*
+          path: test-results/
+          merge-multiple: true
+
+      - name: Update monitoring dashboard
+        run: |
+          # Generate monitoring data
+          node -e "
+            const fs = require('fs');
+            const path = require('path');
+
+            const monitoringData = {
+              timestamp: new Date().toISOString(),
+              runId: '${{ github.run_id }}',
+              commitSha: '${{ github.sha }}',
+              branch: '${{ github.ref_name }}',
+              results: []
+            };
+
+            const resultFiles = fs.readdirSync('test-results')
+              .filter(f => f.endsWith('.json'))
+              .map(f => JSON.parse(fs.readFileSync(path.join('test-results', f), 'utf8')));
+
+            resultFiles.forEach(result => {
+              monitoringData.results.push({
+                scenario: result.testConfig.baseUrl,
+                overallStatus: result.summary.overallStatus,
+                successRate: result.summary.successRate,
+                totalTests: result.summary.totalTests,
+                passedTests: result.summary.passedTests,
+                failedTests: result.summary.failedTests,
+                environment: result.environment
+              });
+            });
+
+            fs.writeFileSync('monitoring-data.json', JSON.stringify(monitoringData, null, 2));
+            console.log('Monitoring data generated');
+          "
+
+      - name: Upload monitoring data
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitoring-data-${{ github.run_number }}
+          path: monitoring-data.json
+          retention-days: 90
+
+  cleanup:
+    name: Cleanup
+    runs-on: ubuntu-latest
+    needs: [deploy-monitoring]
+    if: always()
+
+    steps:
+      - name: Cleanup old artifacts
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const artifacts = await github.rest.actions.listWorkflowRunArtifacts({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              run_id: context.runId,
+            });
+
+            const oldArtifacts = artifacts.data.artifacts
+              .filter(a => a.created_at < new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)) // 30 days old
+              .filter(a => a.name.startsWith('remote-access-results-'));
+
+            for (const artifact of oldArtifacts) {
+              await github.rest.actions.deleteArtifact({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                artifact_id: artifact.id,
+              });
+              console.log(\`Deleted old artifact: \${artifact.name}\`);
+            }

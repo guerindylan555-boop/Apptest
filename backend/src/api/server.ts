@@ -2,32 +2,26 @@ import express from 'express';
 import type { Express } from 'express';
 import cors from 'cors';
 import { apiRouter } from './routes';
+import { corsMiddleware, developmentCorsMiddleware, productionCorsMiddleware } from '../middleware/cors';
 
 export const createServer = (): Express => {
   const app = express();
 
   app.disable('x-powered-by');
 
-  const defaultAllowedOrigins = [
-    'http://127.0.0.1:5173',
-    'http://localhost:5173',
-    'http://127.0.0.1:3001',
-    'http://localhost:3001'
-  ];
-
-  const envOrigins = process.env.CORS_ALLOWED_ORIGINS?.split(',')
-    .map((value) => value.trim())
-    .filter((value) => value.length > 0);
-
-  const corsOptions =
-    process.env.CORS_ALLOWED_ORIGINS?.trim() === '*'
-      ? { origin: '*', credentials: false }
-      : {
-          origin: envOrigins && envOrigins.length > 0 ? envOrigins : defaultAllowedOrigins,
-          credentials: false
-        };
-
-  app.use(cors(corsOptions));
+  // Select CORS middleware based on environment
+  const environment = process.env.NODE_ENV || 'development';
+  switch (environment) {
+    case 'production':
+      app.use(productionCorsMiddleware);
+      break;
+    case 'development':
+      app.use(developmentCorsMiddleware);
+      break;
+    default:
+      app.use(corsMiddleware);
+      break;
+  }
 
   app.use(express.json());
 

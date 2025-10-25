@@ -1,19 +1,31 @@
 {
   "name": "backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "Backend service for AutoApp UI Map & Intelligent Flow Engine - Android UI state capture and automation",
   "main": "dist/index.js",
   "scripts": {
     "build": "tsc",
     "start": "node dist/index.js",
     "dev": "ts-node-dev --respawn --transpile-only src/index.ts",
-    "lint": "eslint \"src/**/*.ts\"",
+    "lint": "eslint \"src/**/*.ts\" --max-warnings 0",
+    "lint:fix": "eslint \"src/**/*.ts\" --fix",
     "format": "prettier --write \"src/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\"",
     "start:prod": "node dist/index.js",
     "streamer": "ws-scrcpy --address 0.0.0.0 --port 8081 --serial emulator-5555 --disable-control",
-    "check": "npm run lint && npm run build"
+    "check": "npm run lint && npm run build",
+    "install:android-deps": "npm install appium -g && appium driver install uiautomator2",
+    "test:remote": "ts-node tests/integration/run-tests.ts",
+    "test:remote:dev": "ts-node tests/integration/run-tests.ts --environment development --verbose",
+    "test:remote:staging": "ts-node tests/integration/run-tests.ts --environment staging --verbose --save",
+    "test:remote:prod": "ts-node tests/integration/run-tests.ts --environment production --verbose --save",
+    "test:remote:custom": "ts-node tests/integration/run-tests.ts",
+    "test:remote:health": "ts-node tests/integration/run-tests.ts --scenario health-only",
+    "test:remote:cors": "ts-node tests/integration/run-tests.ts --scenario cors-only",
+    "test:remote:api": "ts-node tests/integration/run-tests.ts --scenario api-coverage",
+    "test:remote:local": "ts-node tests/integration/run-tests.ts --url http://localhost:3001 --verbose"
   },
-  "keywords": [],
+  "keywords": ["android", "automation", "uiautomator2", "appium", "ui-testing", "flow-engine", "emulator"],
   "author": "",
   "license": "ISC",
   "devDependencies": {
@@ -23,6 +35,9 @@
     "@types/node": "^24.7.0",
     "@types/uuid": "^10.0.0",
     "@types/xml2js": "^0.4.14",
+    "@types/axios": "^0.14.4",
+    "@types/sharp": "^0.32.0",
+    "@types/canvas": "^2.11.0",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "eslint": "^8.57.1",
@@ -38,6 +53,13 @@
     "express": "^5.1.0",
     "multer": "^2.0.2",
     "xml2js": "^0.6.2",
-    "uuid": "^10.0.0"
+    "uuid": "^10.0.0",
+    "appium": "^2.11.3",
+    "webdriverio": "^9.2.14",
+    "axios": "^1.7.7",
+    "sharp": "^0.33.5",
+    "canvas": "^2.11.2",
+    "adbkit": "^3.2.6",
+    "png-js": "^1.0.0"
   }
 }

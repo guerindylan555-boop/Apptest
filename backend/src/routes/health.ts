@@ -2,7 +2,8 @@
  * Health Check Routes
  *
  * System health monitoring endpoints for the discovery system.
- * Provides /api/healthz endpoint for constitution compliance.
+ * Provides comprehensive health monitoring with <500ms performance budget
+ * in compliance with constitution §10 requirements.
  */
 
 import { Router, Request, Response } from 'express';
@@ -10,6 +11,7 @@ import { createADBConnection } from '../utils/adb';
 import { getGraphConfig, getConfigSummary } from '../config/discovery';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { webrtcManager } from '../services/webrtc-manager';
 
 const router = Router();
 
@@ -23,6 +25,7 @@ interface HealthResponse {
   version: string;
   services: {
     adb: ServiceHealth;
+    webrtc: ServiceHealth;
     graph: ServiceHealth;
     storage: ServiceHealth;
   };
@@ -30,6 +33,11 @@ interface HealthResponse {
     captureTime?: number;
     apiResponseTime?: number;
     memoryUsage?: number;
+    heapTotal?: number;
+    externalMemory?: number;
+    rss?: number;
+    cpuUser?: number;
+    cpuSystem?: number;
   };
   config?: {
     featureFlags: Record<string, boolean>;
@@ -41,23 +49,85 @@ interface ServiceHealth {
   status: 'ok' | 'degraded' | 'error';
   message?: string;
   details?: Record<string, any>;
+  responseTime?: string;
 }
 
 /**
- * Main health check endpoint (/api/healthz)
+ * Detailed health response interface
+ */
+interface DetailedHealthResponse extends HealthResponse {
+  system: {
+    nodeVersion: string;
+    platform: string;
+    arch: string;
+    memory: {
+      total: number;
+      free: number;
+      used: number;
+      usage: number;
+    };
+    cpu: {
+      loadAvg: number[];
+    };
+  };
+  endpoints: {
+    adb: ServiceHealth;
+    webrtc: ServiceHealth;
+    storage: ServiceHealth;
+    graph: ServiceHealth;
+  };
+  configuration: {
+    webrtcPublicUrl?: string;
+    externalEmulator: boolean;
+    enableFrida: boolean;
+    logLevel: string;
+  };
+}
+
+const HEALTH_CHECK_TIMEOUT = 450; // ms, leaving 50ms margin for response overhead
+
+/**
+ * Helper function to run health checks with timeout
+ */
+async function runHealthCheck<T>(check: () => Promise<T>, timeout: number = HEALTH_CHECK_TIMEOUT): Promise<T> {
+  return Promise.race([
+    check(),
+    new Promise<T>((_, reject) =>
+      setTimeout(() => reject(new Error('Health check timeout')), timeout)
+    )
+  ]);
+}
+
+/**
+ * Main health check endpoint (/api/healthz) - Constitution mandated
+ * Performance budget: <500ms total response time
  */
 router.get('/healthz', async (req: Request, res: Response) => {
+  const startTime = Date.now();
+
+  // Set overall timeout for health check
+  const healthTimeout = setTimeout(() => {
+    if (!res.headersSent) {
+      res.status(503).json({
+        status: 'error',
+        timestamp: new Date().toISOString(),
+        message: 'Health check timeout (>500ms)',
+        responseTime: `${Date.now() - startTime}ms`
+      });
+    }
+  }, 500);
+
   try {
-    const startTime = Date.now();
     const health: HealthResponse = {
       status: 'ok',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       version: process.env.npm_package_version || '1.0.0',
       services: {
-        adb: await checkADBHealth(),
-        graph: await checkGraphHealth(),
-        storage: await checkStorageHealth()
+        adb: await runHealthCheck(() => checkADBHealth()),
+        webrtc: await runHealthCheck(() => checkWebRTCHealth()),
+        graph: await runHealthCheck(() => checkGraphHealth()),
+        storage: await runHealthCheck(() => checkStorageHealth())
       }
     };
 
@@ -88,13 +158,36 @@ router.get('/healthz', async (req: Request, res: Response) => {
       };
     }
 
-    // Add response time
+    // Add response time header and track performance
     const responseTime = Date.now() - startTime;
     res.setHeader('X-Response-Time', `${responseTime}ms`);
 
+    // Update performance metrics
+    updatePerformanceMetrics(responseTime);
+
+    // Log structured health check result (constitution §10)
+    console.log(JSON.stringify({
+      service: 'backend',
+      event: 'health_check',
+      severity: hasErrors ? 'error' : hasDegraded ? 'warn' : 'info',
+      responseTime: `${responseTime}ms`,
+      status: health.status,
+      timestamp: new Date().toISOString()
+    }));
+
+    clearTimeout(healthTimeout);
     res.json(health);
   } catch (error) {
-    console.error('Health check failed:', error);
+    clearTimeout(healthTimeout);
+
+    console.error(JSON.stringify({
+      service: 'backend',
+      event: 'health_check_error',
+      severity: 'error',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      responseTime: `${Date.now() - startTime}ms`,
+      timestamp: new Date().toISOString()
+    }));
 
     const errorHealth: HealthResponse = {
       status: 'error',
@@ -103,12 +196,15 @@ router.get('/healthz', async (req: Request, res: Response) => {
       version: process.env.npm_package_version || '1.0.0',
       services: {
         adb: { status: 'error', message: 'Health check failed' },
+        webrtc: { status: 'error', message: 'Health check failed' },
         graph: { status: 'error', message: 'Health check failed' },
         storage: { status: 'error', message: 'Health check failed' }
       }
     };
 
-    res.status(503).json(errorHealth);
+    if (!res.headersSent) {
+      res.status(503).json(errorHealth);
+    }
   }
 });
 
@@ -116,6 +212,7 @@ router.get('/healthz', async (req: Request, res: Response) => {
  * Check ADB connection health
  */
 async function checkADBHealth(): Promise<ServiceHealth> {
+  const startTime = Date.now();
   try {
     const adb = createADBConnection();
 
@@ -125,12 +222,12 @@ async function checkADBHealth(): Promise<ServiceHealth> {
       return {
         status: 'error',
         message: 'ADB device not connected',
+        responseTime: `${Date.now() - startTime}ms`,
         details: { serial: process.env.ANDROID_SERIAL || 'emulator-5554' }
       };
     }
 
     // Check device responsiveness
-    const startTime = Date.now();
     const activity = await adb.getCurrentActivity();
     const responseTime = Date.now() - startTime;
 
@@ -144,8 +241,8 @@ async function checkADBHealth(): Promise<ServiceHealth> {
       return {
         status: 'degraded',
         message: 'ADB response time is slow',
+        responseTime: `${responseTime}ms`,
         details: {
-          responseTime: `${responseTime}ms`,
           currentActivity: activity,
           androidVersion: properties['ro.build.version.release'],
           deviceModel: properties['ro.product.model']
@@ -156,8 +253,8 @@ async function checkADBHealth(): Promise<ServiceHealth> {
     return {
       status: 'ok',
       message: 'ADB connection healthy',
+      responseTime: `${responseTime}ms`,
       details: {
-        responseTime: `${responseTime}ms`,
         currentActivity: activity,
         androidVersion: properties['ro.build.version.release'],
         deviceModel: properties['ro.product.model']
@@ -166,7 +263,83 @@ async function checkADBHealth(): Promise<ServiceHealth> {
   } catch (error) {
     return {
       status: 'error',
-      message: `ADB health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      message: `ADB health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      responseTime: `${Date.now() - startTime}ms`
+    };
+  }
+}
+
+/**
+ * Check WebRTC connection health
+ */
+async function checkWebRTCHealth(): Promise<ServiceHealth> {
+  const startTime = Date.now();
+  try {
+    const webrtcConfig = {
+      PUBLIC_URL: process.env.EMULATOR_WEBRTC_PUBLIC_URL,
+      ICE_SERVERS: process.env.EMULATOR_WEBRTC_ICE_SERVERS,
+      GRPC_ENDPOINT: process.env.EMULATOR_GRPC_ENDPOINT
+    };
+
+    // Check if WebRTC configuration is set
+    if (!webrtcConfig.PUBLIC_URL) {
+      return {
+        status: 'degraded',
+        message: 'WebRTC public URL not configured',
+        responseTime: `${Date.now() - startTime}ms`,
+        details: { config: webrtcConfig }
+      };
+    }
+
+    // Check WebRTC manager availability (lightweight check)
+    const connectionStatus = webrtcManager.getConnectionState();
+    const responseTime = Date.now() - startTime;
+
+    // Check if connection is healthy
+    if (connectionStatus === 'connected') {
+      return {
+        status: 'ok',
+        message: 'WebRTC connection healthy',
+        responseTime: `${responseTime}ms`,
+        details: {
+          connectionStatus,
+          config: {
+            publicUrl: webrtcConfig.PUBLIC_URL,
+            hasIceServers: !!webrtcConfig.ICE_SERVERS,
+            hasGrpcEndpoint: !!webrtcConfig.GRPC_ENDPOINT
+          }
+        }
+      };
+    } else if (connectionStatus === 'connecting' || connectionStatus === 'disconnected') {
+      return {
+        status: 'degraded',
+        message: `WebRTC status: ${connectionStatus}`,
+        responseTime: `${responseTime}ms`,
+        details: {
+          connectionStatus,
+          config: {
+            publicUrl: webrtcConfig.PUBLIC_URL,
+            hasIceServers: !!webrtcConfig.ICE_SERVERS,
+            hasGrpcEndpoint: !!webrtcConfig.GRPC_ENDPOINT
+          }
+        }
+      };
+    } else {
+      return {
+        status: 'error',
+        message: `WebRTC error state: ${connectionStatus}`,
+        responseTime: `${responseTime}ms`,
+        details: {
+          connectionStatus,
+          config: webrtcConfig
+        }
+      };
+    }
+  } catch (error) {
+    return {
+      status: 'error',
+      message: `WebRTC health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      responseTime: `${Date.now() - startTime}ms`
     };
   }
 }
@@ -175,6 +348,7 @@ async function checkADBHealth(): Promise<ServiceHealth> {
  * Check graph file health
  */
 async function checkGraphHealth(): Promise<ServiceHealth> {
+  const startTime = Date.now();
   try {
     const config = getGraphConfig();
 
@@ -185,6 +359,7 @@ async function checkGraphHealth(): Promise<ServiceHealth> {
       return {
         status: 'ok',
         message: 'Graph file not found (new session)',
+        responseTime: `${Date.now() - startTime}ms`,
         details: { graphPath: config.graphPath }
       };
     }
@@ -198,6 +373,7 @@ async function checkGraphHealth(): Promise<ServiceHealth> {
       return {
         status: 'degraded',
         message: 'Graph file is large',
+        responseTime: `${Date.now() - startTime}ms`,
         details: {
           graphPath: config.graphPath,
           fileSize: `${Math.round(fileSize / 1024 / 1024 * 100) / 100}MB`,
@@ -220,6 +396,7 @@ async function checkGraphHealth(): Promise<ServiceHealth> {
         return {
           status: 'degraded',
           message: 'Graph is approaching size limits',
+          responseTime: `${Date.now() - startTime}ms`,
           details: {
             stateCount,
             transitionCount,
@@ -233,6 +410,7 @@ async function checkGraphHealth(): Promise<ServiceHealth> {
       return {
         status: 'ok',
         message: 'Graph file healthy',
+        responseTime: `${Date.now() - startTime}ms`,
         details: {
           stateCount,
           transitionCount,
@@ -245,6 +423,7 @@ async function checkGraphHealth(): Promise<ServiceHealth> {
       return {
         status: 'error',
         message: 'Graph file is corrupted',
+        responseTime: `${Date.now() - startTime}ms`,
         details: {
           graphPath: config.graphPath,
           error: parseError instanceof Error ? parseError.message : 'Parse error'
@@ -254,7 +433,8 @@ async function checkGraphHealth(): Promise<ServiceHealth> {
   } catch (error) {
     return {
       status: 'error',
-      message: `Graph health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      message: `Graph health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      responseTime: `${Date.now() - startTime}ms`
     };
   }
 }
@@ -263,6 +443,7 @@ async function checkGraphHealth(): Promise<ServiceHealth> {
  * Check storage health
  */
 async function checkStorageHealth(): Promise<ServiceHealth> {
+  const startTime = Date.now();
   try {
     const config = getGraphConfig();
     const paths = [
@@ -328,6 +509,7 @@ async function checkStorageHealth(): Promise<ServiceHealth> {
       return {
         status: 'error',
         message: 'Storage access errors detected',
+        responseTime: `${Date.now() - startTime}ms`,
         details: results
       };
     }
@@ -336,6 +518,7 @@ async function checkStorageHealth(): Promise<ServiceHealth> {
       return {
         status: 'degraded',
         message: 'Storage issues detected',
+        responseTime: `${Date.now() - startTime}ms`,
         details: results
       };
     }
@@ -343,14 +526,43 @@ async function checkStorageHealth(): Promise<ServiceHealth> {
     return {
       status: 'ok',
       message: 'Storage healthy',
+      responseTime: `${Date.now() - startTime}ms`,
       details: results
     };
   } catch (error) {
     return {
       status: 'error',
-      message: `Storage health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`
+      message: `Storage health check failed: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      responseTime: `${Date.now() - startTime}ms`
     };
   }
+}
+
+// Performance tracking for response times
+const performanceMetrics = {
+  averageResponseTime: 0,
+  responseTimeHistory: [] as number[],
+  maxHistorySize: 100,
+  captureTime: 0,
+  apiResponseTime: 0
+};
+
+/**
+ * Update performance metrics with new response time
+ */
+function updatePerformanceMetrics(responseTime: number): void {
+  performanceMetrics.responseTimeHistory.push(responseTime);
+
+  // Keep only last N measurements
+  if (performanceMetrics.responseTimeHistory.length > performanceMetrics.maxHistorySize) {
+    performanceMetrics.responseTimeHistory.shift();
+  }
+
+  // Calculate average
+  performanceMetrics.averageResponseTime = Math.round(
+    performanceMetrics.responseTimeHistory.reduce((sum, time) => sum + time, 0) /
+    performanceMetrics.responseTimeHistory.length
+  );
 }
 
 /**
@@ -359,60 +571,230 @@ async function checkStorageHealth(): Promise<ServiceHealth> {
 async function getPerformanceMetrics(): Promise<HealthResponse['performance']> {
   try {
     const memUsage = process.memoryUsage();
+    const cpuUsage = process.cpuUsage();
 
     return {
       memoryUsage: memUsage.heapUsed,
-      // These would be populated by actual performance monitoring
-      // captureTime: getAverageCaptureTime(),
-      // apiResponseTime: getAverageAPIResponseTime()
+      apiResponseTime: performanceMetrics.averageResponseTime,
+      captureTime: performanceMetrics.captureTime,
+      // Additional performance data
+      heapTotal: memUsage.heapTotal,
+      externalMemory: memUsage.external,
+      rss: memUsage.rss,
+      cpuUser: cpuUsage.user,
+      cpuSystem: cpuUsage.system
     };
   } catch (error) {
     return {
-      memoryUsage: 0
+      memoryUsage: 0,
+      apiResponseTime: 0,
+      captureTime: 0
     };
   }
 }
 
 /**
- * Readiness probe (for Kubernetes/container orchestration)
+ * Export performance tracking for other modules to use
+ */
+export function recordResponseTime(responseTime: number): void {
+  updatePerformanceMetrics(responseTime);
+}
+
+export function getAverageResponseTime(): number {
+  return performanceMetrics.averageResponseTime;
+}
+
+/**
+ * Readiness probe (/api/health/ready) - Container orchestration
+ * Checks if service is ready to accept traffic
  */
 router.get('/ready', async (req: Request, res: Response) => {
+  const startTime = Date.now();
   try {
-    const adbHealth = await checkADBHealth();
-    const storageHealth = await checkStorageHealth();
+    const adbHealth = await runHealthCheck(() => checkADBHealth());
+    const storageHealth = await runHealthCheck(() => checkStorageHealth());
+    const webrtcHealth = await runHealthCheck(() => checkWebRTCHealth());
 
-    if (adbHealth.status === 'error' || storageHealth.status === 'error') {
+    const criticalServices = [adbHealth, storageHealth, webrtcHealth];
+    const hasErrors = criticalServices.some(s => s.status === 'error');
+
+    if (hasErrors) {
+      const responseTime = Date.now() - startTime;
+      res.setHeader('X-Response-Time', `${responseTime}ms`);
       return res.status(503).json({
         status: 'not ready',
         timestamp: new Date().toISOString(),
-        services: { adb: adbHealth, storage: storageHealth }
+        responseTime: `${responseTime}ms`,
+        services: { adb: adbHealth, storage: storageHealth, webrtc: webrtcHealth }
       });
     }
 
+    const responseTime = Date.now() - startTime;
+    res.setHeader('X-Response-Time', `${responseTime}ms`);
     res.json({
       status: 'ready',
       timestamp: new Date().toISOString(),
-      services: { adb: adbHealth, storage: storageHealth }
+      responseTime: `${responseTime}ms`,
+      services: { adb: adbHealth, storage: storageHealth, webrtc: webrtcHealth }
     });
   } catch (error) {
+    const responseTime = Date.now() - startTime;
+    res.setHeader('X-Response-Time', `${responseTime}ms`);
     res.status(503).json({
       status: 'not ready',
       timestamp: new Date().toISOString(),
+      responseTime: `${responseTime}ms`,
       error: error instanceof Error ? error.message : 'Unknown error'
     });
   }
 });
 
 /**
- * Liveness probe (for Kubernetes/container orchestration)
+ * Liveness probe (/api/health/live) - Container orchestration
+ * Basic liveness check to determine if container should be restarted
  */
 router.get('/live', (req: Request, res: Response) => {
+  const responseTime = Date.now();
+  res.setHeader('X-Response-Time', `${responseTime}ms`);
   res.json({
     status: 'alive',
     timestamp: new Date().toISOString(),
+    responseTime: `${responseTime}ms`,
     uptime: process.uptime(),
     pid: process.pid
   });
+});
+
+/**
+ * Detailed health check (/api/health/detailed) - Comprehensive health report
+ * Provides complete system health information with detailed metrics
+ */
+router.get('/detailed', async (req: Request, res: Response) => {
+  const startTime = Date.now();
+
+  // Set extended timeout for detailed health check (1 second)
+  const healthTimeout = setTimeout(() => {
+    if (!res.headersSent) {
+      res.status(503).json({
+        status: 'error',
+        timestamp: new Date().toISOString(),
+        message: 'Detailed health check timeout (>1000ms)',
+        responseTime: `${Date.now() - startTime}ms`
+      });
+    }
+  }, 1000);
+
+  try {
+    // Gather all service health information
+    const [adbHealth, webrtcHealth, graphHealth, storageHealth] = await Promise.all([
+      runHealthCheck(() => checkADBHealth()),
+      runHealthCheck(() => checkWebRTCHealth()),
+      runHealthCheck(() => checkGraphHealth()),
+      runHealthCheck(() => checkStorageHealth())
+    ]);
+
+    // Get system information
+    const memUsage = process.memoryUsage();
+    const systemInfo = {
+      nodeVersion: process.version,
+      platform: process.platform,
+      arch: process.arch,
+      memory: {
+        total: memUsage.heapTotal,
+        free: memUsage.heapTotal - memUsage.heapUsed,
+        used: memUsage.heapUsed,
+        usage: Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100)
+      },
+      cpu: {
+        loadAvg: require('os').loadavg()
+      }
+    };
+
+    // Get configuration information
+    const config = {
+      webrtcPublicUrl: process.env.EMULATOR_WEBRTC_PUBLIC_URL,
+      externalEmulator: process.env.EXTERNAL_EMULATOR === 'true',
+      enableFrida: process.env.ENABLE_FRIDA === 'true',
+      logLevel: process.env.LOG_LEVEL || 'info'
+    };
+
+    // Determine overall status
+    const allServices = [adbHealth, webrtcHealth, graphHealth, storageHealth];
+    const hasErrors = allServices.some(s => s.status === 'error');
+    const hasDegraded = allServices.some(s => s.status === 'degraded');
+
+    const detailedHealth: DetailedHealthResponse = {
+      status: hasErrors ? 'error' : hasDegraded ? 'degraded' : 'ok',
+      timestamp: new Date().toISOString(),
+      uptime: process.uptime(),
+      version: process.env.npm_package_version || '1.0.0',
+      services: {
+        adb: adbHealth,
+        webrtc: webrtcHealth,
+        graph: graphHealth,
+        storage: storageHealth
+      },
+      system: systemInfo,
+      endpoints: {
+        adb: adbHealth,
+        webrtc: webrtcHealth,
+        storage: storageHealth,
+        graph: graphHealth
+      },
+      configuration: config,
+      performance: await getPerformanceMetrics()
+    };
+
+    const responseTime = Date.now() - startTime;
+    res.setHeader('X-Response-Time', `${responseTime}ms`);
+
+    // Log structured detailed health check result
+    console.log(JSON.stringify({
+      service: 'backend',
+      event: 'detailed_health_check',
+      severity: hasErrors ? 'error' : hasDegraded ? 'warn' : 'info',
+      responseTime: `${responseTime}ms`,
+      status: detailedHealth.status,
+      timestamp: new Date().toISOString()
+    }));
+
+    clearTimeout(healthTimeout);
+
+    // Set appropriate HTTP status
+    if (hasErrors) {
+      res.status(503);
+    } else if (hasDegraded) {
+      res.status(200);
+    } else {
+      res.status(200);
+    }
+
+    res.json(detailedHealth);
+  } catch (error) {
+    clearTimeout(healthTimeout);
+
+    const responseTime = Date.now() - startTime;
+    res.setHeader('X-Response-Time', `${responseTime}ms`);
+
+    console.error(JSON.stringify({
+      service: 'backend',
+      event: 'detailed_health_check_error',
+      severity: 'error',
+      error: error instanceof Error ? error.message : 'Unknown error',
+      responseTime: `${responseTime}ms`,
+      timestamp: new Date().toISOString()
+    }));
+
+    if (!res.headersSent) {
+      res.status(503).json({
+        status: 'error',
+        timestamp: new Date().toISOString(),
+        responseTime: `${responseTime}ms`,
+        message: 'Detailed health check failed',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  }
 });
 
 export default router;
