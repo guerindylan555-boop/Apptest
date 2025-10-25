@@ -167,9 +167,8 @@ const EmulatorPage = () => {
           display: 'grid',
           gridTemplateColumns: '1fr 480px',
           gap: '1.5rem',
-          flex: '0 1 auto', // Don't grow beyond content
-          maxHeight: '60vh', // Maximum height for this section
-          minHeight: '400px' // Minimum height
+          flex: '1', // Allow this section to grow
+          minHeight: '400px'
         }}>
           {/* Video Stream Section */}
           <div style={{
@@ -224,15 +223,14 @@ const EmulatorPage = () => {
             {/* Stream Viewer Direct */}
             <div style={{
               flex: 1,
-              maxHeight: '450px', // Maximum height for stream
-              minHeight: '350px', // Minimum height for stream
               display: 'flex',
               justifyContent: 'center',
               alignItems: 'center',
               borderRadius: '0.75rem',
               overflow: 'hidden',
               border: '1px solid #334155',
-              backgroundColor: '#000'
+              backgroundColor: '#000',
+              minHeight: '300px' // Minimum height but allow growth
             }}>
               <StreamViewer state={emulatorState} streamTicket={streamTicket} />
             </div>
@@ -240,8 +238,8 @@ const EmulatorPage = () => {
 
           {/* Discovery Panel Section */}
           <div style={{
-            height: '450px', // Fixed height matching stream
-            minHeight: '350px',
+            height: '600px', // Increased height for better usability
+            minHeight: '400px',
             overflow: 'hidden'
           }}>
             {discoveryEnabled ? (

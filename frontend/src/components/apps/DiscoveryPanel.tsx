@@ -431,16 +431,16 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
       case 'capturing':
       case 'loading':
         return (
-          <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-blue-500"></div>
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
         );
       case 'success':
-        return <CheckCircleIcon className="w-5 h-5 text-green-500" />;
+        return <CheckCircleIcon className="w-4 h-4 text-green-500" />;
       case 'warning':
-        return <ExclamationTriangleIcon className="w-5 h-5 text-yellow-500" />;
+        return <ExclamationTriangleIcon className="w-4 h-4 text-yellow-500" />;
       case 'error':
-        return <XCircleIcon className="w-5 h-5 text-red-500" />;
+        return <XCircleIcon className="w-4 h-4 text-red-500" />;
       default:
-        return <EyeIcon className="w-5 h-5 text-gray-500" />;
+        return <EyeIcon className="w-4 h-4 text-gray-400" />;
     }
   };
 
@@ -451,7 +451,7 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
         <div className="flex items-center justify-between p-4 border-b border-gray-800">
           <h2 className="text-lg font-semibold text-gray-100">Discovery & Flows</h2>
           <div className="flex items-center space-x-2">
-            {getStatusIcon(isCapturing ? 'capturing' : flowError ? 'error' : 'success')}
+            {(isCapturing || flowError) && getStatusIcon(isCapturing ? 'capturing' : 'error')}
             <button
               onClick={() => activeTab === 'discovery' ? refreshGraph() : refreshFlows()}
               disabled={isLoading || flowLoading}
@@ -735,16 +735,16 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
         {showGraphMini && graph && (
           <div className="p-4">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-sm font-semibold text-gray-900">Graph Overview</h3>
-              <span className="text-xs text-gray-500">
+              <h3 className="text-sm font-semibold text-gray-100">Graph Overview</h3>
+              <span className="text-xs text-gray-400">
                 {graph.states.length} states, {graph.transitions.length} transitions
               </span>
             </div>
 
             {/* Simple graph visualization */}
-            <div className="bg-gray-50 rounded p-3 min-h-32">
+            <div className="bg-gray-800 rounded p-3 min-h-32 border border-gray-700">
               {graph.states.length === 0 ? (
-                <p className="text-xs text-gray-500 text-center">
+                <p className="text-xs text-gray-400 text-center">
                   No states captured yet. Take your first snapshot!
                 </p>
               ) : (
@@ -754,7 +754,7 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
                     const activityStates = graph.states.filter(s => s.activity === activity);
                     return (
                       <div key={activity} className="text-xs">
-                        <div className="font-medium text-gray-700 mb-1 truncate">
+                        <div className="font-medium text-gray-200 mb-1 truncate">
                           {activity}
                         </div>
                         <div className="flex flex-wrap gap-1">
@@ -770,12 +770,12 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
                               }}
                               className={`px-2 py-1 rounded cursor-pointer transition-colors ${
                                 selectedState?.id === state.id
-                                  ? 'bg-blue-100 border-blue-300'
+                                  ? 'bg-blue-900 border-blue-600 text-blue-200'
                                   : mergeTarget?.id === state.id
-                                  ? 'bg-purple-100 border-purple-300'
+                                  ? 'bg-purple-900 border-purple-600 text-purple-200'
                                   : currentState?.id === state.id
-                                  ? 'bg-green-100 border-green-300'
-                                  : 'bg-white border-gray-300'
+                                  ? 'bg-green-900 border-green-600 text-green-200'
+                                  : 'bg-gray-700 border-gray-600 text-gray-200'
                               } border text-xs`}
                               title={`${state.activity}\n${state.selectors.length} elements`}
                             >
@@ -803,7 +803,7 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
                   link.click();
                   URL.revokeObjectURL(url);
                 }}
-                className="flex items-center px-2 py-1 text-xs bg-gray-600 text-white rounded hover:bg-gray-700"
+                className="flex items-center px-2 py-1 text-xs bg-gray-700 text-white rounded hover:bg-gray-600 border border-gray-600"
               >
                 <DocumentArrowDownIcon className="w-3 h-3 mr-1" />
                 Export Graph
@@ -815,9 +815,9 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
         ) : (
           <>
             {/* Flow Management UI */}
-            <div className="p-4 border-b border-gray-200">
+            <div className="p-4 border-b border-gray-700">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-semibold text-gray-900">Flow Management</h3>
+                <h3 className="text-sm font-semibold text-gray-100">Flow Management</h3>
                 <button
                   onClick={handleCreateFlow}
                   disabled={flowLoading}
@@ -870,7 +870,7 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
                               {flow.metadata.tags.map((tag, index) => (
                                 <span
                                   key={index}
-                                  className="px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded text-xs"
+                                  className="px-1.5 py-0.5 bg-gray-700 text-gray-300 rounded text-xs border border-gray-600"
                                 >
                                   {tag}
                                 </span>
@@ -885,7 +885,7 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
                               handleExecuteFlow(flow.id);
                             }}
                             disabled={flowLoading}
-                            className="p-1 text-green-600 hover:text-green-800 disabled:opacity-50"
+                            className="p-1 text-green-400 hover:text-green-300 disabled:opacity-50"
                             title="Execute Flow"
                           >
                             <PlayIcon className="w-4 h-4" />
@@ -895,7 +895,7 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
                               e.stopPropagation();
                               setShowFlowEditor(true);
                             }}
-                            className="p-1 text-blue-600 hover:text-blue-800"
+                            className="p-1 text-blue-400 hover:text-blue-300"
                             title="Edit Flow"
                           >
                             <PencilIcon className="w-4 h-4" />
@@ -905,7 +905,7 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
                               e.stopPropagation();
                               handleDeleteFlow(flow.id);
                             }}
-                            className="p-1 text-red-600 hover:text-red-800"
+                            className="p-1 text-red-400 hover:text-red-300"
                             title="Delete Flow"
                           >
                             <XCircleIcon className="w-4 h-4" />
@@ -916,7 +916,7 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
                   ))
                 ) : (
                   <div className="text-center py-8">
-                    <FolderIcon className="w-12 h-12 text-gray-500 mx-auto mb-3" />
+                    <FolderIcon className="w-12 h-12 text-gray-400 mx-auto mb-3" />
                     <p className="text-sm text-gray-400 mb-4">No flows created yet</p>
                     <button
                       onClick={handleCreateFlow}
@@ -933,12 +933,12 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
 
             {/* Flow Details */}
             {selectedFlow && (
-              <div className="p-4 border-b border-gray-200">
-                <h3 className="text-sm font-semibold text-gray-900 mb-3">Flow Details</h3>
+              <div className="p-4 border-b border-gray-700">
+                <h3 className="text-sm font-semibold text-gray-100 mb-3">Flow Details</h3>
                 <div className="space-y-3">
-                  <div className="bg-gray-50 rounded p-3">
-                    <h4 className="text-xs font-medium text-gray-700 mb-2">Entry Point</h4>
-                    <div className="text-xs text-gray-600">
+                  <div className="bg-gray-800 rounded p-3 border border-gray-700">
+                    <h4 className="text-xs font-medium text-gray-200 mb-2">Entry Point</h4>
+                    <div className="text-xs text-gray-300">
                       <span className="font-medium">Type:</span> {selectedFlow.entryPoint.type}
                       {selectedFlow.entryPoint.stateId && (
                         <div>
@@ -964,7 +964,7 @@ export const DiscoveryPanel: React.FC<DiscoveryPanelProps> = ({ className = '' }
                           <ChevronRightIcon className="w-3 h-3 text-gray-400" />
                           <span className="text-gray-300">{step.action.type}</span>
                           {step.critical && (
-                            <span className="px-1 py-0.5 bg-red-100 text-red-600 rounded">Critical</span>
+                            <span className="px-1 py-0.5 bg-red-900 text-red-300 rounded border border-red-700">Critical</span>
                           )}
                         </div>
                       ))}
