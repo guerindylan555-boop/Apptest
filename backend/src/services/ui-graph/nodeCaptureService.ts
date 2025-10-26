@@ -216,12 +216,14 @@ export class NodeCaptureService {
           console.log(`Node ${index}: clickable=${isClickable}, hasText=${hasText}, hasResourceId=${hasResourceId}, text="${textMatch?.[1] || ''}"`);
         }
 
-        // Only create selectors for interactive elements
-        if (isClickable && (hasText || hasResourceId || hasContentDesc)) {
-          console.log(`Found clickable node ${index} with selectors`);
+        // Create selectors for interactive elements OR clickable elements with text in children
+        const hasTextInChildren = !hasText && this.findTextInChildren(xmlContent, nodeString, index);
+
+        if (isClickable && (hasText || hasResourceId || hasContentDesc || hasTextInChildren)) {
+          console.log(`Found clickable node ${index} with selectors${hasTextInChildren ? ' (from children)' : ''}`);
           const selectorId = `selector_${index}`;
           const confidence = this.calculateSelectorConfidence({
-            hasText: !!hasText,
+            hasText: !!hasText || !!hasTextInChildren,
             hasResourceId: !!hasResourceId,
             hasContentDesc: !!hasContentDesc,
             isClickable,
@@ -247,6 +249,16 @@ export class NodeCaptureService {
                 type: 'text',
                 value: textMatch![1],
                 confidence: Math.min(confidence * 0.8, 1.0), // Text selectors are slightly less reliable
+                lastValidatedAt: new Date().toISOString(),
+              });
+            } else if (hasTextInChildren) {
+              // Use text from child elements
+              const childText = hasTextInChildren;
+              selectors.push({
+                id: `${selectorId}_text`,
+                type: 'text',
+                value: childText,
+                confidence: Math.min(confidence * 0.6, 1.0), // Child text is slightly less reliable
                 lastValidatedAt: new Date().toISOString(),
               });
             }
@@ -288,6 +300,42 @@ export class NodeCaptureService {
       };
     } catch (error) {
       throw new Error(`Failed to parse UI dump: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    }
+  }
+
+  /**
+   * Find text content in child elements of a clickable node
+   */
+  private findTextInChildren(xmlContent: string, nodeString: string, nodeIndex: number): string | null {
+    try {
+      // Extract bounds from parent node
+      const boundsMatch = nodeString.match(/bounds=['"]\[(\d+),(\d+)\]\[(\d+),(\d+)\]['"]/);
+      if (!boundsMatch) return null;
+
+      const [x1, y1, x2, y2] = boundsMatch.slice(1).map(Number);
+      const parentBounds = { x1, y1, x2, y2 };
+
+      // Find all text nodes that are within the parent bounds
+      const textNodeRegex = /<node[^>]*text=['"]([^'"]+)['"][^>]*bounds=['"]\[(\d+),(\d+)\]\[(\d+),(\d+)\]['"][^>]*>/g;
+      let match;
+
+      while ((match = textNodeRegex.exec(xmlContent)) !== null) {
+        const text = match[1];
+        const [textX1, textY1, textX2, textY2] = [parseInt(match[2]), parseInt(match[3]), parseInt(match[4]), parseInt(match[5])];
+
+        // Check if text node is within parent bounds (with small margin)
+        if (textX1 >= parentBounds.x1 && textX2 <= parentBounds.x2 &&
+            textY1 >= parentBounds.y1 && textY2 <= parentBounds.y2 &&
+            text.trim().length > 0) {
+          console.log(`Found text "${text}" in child of clickable node ${nodeIndex}`);
+          return text;
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.warn(`Error finding text in children of node ${nodeIndex}:`, error);
+      return null;
     }
   }
 
