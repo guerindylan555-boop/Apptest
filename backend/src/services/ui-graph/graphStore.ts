@@ -112,7 +112,7 @@ export class GraphStore {
         throw new Error(`Invalid graph format: ${validation.error.message}`);
       }
 
-      return validation.data;
+      return validation.data as UIGraph;
     } catch (error) {
       console.warn(`Failed to load graph version ${version}:`, error);
       return null;

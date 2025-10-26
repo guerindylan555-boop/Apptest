@@ -68,6 +68,11 @@ export const actionSchema = z.object({
   text: z.string().optional(),
   keycode: z.number().int().min(0).max(255).optional(),
   delayMs: z.number().int().min(0).optional(),
+  intent: z.object({
+    action: z.string(),
+    package: z.string().optional(),
+    component: z.string().optional(),
+  }).optional(),
 });
 
 // Guard schema
@@ -80,7 +85,7 @@ export const guardSchema = z.object({
 export const actionEdgeSchema = z.object({
   id: z.string().min(1, 'Edge ID required'),
   fromNodeId: hexHashSchema,
-  toNodeId: hexHashSchema.nullable(),
+  toNodeId: hexHashSchema.nullable(), // This should infer as string | null
   action: actionSchema,
   guard: guardSchema.default({}),
   notes: z.string().default(''),

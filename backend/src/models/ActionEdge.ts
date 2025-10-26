@@ -11,7 +11,7 @@ import { SelectorCandidateEntity } from './SelectorCandidate';
 
 export interface ActionEdgeOptions {
   fromNodeId: string;
-  toNodeId?: string | null;
+  toNodeId: string | null;
   action: {
     kind: 'tap' | 'type' | 'wait' | 'back' | 'intent';
     selectorId?: string;
@@ -104,11 +104,11 @@ export class ActionEdgeEntity implements ExtendedActionEdge {
   static withoutDestination(
     fromNodeId: string,
     action: ActionEdgeOptions['action'],
-    options: Omit<ActionEdgeOptions, 'fromNodeId' | 'action'> = {}
+    options: Omit<ActionEdgeOptions, 'fromNodeId' | 'action' | 'toNodeId'> = {}
   ): ActionEdgeEntity {
     return new ActionEdgeEntity({
       fromNodeId,
-      toNodeId: undefined,
+      toNodeId: null,
       action,
       ...options
     });
@@ -391,7 +391,7 @@ export class ActionEdgeEntity implements ExtendedActionEdge {
   getSummary(): {
     id: string;
     fromNodeId: string;
-    toNodeId?: string;
+    toNodeId: string | null;
     action: string;
     confidence: number;
     successRate: number;
@@ -403,7 +403,7 @@ export class ActionEdgeEntity implements ExtendedActionEdge {
     return {
       id: this.id,
       fromNodeId: this.fromNodeId,
-      toNodeId: this.toNodeId || undefined,
+      toNodeId: this.toNodeId,
       action: this.getActionDescription(),
       confidence: Math.round(this.confidence * 100),
       successRate: Math.round(this.getSuccessRate()),

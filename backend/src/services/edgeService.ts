@@ -382,7 +382,7 @@ export class EdgeService {
    */
   async findEdges(criteria: {
     fromNodeId?: string;
-    toNodeId?: string;
+    toNodeId?: string | null;
     actionKind?: string;
     startStateConstraint?: string;
   }): Promise<ActionEdge[]> {

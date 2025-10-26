@@ -163,7 +163,7 @@ export class ArtifactStore {
         throw new Error(`Invalid graph format: ${validation.error.message}`);
       }
 
-      return validation.data;
+      return validation.data as UIGraph;
     } catch {
       return null;
     }
