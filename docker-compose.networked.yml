@@ -1,0 +1,133 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"  # Backend API
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - EMULATOR_ID=emulator-5556
+      - ZAI_BASE_URL=https://api.z.ai/api/coding/paas/v4
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./backend/var:/app/var
+    networks:
+      - app-network
+    depends_on:
+      - emulator
+    restart: unless-stopped
+    command: npm run dev
+
+  emulator:
+    image: us-docker.pkg.dev/android-emulator-unified/images/emulator:34.1.9
+    ports:
+      - "5555:5555"  # ADB connection to emulator
+      - "5554:5554"  # Emulator console (local only)
+    environment:
+      - ADBKEY=/root/.android/adbkey
+      - EMULATOR_ID=emulator-5556
+    volumes:
+      - android-avd:/root/.android/avd
+      - android-adb:/root/.android
+      - ./scripts:/scripts:ro
+    networks:
+      - app-network
+    privileged: true  # Required for emulator networking and root access
+    devices:
+      - /dev/kvm:/dev/kvm  # Hardware acceleration if available
+    restart: unless-stopped
+    command: >
+      sh -c "
+        echo '=== Starting Android emulator with enhanced networking ===' &&
+        echo 'DNS: 8.8.8.8,1.1.1.1' &&
+        echo 'Ports: ADB=5555, Console=5554' &&
+        emulator -avd autoapp-local
+          -no-audio
+          -no-boot-anim
+          -no-window
+          -gpu swiftshader_indirect
+          -dns-server 8.8.8.8,1.1.1.1
+          -writable-system
+          -partition-size 2048
+          -no-snapshot-load
+          &
+        EMU_PID=$$! &&
+        echo 'Emulator PID: '$$EMU_PID &&
+        echo 'Waiting for emulator to boot...' &&
+        /scripts/wait-for-emulator.sh &&
+        echo '=== Running enhanced network initialization ===' &&
+        /scripts/emulator-network-init-v2.sh &&
+        echo '=== Emulator is ready for development ===' &&
+        echo 'ADB reverse configured for:' &&
+        echo '  - Backend API (port 3001): http://localhost:3001/api/health' &&
+        echo '  - Orchestrator (port 8000): http://localhost:8000' &&
+        echo '' &&
+        echo 'Network status:' &&
+        adb -s emulator-5556 shell dumpsys connectivity | grep -E '(everValidated|VALIDATED)' | head -3 &&
+        echo '' &&
+        echo 'To test internet from emulator:' &&
+        echo '  adb -s emulator-5556 shell am start -a android.intent.action.VIEW -d \"http://connectivitycheck.gstatic.com/generate_204\"' &&
+        echo '' &&
+        wait $$EMU_PID
+      "
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"  # Vite dev server
+    environment:
+      - VITE_API_URL=http://localhost:3001/api
+      - VITE_WS_URL=ws://localhost:3001
+      - VITE_EMULATOR_ID=emulator-5556
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - app-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+    command: npm run dev
+
+  # Optional: Add a simple orchestrator/console service
+  orchestrator:
+    build:
+      context: ./orchestrator
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"  # FastAPI + WebSocket console
+    environment:
+      - BACKEND_URL=http://backend:3001/api
+      - EMULATOR_ID=emulator-5556
+      - ZAI_BASE_URL=https://api.z.ai/api/coding/paas/v4
+    volumes:
+      - ./orchestrator:/app
+      - /app/node_modules
+    networks:
+      - app-network
+    depends_on:
+      - backend
+      - emulator
+    restart: unless-stopped
+    profiles:
+      - full  # Only start with --profile full
+
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  android-avd:
+    driver: local
+  android-adb:
+    driver: local

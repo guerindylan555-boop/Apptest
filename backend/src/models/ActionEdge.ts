@@ -36,7 +36,7 @@ export interface ActionEdgeOptions {
 export class ActionEdgeEntity implements ExtendedActionEdge {
   id: string;
   fromNodeId: string;
-  toNodeId?: string;
+  toNodeId: string | null;
   action: {
     kind: 'tap' | 'type' | 'wait' | 'back' | 'intent';
     selectorId?: string;
@@ -69,7 +69,7 @@ export class ActionEdgeEntity implements ExtendedActionEdge {
   constructor(options: ActionEdgeOptions) {
     this.id = options.fromNodeId ? `${options.fromNodeId}-${uuidv4().substring(0, 8)}` : uuidv4();
     this.fromNodeId = options.fromNodeId;
-    this.toNodeId = options.toNodeId || undefined;
+    this.toNodeId = options.toNodeId || null;
     this.action = { ...options.action };
     this.guard = options.guard || {};
     this.notes = options.notes || '';

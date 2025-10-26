@@ -62,7 +62,7 @@ export interface ExtendedScreenNode {
 export interface ExtendedActionEdge {
   id: string;
   fromNodeId: string;
-  toNodeId?: string;
+  toNodeId: string | null;
   action: {
     kind: 'tap' | 'type' | 'wait' | 'back' | 'intent';
     selectorId?: string;

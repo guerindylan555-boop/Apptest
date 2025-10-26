@@ -53,7 +53,7 @@ export interface ArtifactBundle {
 export interface ActionEdge {
   id: string; // UUID or semantic nodeId-action
   fromNodeId: string;
-  toNodeId?: string; // undefined until target captured
+  toNodeId: string | null; // null until target captured
   action: {
     kind: 'tap' | 'type' | 'wait' | 'back' | 'intent';
     selectorId?: string;
@@ -75,6 +75,12 @@ export interface ActionEdge {
   createdBy: string; // Operator id / automation agent
   confidence: number; // Historical success rate, <0.6 flagged
   startStateConstraint?: string; // Optional StartStateProfile.id indicating this edge only applies in a given start-state family
+  startStateTag?: string; // Optional tag for start-state organization
+  intent?: { // Intent action information
+    action: string;
+    package?: string;
+    component?: string;
+  };
 }
 
 export interface FlowDefinition {
