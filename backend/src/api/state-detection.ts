@@ -211,10 +211,10 @@ router.post('/state-detection/batch', upload.array('xml', 10), async (req, res) 
 });
 
 /**
- * DELETE /state-detection/:dumpPath
+ * DELETE /state-detection/cleanup/:dumpPath
  * Clean up temporary XML dump files
  */
-router.delete('/state-detection/:dumpPath(*)', async (req, res) => {
+router.delete('/state-detection/cleanup/:dumpPath', async (req, res) => {
   try {
     const dumpPath = path.join('var', 'captures', 'temp', req.params.dumpPath);
 

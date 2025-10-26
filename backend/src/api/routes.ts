@@ -14,6 +14,9 @@ import { healthHandler } from './routes/health';
 import { emulatorStartHandler } from './routes/emulatorStart';
 import { emulatorStopHandler } from './routes/emulatorStop';
 import { emulatorRestartHandler } from './routes/emulatorRestart';
+import uiGraphRoutes from './routes/ui-graph';
+import stateDetectionRoutes from './state-detection';
+import flowsRoutes from './flows';
 
 const router = Router();
 
@@ -202,18 +205,17 @@ router.get('/docs', (req: Request, res: Response) => {
 });
 
 /**
- * Mount API route groups (these will be implemented in User Stories)
+ * Mount API route groups
  */
 
 // Capture and graph management routes (User Story 1)
-// router.use('/captures', requireAuth, rateLimit(50), captureRoutes);
-// router.use('/nodes', requireAuth, rateLimit(100), nodeRoutes);
+router.use('/ui-graph', rateLimit(50), uiGraphRoutes);
 
 // State detection routes (User Story 2)
-// router.use('/detect', requireAuth, rateLimit(100), detectorRoutes);
+router.use('/', stateDetectionRoutes);
 
 // Flow execution routes (User Story 3)
-// router.use('/flows', requireAuth, rateLimit(20), flowRoutes);
+router.use('/flows', rateLimit(20), flowsRoutes);
 
 // Telemetry routes
 // router.use('/telemetry', requireAuth, rateLimit(100), telemetryRoutes);
