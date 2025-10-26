@@ -196,6 +196,8 @@ export class NodeCaptureService {
       const nodeRegex = /<node[^>]*>/g;
       const nodes = xmlContent.match(nodeRegex) || [];
 
+      console.log(`Parsing ${nodes.length} nodes for selectors`);
+
       nodes.forEach((nodeString, index) => {
         const resourceIdMatch = nodeString.match(/resource-id=['"]([^'"]+)['"]/);
         const textMatch = nodeString.match(/text=['"]([^'"]*)['"]/);
@@ -209,8 +211,14 @@ export class NodeCaptureService {
         const hasResourceId = resourceIdMatch?.[1] && resourceIdMatch[1].trim().length > 0;
         const hasContentDesc = contentDescMatch?.[1] && contentDescMatch[1].trim().length > 0;
 
+        // Enhanced logging
+        if (index < 10) {
+          console.log(`Node ${index}: clickable=${isClickable}, hasText=${hasText}, hasResourceId=${hasResourceId}, text="${textMatch?.[1] || ''}"`);
+        }
+
         // Only create selectors for interactive elements
         if (isClickable && (hasText || hasResourceId || hasContentDesc)) {
+          console.log(`Found clickable node ${index} with selectors`);
           const selectorId = `selector_${index}`;
           const confidence = this.calculateSelectorConfidence({
             hasText: !!hasText,
@@ -272,6 +280,7 @@ export class NodeCaptureService {
         }
       });
 
+      console.log(`Extracted ${selectors.length} selectors total`);
       return {
         activity,
         package: packageName,
