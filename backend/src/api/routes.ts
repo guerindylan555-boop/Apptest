@@ -17,6 +17,7 @@ import { emulatorRestartHandler } from './routes/emulatorRestart';
 import uiGraphRoutes from './routes/ui-graph';
 import stateDetectionRoutes from './state-detection';
 import flowsRoutes from './flows';
+import capturesRoutes from './routes/captures';
 
 const router = Router();
 
@@ -210,6 +211,7 @@ router.get('/docs', (req: Request, res: Response) => {
 
 // Capture and graph management routes (User Story 1)
 router.use('/ui-graph', rateLimit(50), uiGraphRoutes);
+router.use('/captures', rateLimit(50), capturesRoutes);
 
 // State detection routes (User Story 2)
 router.use('/', stateDetectionRoutes);

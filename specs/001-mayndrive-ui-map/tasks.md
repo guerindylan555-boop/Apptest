@@ -69,17 +69,17 @@ Per plan.md, this project uses:
 
 ### Implementation for User Story 1
 
-- [ ] T021 [P] [US1] Implement XML dump normalization utility in backend/src/utils/xmlNormalizer.ts
-- [ ] T022 [P] [US1] Implement deterministic signature generation from XML dumps in backend/src/services/signatureGenerator.ts
-- [ ] T023 [P] [US1] Implement selector extraction and ranking logic in backend/src/services/selectorExtractor.ts
+- [x] T021 [P] [US1] Implement XML dump normalization utility in backend/src/utils/xmlNormalizer.ts
+- [x] T022 [P] [US1] Implement deterministic signature generation from XML dumps in backend/src/services/signatureGenerator.ts
+- [x] T023 [P] [US1] Implement selector extraction and ranking logic in backend/src/services/selectorExtractor.ts
 - [x] T024 [US1] Implement screen capture service orchestrating ADB/artifacts/signature in backend/src/services/captureService.ts (depends on T021, T022, T023)
 - [x] T025 [US1] Create POST /api/ui-graph/nodes endpoint with validation in backend/src/api/routes/ui-graph.ts
-- [ ] T026 [P] [US1] Create capture UI component with name/hints input in frontend/src/components/CapturePanel.tsx
-- [ ] T027 [P] [US1] Create start-state tag selector component in frontend/src/components/StartStateSelector.tsx
-- [ ] T028 [US1] Integrate capture UI with backend endpoint and graph store in frontend/src/pages/OperatorConsole.tsx
-- [ ] T029 [US1] Implement action edge creation service in backend/src/services/edgeService.ts
-- [ ] T030 [US1] Create POST /api/captures/action endpoint for recording actions in backend/src/api/captureController.ts
-- [ ] T031 [P] [US1] Create action definition UI with selector/action-type selection in frontend/src/components/ActionEditor.tsx
+- [x] T026 [P] [US1] Create capture UI component with name/hints input in frontend/src/components/CapturePanel.tsx
+- [x] T027 [P] [US1] Create start-state tag selector component in frontend/src/components/StartStateSelector.tsx
+- [x] T028 [US1] Integrate capture UI with backend endpoint and graph store in frontend/src/pages/OperatorConsole.tsx
+- [x] T029 [US1] Implement action edge creation service in backend/src/services/edgeService.ts
+- [x] T030 [US1] Create POST /api/captures/action endpoint for recording actions in backend/src/api/captureController.ts
+- [x] T031 [P] [US1] Create action definition UI with selector/action-type selection in frontend/src/components/ActionEditor.tsx
 - [ ] T032 [US1] Implement action execution and destination capture workflow in backend/src/services/actionExecutor.ts
 - [ ] T033 [US1] Add graph visualization component for nodes and edges in frontend/src/components/GraphViewer.tsx
 - [ ] T034 [US1] Add node detail panel showing artifacts and metadata in frontend/src/components/NodeDetail.tsx

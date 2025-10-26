@@ -37,3 +37,29 @@ var/autoapp/dumps/
 CAPTURE_*.md
 MAYNDRIVE_*.md
 MAYN_DRIVE_*.md
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment files
+.env.*
+!.env.example
+
+# Runtime and cache files
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage and testing
+coverage/
+.nyc_output/
+junit.xml
+
+# Docker
+.dockerignore
+
+# TypeScript
+*.tsbuildinfo

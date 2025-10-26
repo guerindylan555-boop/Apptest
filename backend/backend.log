@@ -1,0 +1,7 @@
+
+> backend@1.0.0 start
+> node dist/index.js
+
+[AppsRepository] No existing index found, starting fresh
+[AppsStore] No existing activity log found, starting fresh
+Backend listening on http://0.0.0.0:3001
