@@ -133,21 +133,15 @@ export class NodeCaptureService {
    */
   private async getUIXMLDump(): Promise<string> {
     try {
-      // In a real implementation, this would run:
-      // adb shell uiautomator dump && adb shell pull /sdcard/window_dump.xml
-      // For now, return a placeholder that represents the structure
+      const { execSync } = await import('child_process');
 
-      // This would be replaced with actual ADB commands
-      const placeholderXML = `<?xml version='1.0' encoding='utf-8' standalone='yes' ?>
-<hierarchy rotation="0">
-  <node index="0" text="" resource-id="com.mayndrive:id/login_container" class="android.widget.FrameLayout" package="com.mayndrive" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" visible-to-user="true" bounds="[0,0][1080,1920]">
-    <node index="0" text="MaynDrive" resource-id="com.mayndrive:id/app_title" class="android.widget.TextView" package="com.mayndrive" content-desc="" checkable="false" checked="false" clickable="false" enabled="true" focusable="false" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" visible-to-user="true" bounds="[540,240][1080,336]" />
-    <node index="1" text="Phone Number" resource-id="com.mayndrive:id/phone_input" class="android.widget.EditText" package="com.mayndrive" content-desc="" checkable="false" checked="false" clickable="true" enabled="true" focusable="true" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" visible-to-user="true" bounds="[180,456][900,600]" />
-    <node index="2" text="Continue" resource-id="com.mayndrive:id/continue_button" class="android.widget.Button" package="com.mayndrive" content-desc="" checkable="false" checked="false" clickable="true" enabled="true" focusable="true" focused="false" scrollable="false" long-clickable="false" password="false" selected="false" visible-to-user="true" bounds="[360,672][720,816]" />
-  </node>
-</hierarchy>`;
+      // Dump UI hierarchy to device
+      execSync('adb shell uiautomator dump /sdcard/window_dump.xml', { encoding: 'utf-8' });
 
-      return placeholderXML;
+      // Read the XML content directly from device
+      const xmlContent = execSync('adb shell cat /sdcard/window_dump.xml', { encoding: 'utf-8' });
+
+      return xmlContent;
     } catch (error) {
       throw new Error(`Failed to get UI XML dump: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -158,14 +152,18 @@ export class NodeCaptureService {
    */
   private async takeScreenshot(): Promise<Buffer> {
     try {
-      // In a real implementation, this would run:
-      // adb shell screencap -p /sdcard/screenshot.png
-      // adb shell pull /sdcard/screenshot.png
-      // For now, return a placeholder
+      const { execSync } = await import('child_process');
 
-      // This would be replaced with actual ADB screenshot command
-      const screenshotPlaceholder = Buffer.from('placeholder-screenshot-data');
-      return screenshotPlaceholder;
+      // Take screenshot on device
+      execSync('adb shell screencap -p /sdcard/screenshot.png', { encoding: 'utf-8' });
+
+      // Pull screenshot as binary data
+      const screenshot = execSync('adb shell cat /sdcard/screenshot.png', {
+        encoding: 'buffer',
+        maxBuffer: 10 * 1024 * 1024, // 10MB buffer for large screenshots
+      });
+
+      return screenshot;
     } catch (error) {
       throw new Error(`Failed to take screenshot: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
@@ -229,7 +227,7 @@ export class NodeCaptureService {
                 id: `${selectorId}_resource_id`,
                 type: 'resource-id',
                 value: resourceIdMatch![1],
-                confidence: confidence * 1.2, // Boost resource-id confidence
+                confidence: Math.min(confidence * 1.2, 1.0), // Boost resource-id confidence but cap at 1.0
                 lastValidatedAt: new Date().toISOString(),
               });
             }
@@ -240,7 +238,7 @@ export class NodeCaptureService {
                 id: `${selectorId}_text`,
                 type: 'text',
                 value: textMatch![1],
-                confidence: confidence * 0.8, // Text selectors are slightly less reliable
+                confidence: Math.min(confidence * 0.8, 1.0), // Text selectors are slightly less reliable
                 lastValidatedAt: new Date().toISOString(),
               });
             }
@@ -251,7 +249,7 @@ export class NodeCaptureService {
                 id: `${selectorId}_content_desc`,
                 type: 'content-desc',
                 value: contentDescMatch![1],
-                confidence: confidence * 0.9, // Content-desc is fairly reliable
+                confidence: Math.min(confidence * 0.9, 1.0), // Content-desc is fairly reliable
                 lastValidatedAt: new Date().toISOString(),
               });
             }
@@ -266,7 +264,7 @@ export class NodeCaptureService {
                 id: `${selectorId}_coords`,
                 type: 'coords',
                 value: `${centerX},${centerY}`,
-                confidence: confidence * 0.4, // Coordinate selectors are least reliable
+                confidence: Math.min(confidence * 0.4, 1.0), // Coordinate selectors are least reliable
                 lastValidatedAt: new Date().toISOString(),
               });
             }
