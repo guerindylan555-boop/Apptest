@@ -53,7 +53,7 @@ export interface ArtifactBundle {
 export interface ActionEdge {
   id: string; // UUID or semantic nodeId-action
   fromNodeId: string;
-  toNodeId: string | null; // null until target captured
+  toNodeId?: string; // undefined until target captured
   action: {
     kind: 'tap' | 'type' | 'wait' | 'back' | 'intent';
     selectorId?: string;

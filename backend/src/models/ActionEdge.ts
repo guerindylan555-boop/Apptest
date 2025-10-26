@@ -18,6 +18,11 @@ export interface ActionEdgeOptions {
     text?: string;
     keycode?: number;
     delayMs?: number;
+    intent?: {
+      action: string;
+      package?: string;
+      component?: string;
+    };
   };
   guard?: {
     mustMatchSignatureHash?: string;
@@ -31,13 +36,18 @@ export interface ActionEdgeOptions {
 export class ActionEdgeEntity implements ExtendedActionEdge {
   id: string;
   fromNodeId: string;
-  toNodeId: string | null;
+  toNodeId?: string;
   action: {
     kind: 'tap' | 'type' | 'wait' | 'back' | 'intent';
     selectorId?: string;
     text?: string;
     keycode?: number;
     delayMs?: number;
+    intent?: {
+      action: string;
+      package?: string;
+      component?: string;
+    };
   };
   guard: {
     mustMatchSignatureHash?: string;
@@ -59,7 +69,7 @@ export class ActionEdgeEntity implements ExtendedActionEdge {
   constructor(options: ActionEdgeOptions) {
     this.id = options.fromNodeId ? `${options.fromNodeId}-${uuidv4().substring(0, 8)}` : uuidv4();
     this.fromNodeId = options.fromNodeId;
-    this.toNodeId = options.toNodeId || null;
+    this.toNodeId = options.toNodeId || undefined;
     this.action = { ...options.action };
     this.guard = options.guard || {};
     this.notes = options.notes || '';
@@ -98,7 +108,7 @@ export class ActionEdgeEntity implements ExtendedActionEdge {
   ): ActionEdgeEntity {
     return new ActionEdgeEntity({
       fromNodeId,
-      toNodeId: null,
+      toNodeId: undefined,
       action,
       ...options
     });
@@ -174,14 +184,14 @@ export class ActionEdgeEntity implements ExtendedActionEdge {
    * Clear destination node (edge becomes incomplete)
    */
   clearDestinationNode(): void {
-    this.toNodeId = null;
+    this.toNodeId = undefined;
   }
 
   /**
    * Check if edge has a complete destination
    */
   hasDestination(): boolean {
-    return this.toNodeId !== null && this.toNodeId !== undefined;
+    return this.toNodeId !== undefined;
   }
 
   /**

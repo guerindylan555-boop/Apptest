@@ -73,7 +73,7 @@ export class XMLNormalizer {
 
       // Extract metadata
       const activity = this.extractActivity(xmlContent);
-      const package = this.extractPackage(xmlContent);
+      const packageName = this.extractPackage(xmlContent);
 
       // Normalize XML content
       const normalizedXML = this.normalizeXMLContent(xmlContent, opts);
@@ -85,7 +85,7 @@ export class XMLNormalizer {
         xml: normalizedXML,
         elements,
         activity,
-        packageName: package,
+        packageName: packageName,
       };
     } catch (error) {
       console.error('Failed to normalize XML:', error);
@@ -233,6 +233,7 @@ export class XMLNormalizer {
       password: 'false',
       selected: 'false',
       bounds: '',
+      accessibility: '',
     };
 
     // Extract all attributes
@@ -244,6 +245,7 @@ export class XMLNormalizer {
       class: /class=['"]([^'"]+)['"]/,
       package: /package=['"]([^'"]+)['"]/,
       checkable: /checkable=['"]([^'"]+)['"]/,
+      accessibility: /accessibility=['"]([^'"]*)['"]/,
       checked: /checked=['"]([^'"]+)['"]/,
       clickable: /clickable=['"]([^'"]+)['"]/,
       enabled: /enabled=['"]([^'"]+)['"]/,

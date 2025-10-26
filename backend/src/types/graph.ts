@@ -62,13 +62,18 @@ export interface ExtendedScreenNode {
 export interface ExtendedActionEdge {
   id: string;
   fromNodeId: string;
-  toNodeId: string | null;
+  toNodeId?: string;
   action: {
     kind: 'tap' | 'type' | 'wait' | 'back' | 'intent';
     selectorId?: string;
     text?: string;
     keycode?: number;
     delayMs?: number;
+    intent?: {
+      action: string;
+      package?: string;
+      component?: string;
+    };
   };
   guard: {
     mustMatchSignatureHash?: string;

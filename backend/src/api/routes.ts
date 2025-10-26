@@ -213,8 +213,8 @@ router.get('/docs', (req: Request, res: Response) => {
 router.use('/ui-graph', rateLimit(50), uiGraphRoutes);
 router.use('/captures', rateLimit(50), capturesRoutes);
 
-// State detection routes (User Story 2)
-router.use('/', stateDetectionRoutes);
+// State detection routes (User Story 2) - temporarily disabled
+// router.use('/', stateDetectionRoutes);
 
 // Flow execution routes (User Story 3)
 router.use('/flows', rateLimit(20), flowsRoutes);
