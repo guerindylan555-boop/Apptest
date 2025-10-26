@@ -80,13 +80,13 @@ Per plan.md, this project uses:
 - [x] T029 [US1] Implement action edge creation service in backend/src/services/edgeService.ts
 - [x] T030 [US1] Create POST /api/captures/action endpoint for recording actions in backend/src/api/captureController.ts
 - [x] T031 [P] [US1] Create action definition UI with selector/action-type selection in frontend/src/components/ActionEditor.tsx
-- [ ] T032 [US1] Implement action execution and destination capture workflow in backend/src/services/actionExecutor.ts
-- [ ] T033 [US1] Add graph visualization component for nodes and edges in frontend/src/components/GraphViewer.tsx
-- [ ] T034 [US1] Add node detail panel showing artifacts and metadata in frontend/src/components/NodeDetail.tsx
-- [ ] T035 [US1] Implement artifact bundle storage with checksum validation in backend/src/services/captureService.ts
-- [ ] T036 [US1] Create GET /api/nodes/:id endpoint for node retrieval in backend/src/api/nodeController.ts
-- [ ] T037 [US1] Add error handling and retry logic for capture failures in backend/src/services/captureService.ts
-- [ ] T038 [US1] Implement provenance tracking (operator, timestamp, build) in backend/src/services/captureService.ts
+- [x] T032 [US1] Implement action execution and destination capture workflow in backend/src/services/actionExecutor.ts
+- [x] T033 [US1] Add graph visualization component for nodes and edges in frontend/src/components/GraphViewer.tsx
+- [x] T034 [US1] Add node detail panel showing artifacts and metadata in frontend/src/components/NodeDetail.tsx
+- [x] T035 [US1] Implement artifact bundle storage with checksum validation in backend/src/services/captureService.ts
+- [x] T036 [US1] Create GET /api/nodes/:id endpoint for node retrieval in backend/src/api/nodeController.ts
+- [x] T037 [US1] Add error handling and retry logic for capture failures in backend/src/services/captureService.ts
+- [x] T038 [US1] Implement provenance tracking (operator, timestamp, build) in backend/src/services/captureService.ts
 
 **Checkpoint**: At this point, User Story 1 should be fully functional and testable independently
 
