@@ -1,7 +1,5 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
-import NavSidebar from './components/NavSidebar';
 import EmulatorPage from './pages/EmulatorPage';
-import AutomationWorkbenchPage from './pages/AutomationWorkbenchPage';
 import DiscoveryPage from './pages/DiscoveryPage';
 
 /**
@@ -15,17 +13,14 @@ const App = () => {
     <BrowserRouter>
       <div
         style={{
-          display: 'flex',
           minHeight: '100vh',
           fontFamily: 'Inter, system-ui, sans-serif'
         }}
       >
-        <NavSidebar />
-        <main style={{ flex: 1, overflow: 'auto' }}>
+        <main style={{ width: '100%', overflowY: 'auto' }}>
           <Routes>
             <Route path="/" element={<EmulatorPage />} />
             <Route path="/discovery" element={<DiscoveryPage />} />
-            <Route path="/automation" element={<AutomationWorkbenchPage />} />
             <Route path="*" element={<EmulatorPage />} />
           </Routes>
         </main>
