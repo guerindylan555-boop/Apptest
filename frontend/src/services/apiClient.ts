@@ -8,8 +8,8 @@
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } from 'axios';
 
 // API Configuration
-const API_BASE_URL = process.env.REACT_APP_API_BASE_URL || 'http://localhost:3000/api';
-const API_TIMEOUT = process.env.REACT_APP_API_TIMEOUT || 30000;
+const API_BASE_URL = (import.meta.env?.VITE_API_BASE_URL) || 'http://localhost:3000/api';
+const API_TIMEOUT = 30000;
 
 // Response type definitions
 export interface ApiResponse<T = any> {
@@ -102,7 +102,7 @@ export class ApiClient {
   private setupInterceptors(): void {
     // Request interceptor
     this.client.interceptors.request.use(
-      (config) => {
+      (config: any) => {
         // Add request timestamp
         config.metadata = { startTime: Date.now() };
 
@@ -113,13 +113,13 @@ export class ApiClient {
         }
 
         // Log request in development
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env?.DEV) {
           console.log(`🚀 API Request: ${config.method?.toUpperCase()} ${config.url}`);
         }
 
         return config;
       },
-      (error) => {
+      (error: any) => {
         console.error('Request interceptor error:', error);
         return Promise.reject(error);
       }
@@ -127,25 +127,25 @@ export class ApiClient {
 
     // Response interceptor
     this.client.interceptors.response.use(
-      (response) => {
+      (response: any) => {
         // Calculate request duration
         const duration = Date.now() - (response.config.metadata?.startTime || Date.now());
 
         // Log response in development
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env?.DEV) {
           console.log(`✅ API Response: ${response.config.method?.toUpperCase()} ${response.config.url} (${duration}ms)`);
         }
 
         return response;
       },
-      async (error) => {
+      async (error: any) => {
         const originalRequest = error.config;
 
         // Calculate request duration
         const duration = Date.now() - (originalRequest?.metadata?.startTime || Date.now());
 
         // Log error in development
-        if (process.env.NODE_ENV === 'development') {
+        if (import.meta.env?.DEV) {
           console.error(`❌ API Error: ${originalRequest?.method?.toUpperCase()} ${originalRequest?.url} (${duration}ms)`, error);
         }
 
@@ -189,8 +189,8 @@ export class ApiClient {
     if (error.response) {
       // Server responded with error status
       return {
-        message: error.response.data?.message || error.response.statusText || 'Request failed',
-        code: error.response.data?.code || `HTTP_${error.response.status}`,
+        message: (error.response.data as any)?.message || error.response.statusText || 'Request failed',
+        code: (error.response.data as any)?.code || `HTTP_${error.response.status}`,
         details: error.response.data,
         timestamp: new Date().toISOString()
       };
@@ -216,7 +216,7 @@ export class ApiClient {
   /**
    * Generic request method with type safety
    */
-  private async request<T>(
+  private async request<T = any>(
     config: AxiosRequestConfig
   ): Promise<ApiResponse<T>> {
     try {
@@ -225,7 +225,7 @@ export class ApiClient {
         data: response.data,
         timestamp: new Date().toISOString()
       };
-    } catch (error) {
+    } catch (error: any) {
       throw error; // Error is already formatted by interceptor
     }
   }
@@ -590,8 +590,5 @@ export const {
   getStaticScreens,
   getStaticFlows
 } = apiClient;
-
-// Export types for use in components
-export type { ApiError, ApiResponse, PaginatedResponse };
 
 export default apiClient;
