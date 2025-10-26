@@ -8,12 +8,12 @@
 import { Router } from 'express';
 import { Request, Response, NextFunction } from 'express';
 
-// Import route handlers (will be implemented in User Stories)
-// import captureRoutes from './captureController';
-// import nodeRoutes from './nodeController';
-// import detectorRoutes from './detectorController';
-// import flowRoutes from './flowController';
-// import telemetryRoutes from './telemetryController';
+// Import route handlers
+import { streamUrlHandler } from './routes/streamUrl';
+import { healthHandler } from './routes/health';
+import { emulatorStartHandler } from './routes/emulatorStart';
+import { emulatorStopHandler } from './routes/emulatorStop';
+import { emulatorRestartHandler } from './routes/emulatorRestart';
 
 const router = Router();
 
@@ -121,18 +121,19 @@ export const rateLimit = (maxRequests: number = 100, windowMs: number = 60000) =
 /**
  * Health check endpoint
  */
-router.get('/health', (req: Request, res: Response) => {
-  res.json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    version: process.env.npm_package_version || '1.0.0',
-    uptime: process.uptime(),
-    memory: {
-      used: Math.round(process.memoryUsage().heapUsed / 1024 / 1024),
-      total: Math.round(process.memoryUsage().heapTotal / 1024 / 1024)
-    }
-  });
-});
+router.get('/health', healthHandler);
+
+/**
+ * Stream URL endpoint
+ */
+router.get('/stream/url', streamUrlHandler);
+
+/**
+ * Emulator management endpoints
+ */
+router.post('/emulator/start', emulatorStartHandler);
+router.post('/emulator/stop', emulatorStopHandler);
+router.post('/emulator/restart', emulatorRestartHandler);
 
 /**
  * API root endpoint
@@ -279,6 +280,10 @@ router.use((req: Request, res: Response) => {
     message: `API endpoint ${req.method} ${req.originalUrl} not found`,
     availableEndpoints: [
       'GET /api/health',
+      'GET /api/stream/url',
+      'POST /api/emulator/start',
+      'POST /api/emulator/stop',
+      'POST /api/emulator/restart',
       'GET /api/',
       'GET /api/version',
       'GET /api/docs',
