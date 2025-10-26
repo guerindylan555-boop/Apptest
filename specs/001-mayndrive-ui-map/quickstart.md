@@ -16,8 +16,8 @@ docker compose up backend frontend envoy emulator -d
 
 ## 3. Capture a screen node
 1. Open the operator console in the frontend.
-2. Navigate the emulator to an unmapped screen.
-3. Use **Capture Screen** to enter name + hints and trigger artifact capture.
+2. Navigate the emulator to an unmapped screen (clean boot, login form, post-login home, rented scooter view).
+3. Use **Capture Screen** to enter name + hints, choose a **Start State Tag**, and trigger artifact capture.
 4. Verify node files under `var/captures/<nodeId>/` and graph update in `var/graphs/<version>/ui-graph.json`.
 
 ## 4. Add an action edge
@@ -33,7 +33,7 @@ npm run detector -- --dump var/captures/<nodeId>/ui.xml
 
 ## 6. Author a flow
 1. Copy `var/flows/templates/flow-example.yaml` to a new file (e.g., `login-home.yaml`).
-2. Fill metadata, variables (phone/email/OTP placeholders), and reference edges via `edgeId` in order.
+2. Fill metadata, variables (phone/email/OTP placeholders), reference edges via `edgeId`, and declare the required `startStateProfile` plus `unlockPolicy` (`any_available` vs `existing_rental_only`).
 3. Define recovery rules for `unexpected_node`, `system_dialog`, and `timeout`.
 4. Validate structure:
 ```bash
@@ -45,7 +45,7 @@ npm run flows:lint -- var/flows/login-home.yaml
 npm run flows:run -- --flow var/flows/login-home.yaml
 ```
 - Runner detects current node, pathfinds to precondition, and executes steps with per-step re-detection logs.
-- Respond to prompts when manual intervention is needed (e.g., OTP entry).
+- Respond to prompts when manual intervention is needed (e.g., OTP entry) or when the unlock policy requires operator confirmation.
 
 ## 8. Update README for LLM contributors
 - Append naming rules, safe-action reminders, and new node ids to `var/flows/README.md`.

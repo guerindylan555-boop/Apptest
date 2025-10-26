@@ -39,3 +39,11 @@
   - Database (unneeded complexity, harder to review artifacts).
   - Storing artifacts within repo (bloats diffs, conflicts with lightweight goal).
   - Cloud object store (requires credentials and contradicts local-first assumption).
+
+## 6. Start-State Profiling & Unlock Policies
+- **Decision**: Introduce `StartStateProfile` documents tagging ScreenNodes into `clean`, `logged_out_home`, `logged_in_no_rental`, and `logged_in_with_rental` groups, each carrying detector hints and unlock policies (`any_available` vs `existing_rental_only`).
+- **Rationale**: Explicit profiles let the detector narrow candidates quickly and help the runner choose the correct unlock strategy without re-deriving context on every run.
+- **Alternatives Considered**:
+  - Implicit tagging via node names (too brittle and hard for LLM edits).
+  - Flow-specific branching logic (duplicates logic across flows).
+  - Separate graphs per state (would fragment discovery data and increase maintenance).

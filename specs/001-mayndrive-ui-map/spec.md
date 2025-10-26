@@ -22,7 +22,7 @@
 
 ### User Story 1 - Capture & Graph Screens (Priority: P1)
 
-Operators can capture any MaynDrive screen, assign a human-readable name, store artifacts, and define outgoing actions so the UI graph grows intentionally.
+Operators can capture any MaynDrive screen (clean boot, arbitrary login credentials, and post-login home variants), assign a human-readable name, store artifacts, and define outgoing actions so the UI graph grows intentionally.
 
 **Why this priority**: Without reliable manual discovery, there is no baseline graph for downstream automation or LLM reasoning.
 
@@ -30,8 +30,10 @@ Operators can capture any MaynDrive screen, assign a human-readable name, store 
 
 **Acceptance Scenarios**:
 
-1. **Given** the operator is on an unmapped screen, **When** they capture the screen signature and annotate it, **Then** a new node with screenshot, XML dump, metadata, and selector ranking is saved to the graph store.
+1. **Given** the operator is on an unmapped screen (clean boot or login/home variant), **When** they capture the screen signature and annotate it, **Then** a new node with screenshot, XML dump, metadata, and selector ranking is saved to the graph store.
 2. **Given** the operator records an action (tap/type/back) from a captured node, **When** the next screen loads, **Then** a directed edge with action metadata and destination node reference is added automatically.
+3. **Given** the operator signs in with any email/password combo, **When** the app reaches the logged-in home without a rental, **Then** the capture flow stores this state distinctly from the clean/no-login variant.
+4. **Given** the operator resumes a session with an already rented scooter, **When** they capture the home screen, **Then** the system tags it as `logged_in_with_rental` so flows and detectors can branch correctly.
 
 ---
 
@@ -52,7 +54,7 @@ The system can ingest a fresh dump from the emulator and identify the most likel
 
 ### User Story 3 - Build & Replay Flows (Priority: P3)
 
-Product specialists define flows (login → unlock → lock) declaratively from the graph, and the runner executes them from any starting screen using state-aware routing and recovery.
+Product specialists define flows (login → unlock → lock) declaratively from the graph, and the runner executes them from any starting screen using state-aware routing and recovery, covering both “no rental yet” and “existing rental” unlock/lock behaviors.
 
 **Why this priority**: Flows demonstrate business value by proving the graph can drive MaynDrive operations end-to-end.
 
@@ -62,6 +64,8 @@ Product specialists define flows (login → unlock → lock) declaratively from 
 
 1. **Given** a declared flow with pre/postconditions and variable slots, **When** the runner starts from a mismatched node, **Then** it computes the shortest known path to the precondition before executing flow steps.
 2. **Given** the runner executes a step and lands on an unexpected screen, **When** re-detection fails to match the expected node, **Then** the runner retries or applies recovery actions (back/dismiss/reopen) before escalating to the operator.
+3. **Given** the operator is logged in without a rental, **When** they run the “unlock-any-available-scooter” flow, **Then** the runner selects an eligible scooter from the availability list before continuing.
+4. **Given** the operator already has a rented scooter, **When** they trigger the unlock flow, **Then** the runner targets only the existing rental to avoid unintended scooters.
 
 ---
 
@@ -98,6 +102,8 @@ Product specialists define flows (login → unlock → lock) declaratively from 
 - **FR-012**: Produce a lightweight README aimed at LLM contributors that explains naming rules, how to add nodes/edges, how to author flows safely, and how to keep artifacts compact.
 - **FR-013**: Track provenance (who captured, when, emulator build) for every node and edge so future edits and merges stay auditable.
 - **FR-014**: Provide guard conditions on edges (e.g., `mustMatchSignature`) so flows only traverse transitions when the originating screen signature still matches expectations.
+- **FR-015**: Allow operators to template and tag start states (clean boot, login pending, login without rental, login with rental) so the detector and runner can branch based on start-state metadata.
+- **FR-016**: Encode two unlock policies—“no current rental” (choose any available scooter) and “existing rental” (reuse assigned scooter)—with validation rules preventing accidental cross-state unlocks.
 
 ### Key Entities *(include if feature involves data)*
 
@@ -109,12 +115,14 @@ Product specialists define flows (login → unlock → lock) declaratively from 
 - **FlowStep**: Atomic action within a FlowDefinition referencing an ActionEdge or describing an ad-hoc operation (e.g., OTP entry) plus optional guard and retry strategy.
 - **StateDetectionResult**: Output from the detector with ordered candidate nodes, confidence scores, chosen node, and threshold evaluations (OK vs UNKNOWN).
 - **ArtifactBundle**: Collection of files per node (screenshot, XML dump, optional notes) including storage path and checksum so LLMs can fetch lightweight samples.
+- **StartStateProfile**: Tagged grouping of ScreenNodes representing clean boot, logged-out home, logged-in without rental, and logged-in with rental; stores detection hints and preferred entry edges.
 
 ### Assumptions
 
 - Operators have stable emulator access via WebRTC plus ADB/Frida tooling, so connectivity considerations remain out of scope for this spec.
 - Storage for screenshots/XML is available under project-managed directories (`var/`) with sufficient retention for iterative discovery.
 - MaynDrive app builds remain consistent enough that deterministic signatures stay valid between discovery and flow playback; drastic UI redesigns will trigger re-capture efforts.
+- Emulator sessions maintain reliable internet connectivity so captures, detections, and flows can persist data immediately without local queuing.
 
 ## Success Criteria *(mandatory)*
 

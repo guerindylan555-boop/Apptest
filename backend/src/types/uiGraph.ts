@@ -130,7 +130,7 @@ export interface FlowStep {
 
 export interface RecoveryRule {
   trigger: 'unexpected_node' | 'system_dialog' | 'timeout';
-  allowedActions: ('back' | 'dismiss' | 'reopen' | 'relogin' | 'wait')[];
+  allowedActions: ('back' | 'dismiss' | 'reopen' | 'relogin' | 'wait' | 'retry')[];
 }
 
 export interface StateDetectionResult {

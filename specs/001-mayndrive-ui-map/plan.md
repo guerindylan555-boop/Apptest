@@ -7,7 +7,7 @@
 
 ## Summary
 
-Build a MaynDrive-specific manual discovery toolkit that captures emulator screens, produces a deterministic UI graph (nodes, edges, artifacts), and executes declarative flows (login, unlock, lock) with state-aware routing plus recovery. Implementation will extend the existing Node.js 20 TypeScript backend, React/Vite frontend, and filesystem-based artifact store so operators can capture signatures, LLMs can reason over lightweight JSON/YAML outputs, and runners can pathfind plus re-detect screens after every action.
+Build a MaynDrive-specific manual discovery toolkit that captures emulator screens (clean boot, arbitrary login credentials, and both “no rental”/“existing rental” home states), produces a deterministic UI graph (nodes, edges, artifacts), and executes declarative flows (login, unlock-any, unlock-existing, lock) with state-aware routing plus recovery. Implementation will extend the Node.js 20 TypeScript backend, React/Vite frontend, and filesystem-based artifact store with StartStateProfile tagging and dual unlock policies so operators can map every critical state while runners always choose the correct scooter behavior.
 
 ## Technical Context
 
@@ -23,9 +23,9 @@ Build a MaynDrive-specific manual discovery toolkit that captures emulator scree
 **Testing**: `npm test` (Jest/ts-jest) plus `npm run lint` per repo standards for backend/frontend packages.  
 **Target Platform**: Containerized services (backend, frontend, emulator bridge) orchestrated via Docker Compose in Dockploy, accessible through Traefik ingress.  
 **Project Type**: Web control plane (backend + frontend) with Android automation helpers and CLI tooling.  
-**Performance Goals**: Capture action turns <30s, detector classification <2s per dump, flow execution with ≤1 manual intervention in 95% runs (per success criteria).  
+**Performance Goals**: Capture action turns <30s, detector classification <2s per dump, and flow execution with ≤1 manual intervention in 95% runs (per success criteria).  
 **Constraints**: Must honor Constitution §2 (containers only, pinned Node 20 images), §4 (native WebRTC bridge, no ws-scrcpy), §7 (centralized artifact volume), §9 (TS strict, CI-blocking lint), and §12 (document any new env vars).  
-**Scale/Scope**: Focused on a single target app (MaynDrive) with ~20-40 screens initially, three baseline flows, and extensibility for future apps post-validation.
+**Scale/Scope**: Focused on a single target app (MaynDrive) with ~20-40 screens initially, covering clean boot, login state families, and dual unlock policies, with extensibility for future apps post-validation.
 
 ## Constitution Check
 

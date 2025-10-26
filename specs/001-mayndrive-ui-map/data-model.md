@@ -15,6 +15,7 @@ The feature stores discovery outputs, flow definitions, and detector telemetry i
 | `hints` | string[] | Optional callouts describing unique traits; max 5 entries. |
 | `samples` | ArtifactBundle | Screenshot, XML path, checksum references. |
 | `metadata` | object | Activity/class, package, emulator build, capture timestamp, operator id. |
+| `startStateTag` | enum(`clean`,`logged_out_home`,`logged_in_no_rental`,`logged_in_with_rental`,`other`) | Optional tag used by StartStateProfile and flow routing. |
 | `outgoingEdgeIds` | string[] | Populated post-capture to speed lookup. |
 | `incomingEdgeIds` | string[] | Optional; helps pathfinding heuristics. |
 | `status` | enum(`active`,`deprecated`,`duplicate`) | Discovery lifecycle flag to prevent stale nodes from running. |
@@ -58,6 +59,7 @@ The feature stores discovery outputs, flow definitions, and detector telemetry i
 | `createdAt` | ISO datetime | Capture timestamp. |
 | `createdBy` | string | Operator id / automation agent. |
 | `confidence` | float | Historical success rate; <0.6 flagged for review. |
+| `startStateConstraint` | string | Optional StartStateProfile.id indicating this edge only applies in a given start-state family. |
 
 ### 6. FlowDefinition
 | Field | Type | Constraints / Notes |
@@ -92,11 +94,22 @@ The feature stores discovery outputs, flow definitions, and detector telemetry i
 | `status` | enum(`matched`,`ambiguous`,`unknown`) | Derived from thresholds. |
 | `operatorAction` | enum(`accept`,`map_new`,`merge`,`retry`) | Used to improve detector tuning. |
 
+### 9. StartStateProfile
+| Field | Type | Notes |
+|-------|------|-------|
+| `id` | string | slug (e.g., `clean`, `logged-in-no-rental`). |
+| `description` | string | Human-readable summary of the start state. |
+| `nodeIds` | string[] | Set of ScreenNodes that compose this profile. |
+| `preferredEntryEdgeIds` | string[] | Recommended edges to reach this state from clean boot. |
+| `unlockPolicy` | enum(`any_available`,`existing_rental_only`, `n/a`) | Used by flows to determine scooter selection. |
+| `detectorHints` | object | Additional selector/text cues that distinguish this start state. |
+
 ## Relationships & Constraints
 - `ActionEdge.fromNodeId`/`toNodeId` enforce referential integrity; edges referencing unknown future nodes must be revisited before flows reference them.
 - `FlowStep.edgeId` must exist in ActionEdge; validation prevents deletion of edges currently referenced by a FlowDefinition.
 - `ScreenNode.selectors` form a one-to-many relationship; selectors cannot be shared across nodes to avoid accidental cross-state targeting.
 - `ArtifactBundle` uses relative paths anchored to `var/` to satisfy constitution §7 (single artifact volume).
+- `StartStateProfile.nodeIds` references ScreenNode ids; detector uses `startStateTag` to quickly scope candidate nodes for a profile.
 - `StateDetectionResult` entries link back to `ScreenNode.id` for drift analysis; storing telemetry separately avoids bloating the node object.
 
 ## Validation Rules
@@ -105,3 +118,4 @@ The feature stores discovery outputs, flow definitions, and detector telemetry i
 3. FlowDefinitions require `precondition` and `postcondition`; runner refuses to execute flows missing either.
 4. Recovery rules must cover at minimum `unexpected_node` and `system_dialog` triggers to align with spec's minimal recovery requirement.
 5. Artifact bundles need checksums to detect corrupted captures during LLM editing or git merges.
+6. StartStateProfiles must include at least one node and specify unlockPolicy when applicable (logged-in states).
