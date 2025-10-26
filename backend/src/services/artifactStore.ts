@@ -562,3 +562,6 @@ export class ArtifactStorageService {
     };
   }
 }
+
+// Export singleton instance
+export const artifactStorage = new ArtifactStorageService();

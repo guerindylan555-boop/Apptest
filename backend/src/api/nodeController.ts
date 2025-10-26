@@ -7,8 +7,10 @@
 
 import { Request, Response } from 'express';
 import { graphStore } from '../services/graphStore';
-import { captureService } from '../services/captureService';
 import { artifactStorage } from '../services/artifactStore';
+import { captureService } from '../services/captureService';
+import { ScreenNodeEntity } from '../models/ScreenNode';
+import { ActionEdgeEntity } from '../models/ActionEdge';
 import { z } from 'zod';
 import type { ScreenNode } from '../types/uiGraph';
 
@@ -94,8 +96,8 @@ export const getNodeController = async (req: Request, res: Response) => {
     }
 
     // Add related nodes information
-    const incomingEdges = await graphStore.getIncomingEdges(id);
-    const outgoingEdges = await graphStore.getOutgoingEdges(id);
+    const incomingEdges = await graphStore.getEdgesToNode(id);
+    const outgoingEdges = await graphStore.getEdgesFromNode(id);
 
     responseNode.related = {
       incomingEdges: incomingEdges.length,
@@ -145,19 +147,13 @@ export const updateNodeController = async (req: Request, res: Response) => {
     }
 
     // Create updated node with only mutable fields
-    const updatedNode: ScreenNode = {
-      ...existingNode,
+    const updatedNode = ScreenNodeEntity.fromJSON({
+      ...existingNode.toJSON(),
       name: update.name ?? existingNode.name,
       hints: update.hints ?? existingNode.hints,
       status: update.status ?? existingNode.status,
       startStateTag: update.startStateTag ?? existingNode.startStateTag,
-      // Update metadata timestamp
-      metadata: {
-        ...existingNode.metadata,
-        lastModifiedAt: new Date().toISOString(),
-        lastModifiedBy: operatorId,
-      },
-    };
+    });
 
     // Store updated node
     await graphStore.updateNode(updatedNode);
@@ -172,7 +168,7 @@ export const updateNodeController = async (req: Request, res: Response) => {
       return res.status(400).json({
         success: false,
         error: 'Invalid request data',
-        details: error.errors,
+        details: error.issues,
       });
     }
 
@@ -213,8 +209,8 @@ export const deleteNodeController = async (req: Request, res: Response) => {
 
     // Check for dependencies unless force delete
     if (!force) {
-      const incomingEdges = await graphStore.getIncomingEdges(id);
-      const outgoingEdges = await graphStore.getOutgoingEdges(id);
+      const incomingEdges = await graphStore.getEdgesToNode(id);
+      const outgoingEdges = await graphStore.getEdgesFromNode(id);
 
       if (incomingEdges.length > 0 || outgoingEdges.length > 0) {
         return res.status(409).json({
@@ -238,7 +234,7 @@ export const deleteNodeController = async (req: Request, res: Response) => {
     }
 
     // Delete node from graph store (this should also remove edges)
-    await graphStore.deleteNode(id);
+    await graphStore.removeNode(id);
 
     res.json({
       success: true,
@@ -270,7 +266,8 @@ export const listNodesController = async (req: Request, res: Response) => {
     const offset = query.offset || 0;
 
     // Get all nodes from graph store
-    const allNodes = await graphStore.getAllNodes();
+    const graph = await graphStore.loadGraph();
+    const allNodes = graph.nodes.map(node => ScreenNodeEntity.fromJSON(node));
 
     // Apply filters
     let filteredNodes = allNodes;
@@ -319,12 +316,12 @@ export const listNodesController = async (req: Request, res: Response) => {
     const nodesWithSummary = await Promise.all(
       paginatedNodes.map(async (node) => {
         const [incomingEdges, outgoingEdges] = await Promise.all([
-          graphStore.getIncomingEdges(node.id),
-          graphStore.getOutgoingEdges(node.id),
+          graphStore.getEdgesToNode(node.id),
+          graphStore.getEdgesFromNode(node.id),
         ]);
 
         return {
-          ...node,
+          ...node.toJSON(),
           summary: {
             incomingEdges: incomingEdges.length,
             outgoingEdges: outgoingEdges.length,
@@ -353,7 +350,7 @@ export const listNodesController = async (req: Request, res: Response) => {
       return res.status(400).json({
         success: false,
         error: 'Invalid request parameters',
-        details: error.errors,
+        details: error.issues,
       });
     }
 
@@ -371,7 +368,8 @@ export const listNodesController = async (req: Request, res: Response) => {
  */
 export const getNodeStatsController = async (req: Request, res: Response) => {
   try {
-    const allNodes = await graphStore.getAllNodes();
+    const graph = await graphStore.loadGraph();
+    const allNodes = graph.nodes.map(node => ScreenNodeEntity.fromJSON(node));
 
     // Calculate statistics
     const stats = {

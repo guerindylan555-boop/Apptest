@@ -12,6 +12,8 @@ import { selectorExtractor } from './selectorExtractor';
 import { artifactStorage } from './artifactStore';
 import { graphStore } from './graphStore';
 import { actionExecutor } from './actionExecutor';
+import { ScreenNodeEntity } from '../models/ScreenNode';
+import { ActionEdgeEntity } from '../models/ActionEdge';
 import type { ScreenNode, ActionEdge, SelectorCandidate } from '../types/uiGraph';
 
 export interface CaptureRequest {
@@ -173,7 +175,8 @@ export class CaptureService {
       );
 
       // Step 10: Store node in graph
-      await graphStore.addNode(node);
+      const nodeEntity = ScreenNodeEntity.fromJSON(node);
+      await graphStore.addNode(nodeEntity);
 
       const captureTime = Date.now() - startTime;
 
@@ -289,7 +292,7 @@ export class CaptureService {
     selectors: SelectorCandidate[],
     artifactBundle: any,
     hints: string[],
-    startStateTag?: string,
+    startStateTag?: 'clean' | 'logged_out_home' | 'logged_in_no_rental' | 'logged_in_with_rental' | 'other',
     provenanceData?: ProvenanceData
   ): Promise<ScreenNode> {
     const node: ScreenNode = {
@@ -372,8 +375,9 @@ export class CaptureService {
   ): Promise<CaptureResult> {
     try {
       // Execute the action
+      const edgeEntity = ActionEdgeEntity.fromJSON(actionEdge);
       const executionResult = await actionExecutor.executeAction({
-        edge: actionEdge,
+        edge: edgeEntity,
         deviceId,
         executionContext: {
           operatorId,
@@ -414,8 +418,9 @@ export class CaptureService {
 
       // Update the edge with destination node
       if (captureResult.success && captureResult.node) {
-        actionEdge.toNodeId = captureResult.node.id;
-        await graphStore.addEdge(actionEdge);
+        const updatedEdge = { ...actionEdge, toNodeId: captureResult.node.id };
+        const edgeEntity = ActionEdgeEntity.fromJSON(updatedEdge);
+        await graphStore.addEdge(edgeEntity);
       }
 
       return captureResult;
@@ -527,10 +532,11 @@ export class CaptureService {
       totalSize += size;
 
       if (bundle) {
+        const metadata = await bundle.getMetadata();
         recentCaptures.push({
           nodeId,
           name: `Node ${nodeId.substring(0, 8)}...`,
-          timestamp: bundle.metadata?.captureTimestamp || 'unknown',
+          timestamp: metadata.lastModified.toISOString(),
           size
         });
       }

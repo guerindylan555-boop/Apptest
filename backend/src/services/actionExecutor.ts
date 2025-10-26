@@ -10,6 +10,8 @@ import { ADBUtils } from '../utils/adb';
 import { signatureGenerator } from './signatureGenerator';
 import { selectorExtractor } from './selectorExtractor';
 import { graphStore } from './graphStore';
+import { ScreenNodeEntity } from '../models/ScreenNode';
+import { ActionEdgeEntity } from '../models/ActionEdge';
 import type { ActionEdge, ScreenNode, SelectorCandidate } from '../types/uiGraph';
 import type { ExtendedActionEdge } from '../types/graph';
 
@@ -26,6 +28,8 @@ export interface ActionExecutionRequest {
     stepId?: string;
     operatorId?: string;
     sessionId?: string;
+    attempt?: number;
+    maxRetries?: number;
   };
 }
 
@@ -235,15 +239,16 @@ export class ActionExecutor {
           );
 
           if (destinationNode) {
+            const destinationEntity = ScreenNodeEntity.fromJSON(destinationNode);
             result.destinationNode = destinationNode;
             result.destinationDetected = true;
 
             // Store the destination node in graph
-            await graphStore.addNode(destinationNode);
+            await graphStore.addNode(destinationEntity);
 
             // Update edge with destination
-            const updatedEdge = { ...request.edge, toNodeId: destinationNode.id };
-            await graphStore.addEdge(updatedEdge);
+            const edgeEntity = ActionEdgeEntity.fromJSON({ ...request.edge, toNodeId: destinationNode.id });
+            await graphStore.addEdge(edgeEntity);
           }
         } catch (detectError) {
           // Destination detection failure doesn't make the action fail

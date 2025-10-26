@@ -669,3 +669,6 @@ export class GraphStorageService {
     this.cache = {};
   }
 }
+
+// Export singleton instance
+export const graphStore = new GraphStorageService();
