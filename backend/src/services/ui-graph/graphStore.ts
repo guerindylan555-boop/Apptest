@@ -366,6 +366,9 @@ export class GraphStore {
   }
 
   private async createInitialIndex(): Promise<GraphIndex> {
+    // Ensure directory exists before writing index
+    await fs.mkdir(this.graphsDir, { recursive: true });
+
     const initialIndex: GraphIndex = {
       metadata: {
         version: '1.0.0',

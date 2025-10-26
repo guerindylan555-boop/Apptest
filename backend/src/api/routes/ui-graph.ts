@@ -220,9 +220,20 @@ router.get('/', async (req: Request, res: Response) => {
 
     const graph = await graphStore.getLatestGraph();
     if (!graph) {
-      return res.status(404).json({
-        success: false,
-        error: 'No graph available',
+      // Return empty graph for fresh installations
+      return res.json({
+        success: true,
+        data: {
+          metadata: {
+            version: '1.0.0',
+            lastUpdated: new Date().toISOString(),
+            checksum: '',
+            totalNodes: 0,
+            totalEdges: 0,
+          },
+          nodes: [],
+          edges: [],
+        },
       });
     }
 
