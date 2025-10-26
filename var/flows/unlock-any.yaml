@@ -1,0 +1,57 @@
+# Flow: Unlock Any Available Scooter
+# Description: Handles scooter selection and unlock when no existing rental is active
+# Version: 1.0.0
+
+name: unlock-any
+description: "Select any available scooter and initiate unlock sequence"
+version: "1.0.0"
+
+variables:
+  - name: scooter_id
+    description: "Target scooter ID if specific scooter preferred"
+    type: string
+    required: false
+    prompt: "Enter specific scooter ID (optional, will auto-select if empty)"
+
+precondition:
+  query:
+    activity: "com.mayndrive.MainActivity"
+    requiredTexts: ["Home", "Map", "Available", "Nearby"]
+
+steps:
+  - kind: edgeRef
+    edgeId: "select-scooter-action"
+    guard:
+      requiredTexts: ["Select", "Choose", "Unlock"]
+    retryPolicy:
+      maxAttempts: 2
+      delayMs: 1500
+
+  - kind: edgeRef
+    edgeId: "confirm-unlock-action"
+    guard:
+      mustMatchSignatureHash: "scooter-selected-state"
+    retryPolicy:
+      maxAttempts: 3
+      delayMs: 1000
+
+postcondition:
+  query:
+    activity: "com.mayndrive.RideActivity"
+    requiredTexts: ["Start Ride", "Begin", "Go", "Unlocked"]
+
+recovery:
+  - trigger: unexpected_node
+    allowedActions: ["back", "retry", "map_new"]
+
+  - trigger: system_dialog
+    allowedActions: ["dismiss", "retry"]
+
+  - trigger: timeout
+    allowedActions: ["retry", "wait", "map_new"]
+
+metadata:
+  owner: "system"
+  lastUpdatedAt: "2025-10-26T13:00:00Z"
+  validationStatus: "validated"
+  notes: "Handles scooter selection from map and unlock initiation for available scooters"

@@ -1,0 +1,63 @@
+# Flow: Unlock Existing Rental Scooter
+# Description: Continues or resumes ride with existing rental
+# Version: 1.0.0
+
+name: unlock-existing
+description: "Resume or continue ride with existing rental session"
+version: "1.0.0"
+
+variables:
+  - name: session_id
+    description: "Existing rental session ID"
+    type: string
+    required: true
+    prompt: "Enter existing rental session ID"
+
+  - name: confirmation_code
+    description: "Confirmation code from rental app/notification"
+    type: string
+    required: false
+    prompt: "Enter confirmation code (if provided)"
+
+precondition:
+  query:
+    activity: "com.mayndrive.MainActivity"
+    requiredTexts: ["Current Ride", "Resume", "Continue", "Existing Rental"]
+
+steps:
+  - kind: edgeRef
+    edgeId: "resume-ride-action"
+    guard:
+      requiredTexts: ["Resume", "Continue", "Start"]
+    retryPolicy:
+      maxAttempts: 3
+      delayMs: 2000
+
+  - kind: edgeRef
+    edgeId: "confirm-session-action"
+    guard:
+      mustMatchSignatureHash: "active-ride-state"
+    retryPolicy:
+      maxAttempts: 2
+      delayMs: 1500
+
+postcondition:
+  query:
+    activity: "com.mayndrive.RideActivity"
+    requiredTexts: ["Ride Active", "End Ride", "Lock", "Navigate"]
+
+recovery:
+  - trigger: unexpected_node
+    allowedActions: ["back", "retry", "support_chat"]
+
+  - trigger: system_dialog
+    allowedActions: ["dismiss", "retry"]
+
+  - trigger: timeout
+    allowedActions: ["retry", "wait", "support_chat"]
+
+metadata:
+  owner: "system"
+  lastUpdatedAt: "2025-10-26T13:00:00Z"
+  validationStatus: "validated"
+  notes: "Handles continuation of existing rental sessions with session verification"

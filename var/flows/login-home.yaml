@@ -1,0 +1,50 @@
+# Flow: Login to Home Screen
+# Description: Captures login flow and navigates to main MaynDrive home screen
+# Version: 1.0.0
+
+name: login-home
+description: "Handle login flow and reach home screen ready for scooter operations"
+version: "1.0.0"
+
+variables:
+  - name: username
+    description: "MaynDrive account username"
+    type: string
+    required: true
+    prompt: "Enter MaynDrive username"
+
+  - name: password
+    description: "MaynDrive account password"
+    type: string
+    required: true
+    prompt: "Enter MaynDrive password"
+
+precondition:
+  query:
+    activity: "com.mayndrive.LoginActivity"
+    requiredTexts: ["Login", "Sign In", "Get Started"]
+
+steps:
+  - kind: edgeRef
+    edgeId: "login-home-action"
+    retryPolicy:
+      maxAttempts: 3
+      delayMs: 2000
+
+postcondition:
+  query:
+    activity: "com.mayndrive.MainActivity"
+    requiredTexts: ["Home", "Map", "Unlock", "Rentals"]
+
+recovery:
+  - trigger: unexpected_node
+    allowedActions: ["back", "retry", "reopen"]
+
+  - trigger: timeout
+    allowedActions: ["retry", "wait", "reopen"]
+
+metadata:
+  owner: "system"
+  lastUpdatedAt: "2025-10-26T13:00:00Z"
+  validationStatus: "validated"
+  notes: "Core login flow that handles authentication and reaches main app interface"

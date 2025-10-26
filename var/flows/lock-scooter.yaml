@@ -1,0 +1,69 @@
+# Flow: Lock Current Scooter
+# Description: Ends current rental session and locks scooter
+# Version: 1.0.0
+
+name: lock-scooter
+description: "End current ride session and properly lock scooter"
+version: "1.0.0"
+
+variables:
+  - name: confirm_ending
+    description: "Confirmation to end ride session"
+    type: boolean
+    required: true
+    prompt: "Confirm ending current ride session?"
+
+  - name: damage_notes
+    description: "Optional damage or issue notes"
+    type: string
+    required: false
+    prompt: "Add damage or issue notes (optional)"
+
+precondition:
+  query:
+    activity: "com.mayndrive.RideActivity"
+    requiredTexts: ["End Ride", "Lock", "Stop", "Finish"]
+
+steps:
+  - kind: edgeRef
+    edgeId: "end-ride-action"
+    guard:
+      requiredTexts: ["End", "Lock", "Stop", "Finish"]
+    retryPolicy:
+      maxAttempts: 3
+      delayMs: 1500
+
+  - kind: edgeRef
+    edgeId: "confirm-lock-action"
+    guard:
+      mustMatchSignatureHash: "ride-ending-state"
+    retryPolicy:
+      maxAttempts: 2
+      delayMs: 2000
+
+  - kind: inline
+    inlineAction:
+      action: wait
+      waitMs: 5000
+    notes: "Wait for lock confirmation from scooter hardware"
+
+postcondition:
+  query:
+    activity: "com.mayndrive.MainActivity"
+    requiredTexts: ["Ride Ended", "Locked", "Home", "Available"]
+
+recovery:
+  - trigger: unexpected_node
+    allowedActions: ["back", "retry", "emergency_lock"]
+
+  - trigger: system_dialog
+    allowedActions: ["dismiss", "retry"]
+
+  - trigger: timeout
+    allowedActions: ["retry", "wait", "emergency_lock"]
+
+metadata:
+  owner: "system"
+  lastUpdatedAt: "2025-10-26T13:00:00Z"
+  validationStatus: "validated"
+  notes: "Handles clean ride ending with scooter locking and damage reporting"
