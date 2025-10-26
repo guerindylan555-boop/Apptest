@@ -27,10 +27,10 @@ Per plan.md, this project uses:
 
 **Purpose**: Project initialization and basic structure
 
-- [ ] T001 Create directory structure for UI graph artifacts in var/captures/, var/graphs/, and var/flows/
-- [ ] T002 [P] Create flow templates directory in var/flows/templates/ with example flow
-- [ ] T003 [P] Initialize TypeScript types for entities in backend/src/types/graph.ts
-- [ ] T004 [P] Add configuration schema for detector thresholds in backend/src/config/detector.ts
+- [x] T001 Create directory structure for UI graph artifacts in var/captures/, var/graphs/, and var/flows/
+- [x] T002 [P] Create flow templates directory in var/flows/templates/ with example flow
+- [x] T003 [P] Initialize TypeScript types for entities in backend/src/types/graph.ts
+- [x] T004 [P] Add configuration schema for detector thresholds in backend/src/config/detector.ts
 
 ---
 
@@ -40,22 +40,22 @@ Per plan.md, this project uses:
 
 **⚠️ CRITICAL**: No user story work can begin until this phase is complete
 
-- [ ] T005 Create ScreenSignature entity and hash generation utility in backend/src/models/ScreenSignature.ts
-- [ ] T006 [P] Create SelectorCandidate entity with ranking logic in backend/src/models/SelectorCandidate.ts
-- [ ] T007 [P] Create ArtifactBundle entity with checksum validation in backend/src/models/ArtifactBundle.ts
-- [ ] T008 Create ScreenNode entity with validation rules in backend/src/models/ScreenNode.ts (depends on T005, T006, T007)
-- [ ] T009 Create ActionEdge entity with guard logic in backend/src/models/ActionEdge.ts (depends on T008)
-- [ ] T010 [P] Create StartStateProfile entity in backend/src/models/StartStateProfile.ts (depends on T008)
-- [ ] T011 [P] Create FlowStep entity in backend/src/models/FlowStep.ts
-- [ ] T012 Create FlowDefinition entity with validation in backend/src/models/FlowDefinition.ts (depends on T009, T011)
-- [ ] T013 [P] Create StateDetectionResult entity for telemetry in backend/src/models/StateDetectionResult.ts
-- [ ] T014 Implement graph storage service with JSON persistence in backend/src/services/graphStore.ts
-- [ ] T015 [P] Implement artifact storage service with filesystem operations in backend/src/services/artifactStore.ts
-- [ ] T016 Setup ADB/UIAutomator integration utility in backend/src/utils/adb.ts
-- [ ] T017 [P] Setup Frida hook integration utility in backend/src/utils/frida.ts
-- [ ] T018 Create base REST API routes structure in backend/src/api/routes.ts
-- [ ] T019 [P] Setup Zustand store structure in frontend/src/stores/uiGraphStore.ts
-- [ ] T020 [P] Create API client service in frontend/src/services/apiClient.ts
+- [x] T005 Create ScreenSignature entity and hash generation utility in backend/src/models/ScreenSignature.ts
+- [x] T006 [P] Create SelectorCandidate entity with ranking logic in backend/src/models/SelectorCandidate.ts
+- [x] T007 [P] Create ArtifactBundle entity with checksum validation in backend/src/models/ArtifactBundle.ts
+- [x] T008 Create ScreenNode entity with validation rules in backend/src/models/ScreenNode.ts (depends on T005, T006, T007)
+- [x] T009 Create ActionEdge entity with guard logic in backend/src/models/ActionEdge.ts (depends on T008)
+- [x] T010 [P] Create StartStateProfile entity in backend/src/models/StartStateProfile.ts (depends on T008)
+- [x] T011 [P] Create FlowStep entity in backend/src/models/FlowStep.ts
+- [x] T012 Create FlowDefinition entity with validation in backend/src/models/FlowDefinition.ts (depends on T009, T011)
+- [x] T013 [P] Create StateDetectionResult entity for telemetry in backend/src/models/StateDetectionResult.ts
+- [x] T014 Implement graph storage service with JSON persistence in backend/src/services/graphStore.ts
+- [x] T015 [P] Implement artifact storage service with filesystem operations in backend/src/services/artifactStore.ts
+- [x] T016 Setup ADB/UIAutomator integration utility in backend/src/utils/adb.ts
+- [x] T017 [P] Setup Frida hook integration utility in backend/src/utils/frida.ts
+- [x] T018 Create base REST API routes structure in backend/src/api/routes.ts
+- [x] T019 [P] Setup Zustand store structure in frontend/src/stores/uiGraphStore.ts
+- [x] T020 [P] Create API client service in frontend/src/services/apiClient.ts
 
 **Checkpoint**: Foundation ready - user story implementation can now begin in parallel
 
@@ -72,8 +72,8 @@ Per plan.md, this project uses:
 - [ ] T021 [P] [US1] Implement XML dump normalization utility in backend/src/utils/xmlNormalizer.ts
 - [ ] T022 [P] [US1] Implement deterministic signature generation from XML dumps in backend/src/services/signatureGenerator.ts
 - [ ] T023 [P] [US1] Implement selector extraction and ranking logic in backend/src/services/selectorExtractor.ts
-- [ ] T024 [US1] Implement screen capture service orchestrating ADB/artifacts/signature in backend/src/services/captureService.ts (depends on T021, T022, T023)
-- [ ] T025 [US1] Create POST /api/captures/screen endpoint with validation in backend/src/api/captureController.ts
+- [x] T024 [US1] Implement screen capture service orchestrating ADB/artifacts/signature in backend/src/services/captureService.ts (depends on T021, T022, T023)
+- [x] T025 [US1] Create POST /api/ui-graph/nodes endpoint with validation in backend/src/api/routes/ui-graph.ts
 - [ ] T026 [P] [US1] Create capture UI component with name/hints input in frontend/src/components/CapturePanel.tsx
 - [ ] T027 [P] [US1] Create start-state tag selector component in frontend/src/components/StartStateSelector.tsx
 - [ ] T028 [US1] Integrate capture UI with backend endpoint and graph store in frontend/src/pages/OperatorConsole.tsx
@@ -103,9 +103,9 @@ Per plan.md, this project uses:
 - [ ] T039 [P] [US2] Implement signature matching scorer in backend/src/services/detector/signatureMatcher.ts
 - [ ] T040 [P] [US2] Implement selector-based scoring with weighted ranking in backend/src/services/detector/selectorScorer.ts
 - [ ] T041 [P] [US2] Implement structural similarity scorer using Jaccard in backend/src/services/detector/structuralScorer.ts
-- [ ] T042 [US2] Implement composite detector combining all scorers in backend/src/services/detector/stateDetector.ts (depends on T039, T040, T041)
-- [ ] T043 [US2] Implement top-K candidate ranking with threshold logic in backend/src/services/detector/stateDetector.ts
-- [ ] T044 [US2] Create POST /api/detect endpoint for state detection in backend/src/api/detectorController.ts
+- [x] T042 [US2] Implement composite detector combining all scorers in backend/src/services/detector/stateDetector.ts (depends on T039, T040, T041)
+- [x] T043 [US2] Implement top-K candidate ranking with threshold logic in backend/src/services/detector/stateDetector.ts
+- [x] T044 [US2] Create POST /api/state-detection endpoint for state detection in backend/src/api/state-detection.ts
 - [ ] T045 [P] [US2] Create detection result display component in frontend/src/components/DetectionResult.tsx
 - [ ] T046 [P] [US2] Create UNKNOWN state handler UI with map/merge options in frontend/src/components/UnknownStateHandler.tsx
 - [ ] T047 [US2] Integrate detector with operator console for manual detection runs in frontend/src/pages/OperatorConsole.tsx
@@ -128,15 +128,15 @@ Per plan.md, this project uses:
 
 ### Implementation for User Story 3
 
-- [ ] T054 [P] [US3] Implement YAML flow parser with schema validation in backend/src/services/flowParser.ts
-- [ ] T055 [P] [US3] Implement flow definition storage service in backend/src/services/flowStore.ts
-- [ ] T056 [P] [US3] Implement pathfinding algorithm for precondition routing in backend/src/services/pathfinder.ts
-- [ ] T057 [US3] Implement flow step executor with action dispatch in backend/src/services/flowRunner/stepExecutor.ts
-- [ ] T058 [US3] Implement post-step detection and validation in backend/src/services/flowRunner/stepValidator.ts (depends on T042)
-- [ ] T059 [US3] Implement recovery action handler (back/dismiss/reopen/relogin) in backend/src/services/flowRunner/recoveryHandler.ts
-- [ ] T060 [US3] Implement flow runner orchestrator with retry logic in backend/src/services/flowRunner/flowRunner.ts (depends on T056, T057, T058, T059)
-- [ ] T061 [US3] Create POST /api/flows/run endpoint for flow execution in backend/src/api/flowController.ts
-- [ ] T062 [US3] Create GET /api/flows endpoint for listing flows in backend/src/api/flowController.ts
+- [x] T054 [P] [US3] Implement YAML flow parser with schema validation in backend/src/services/flowParser.ts
+- [x] T055 [P] [US3] Implement flow definition storage service in backend/src/services/flowStore.ts
+- [x] T056 [P] [US3] Implement pathfinding algorithm for precondition routing in backend/src/services/pathfinder.ts
+- [x] T057 [US3] Implement flow step executor with action dispatch in backend/src/services/flowRunner/stepExecutor.ts
+- [x] T058 [US3] Implement post-step detection and validation in backend/src/services/flowRunner/stepValidator.ts (depends on T042)
+- [x] T059 [US3] Implement recovery action handler (back/dismiss/reopen/relogin) in backend/src/services/flowRunner/recoveryHandler.ts
+- [x] T060 [US3] Implement flow runner orchestrator with retry logic in backend/src/services/flowRunner/flowRunner.ts (depends on T056, T057, T058, T059)
+- [x] T061 [US3] Create POST /api/flows/run endpoint for flow execution in backend/src/api/flows.ts
+- [x] T062 [US3] Create GET /api/flows endpoint for listing flows in backend/src/api/flows.ts
 - [ ] T063 [P] [US3] Create flow editor UI component with YAML editing in frontend/src/components/FlowEditor.tsx
 - [ ] T064 [P] [US3] Create flow list component with run triggers in frontend/src/components/FlowList.tsx
 - [ ] T065 [US3] Create flow execution monitor with step-by-step progress in frontend/src/components/FlowExecutionMonitor.tsx
