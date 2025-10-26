@@ -8,7 +8,7 @@
 import { z } from 'zod';
 
 // Common utility schemas
-const hexHashSchema = z.string().regex(/^[a-f0-9]{16}$/, '16-character hex hash required');
+const hexHashSchema = z.string().regex(/^[a-f0-9]{32}$/, '32-character hex hash required (16 bytes)');
 const isoDateTimeSchema = z.string().datetime({ offset: true });
 const kebabCaseSchema = z.string().regex(/^[a-z0-9-]+$/, 'kebab-case required');
 const semverSchema = z.string().regex(/^\d+\.\d+\.\d+$/, 'semantic version required');
