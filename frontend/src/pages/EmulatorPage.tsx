@@ -159,16 +159,14 @@ const EmulatorPage = () => {
         flexDirection: 'column',
         padding: '1.5rem 2rem',
         gap: '1.5rem',
-        overflow: 'hidden',
-        height: 'calc(100vh - 80px)' // Account for header height
+        overflowY: 'auto',
+        minHeight: 0
       }}>
         {/* Top Section - Video Stream and Discovery Panel */}
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 480px',
-          gap: '1.5rem',
-          flex: '1', // Allow this section to grow
-          minHeight: '400px'
+          gap: '1.5rem'
         }}>
           {/* Video Stream Section */}
           <div style={{
@@ -222,24 +220,15 @@ const EmulatorPage = () => {
             </div>
             {/* Stream Viewer Direct */}
             <div style={{
-              flex: 1,
               display: 'flex',
               justifyContent: 'center',
-              alignItems: 'center',
-              borderRadius: '0.75rem',
-              overflow: 'hidden',
-              border: '1px solid #334155',
-              backgroundColor: '#000',
-              minHeight: '300px', // Minimum height but allow growth
-              maxHeight: 'calc(100vh - 320px)'
+              alignItems: 'flex-start',
+              width: '100%'
             }}>
               <div style={{
-                width: 'min(100%, 560px)',
-                maxHeight: '100%',
-                aspectRatio: '9 / 16',
-                display: 'flex',
-                flex: '0 0 auto',
-                justifyContent: 'center'
+                width: '100%',
+                maxWidth: '420px',
+                aspectRatio: '9 / 16'
               }}>
                 <StreamViewer state={emulatorState} streamTicket={streamTicket} />
               </div>
@@ -248,23 +237,22 @@ const EmulatorPage = () => {
 
           {/* Discovery Panel Section */}
           <div style={{
-            height: '600px', // Increased height for better usability
-            minHeight: '400px',
-            overflow: 'hidden'
+            height: 'auto',
+            minHeight: '600px'
           }}>
             {discoveryEnabled ? (
               <div style={{
-                height: '100%',
+                minHeight: '600px',
                 backgroundColor: '#1e293b',
                 borderRadius: '0.75rem',
                 border: '1px solid #334155',
-                overflow: 'hidden'
+                overflow: 'auto'
               }}>
                 <DiscoveryPanel className="h-full" />
               </div>
             ) : gpsEnabled ? (
               <div style={{
-                height: '100%',
+                minHeight: '600px',
                 backgroundColor: '#1e293b',
                 borderRadius: '0.75rem',
                 border: '1px solid #334155',
@@ -274,7 +262,7 @@ const EmulatorPage = () => {
               </div>
             ) : (
               <div style={{
-                height: '100%',
+                minHeight: '600px',
                 backgroundColor: '#1e293b',
                 borderRadius: '0.75rem',
                 border: '1px solid #334155',
@@ -313,7 +301,7 @@ const EmulatorPage = () => {
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
           gap: '1.5rem',
-          flex: '0 0 auto' // Don't grow
+          marginTop: '1.5rem'
         }}>
           {/* Controls Section */}
           <div style={{
