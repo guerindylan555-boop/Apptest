@@ -605,6 +605,234 @@ export class ADBUtils {
   }
 
   /**
+   * Check if device is connected and available
+   */
+  async isDeviceConnected(deviceId?: string): Promise<boolean> {
+    const targetDeviceId = deviceId || this.emulatorDeviceId;
+
+    try {
+      const devices = await this.listDevices();
+      const device = devices.find(d => d.id === targetDeviceId);
+      return device?.status === 'device';
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Tap by selector (resource-id, text, or content-desc)
+   */
+  async tapBySelector(deviceId: string, selector: string): Promise<void> {
+    const targetDeviceId = deviceId || this.emulatorDeviceId;
+
+    try {
+      // Try different selector approaches
+      const commands = [
+        `adb -s ${targetDeviceId} shell input tap $(adb -s ${targetDeviceId} shell dumpsys window windows | grep -E 'mCurrentFocus|mFocusedApp' | head -1)`, // Fallback
+        `adb -s ${targetDeviceId} shell uiautomator dump && adb -s ${targetDeviceId} shell "xmlstarlet sel -t -v '//node[@resource-id=\"${selector}\"]/@bounds' /sdcard/window_dump.xml | sed 's/\\[\\([0-9]*\\),\\([0-9]*\\)\\]\\[\\([0-9]*\\),\\([0-9]*\\)\\]/\\1 \\2/' | xargs -I {} adb -s ${targetDeviceId} shell input tap {}"`,
+        `adb -s ${targetDeviceId} shell input tap $(adb -s ${targetDeviceId} shell dumpsys window windows | grep -o -E '[0-9]{3,4}x[0-9]{3,4}' | head -1 | sed 's/x/ /')` // Center tap fallback
+      ];
+
+      // Try resource-id based tap
+      try {
+        await execAsync(`adb -s ${targetDeviceId} shell uiautomator dump`);
+        const { stdout } = await execAsync(`adb -s ${targetDeviceId} shell "xmlstarlet sel -t -v '//node[@resource-id=\"${selector}\"]/@bounds' /sdcard/window_dump.xml"`);
+        if (stdout && stdout.trim()) {
+          const bounds = stdout.trim().match(/\[(\d+),(\d+)\]\[(\d+),(\d+)\]/);
+          if (bounds) {
+            const x = Math.floor((parseInt(bounds[1]) + parseInt(bounds[3])) / 2);
+            const y = Math.floor((parseInt(bounds[2]) + parseInt(bounds[4])) / 2);
+            await execAsync(`adb -s ${targetDeviceId} shell input tap ${x} ${y}`);
+            return;
+          }
+        }
+      } catch {
+        // Continue to text-based approach
+      }
+
+      // Try text-based tap
+      try {
+        await execAsync(`adb -s ${targetDeviceId} shell uiautomator dump`);
+        const { stdout } = await execAsync(`adb -s ${targetDeviceId} shell "xmlstarlet sel -t -v '//node[@text=\"${selector}\"]/@bounds' /sdcard/window_dump.xml"`);
+        if (stdout && stdout.trim()) {
+          const bounds = stdout.trim().match(/\[(\d+),(\d+)\]\[(\d+),(\d+)\]/);
+          if (bounds) {
+            const x = Math.floor((parseInt(bounds[1]) + parseInt(bounds[3])) / 2);
+            const y = Math.floor((parseInt(bounds[2]) + parseInt(bounds[4])) / 2);
+            await execAsync(`adb -s ${targetDeviceId} shell input tap ${x} ${y}`);
+            return;
+          }
+        }
+      } catch {
+        // Continue to content-desc based approach
+      }
+
+      // Try content-desc based tap
+      try {
+        await execAsync(`adb -s ${targetDeviceId} shell uiautomator dump`);
+        const { stdout } = await execAsync(`adb -s ${targetDeviceId} shell "xmlstarlet sel -t -v '//node[@content-desc=\"${selector}\"]/@bounds' /sdcard/window_dump.xml"`);
+        if (stdout && stdout.trim()) {
+          const bounds = stdout.trim().match(/\[(\d+),(\d+)\]\[(\d+),(\d+)\]/);
+          if (bounds) {
+            const x = Math.floor((parseInt(bounds[1]) + parseInt(bounds[3])) / 2);
+            const y = Math.floor((parseInt(bounds[2]) + parseInt(bounds[4])) / 2);
+            await execAsync(`adb -s ${targetDeviceId} shell input tap ${x} ${y}`);
+            return;
+          }
+        }
+      } catch {
+        // All approaches failed
+      }
+
+      throw new Error(`Could not find element with selector: ${selector}`);
+    } catch (error) {
+      throw new Error(`Failed to tap by selector '${selector}': ${error}`);
+    }
+  }
+
+  /**
+   * Tap by text content
+   */
+  async tapByText(deviceId: string, text: string): Promise<void> {
+    const targetDeviceId = deviceId || this.emulatorDeviceId;
+
+    try {
+      await execAsync(`adb -s ${targetDeviceId} shell uiautomator dump`);
+      const { stdout } = await execAsync(`adb -s ${targetDeviceId} shell "xmlstarlet sel -t -v '//node[@text=\"${text}\"]/@bounds' /sdcard/window_dump.xml"`);
+
+      if (!stdout || !stdout.trim()) {
+        throw new Error(`Could not find element with text: ${text}`);
+      }
+
+      const bounds = stdout.trim().match(/\[(\d+),(\d+)\]\[(\d+),(\d+)\]/);
+      if (!bounds) {
+        throw new Error(`Invalid bounds format for text: ${text}`);
+      }
+
+      const x = Math.floor((parseInt(bounds[1]) + parseInt(bounds[3])) / 2);
+      const y = Math.floor((parseInt(bounds[2]) + parseInt(bounds[4])) / 2);
+
+      await execAsync(`adb -s ${targetDeviceId} shell input tap ${x} ${y}`);
+    } catch (error) {
+      throw new Error(`Failed to tap by text '${text}': ${error}`);
+    }
+  }
+
+  /**
+   * Type text into element by selector
+   */
+  async typeIntoSelector(deviceId: string, selector: string, text: string): Promise<void> {
+    const targetDeviceId = deviceId || this.emulatorDeviceId;
+
+    try {
+      // First tap on the element to focus it
+      await this.tapBySelector(targetDeviceId, selector);
+
+      // Wait a bit for focus
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Type the text
+      await this.typeText(text, targetDeviceId);
+    } catch (error) {
+      throw new Error(`Failed to type into selector '${selector}': ${error}`);
+    }
+  }
+
+  /**
+   * Get current activity
+   */
+  async getCurrentActivity(deviceId?: string): Promise<string> {
+    const targetDeviceId = deviceId || this.emulatorDeviceId;
+
+    try {
+      const { stdout } = await execAsync(`adb -s ${targetDeviceId} shell dumpsys window windows | grep -E 'mCurrentFocus'`);
+      const match = stdout.match(/mCurrentFocus=Window{[^ ]* ([^ ]*)[^}]*}/);
+      return match ? match[1] : 'unknown';
+    } catch (error) {
+      console.warn('Failed to get current activity:', error);
+      return 'unknown';
+    }
+  }
+
+  /**
+   * Start activity by intent
+   */
+  async startActivity(
+    deviceId: string,
+    action: string,
+    packageName?: string,
+    component?: string
+  ): Promise<void> {
+    const targetDeviceId = deviceId || this.emulatorDeviceId;
+
+    try {
+      let command = `adb -s ${targetDeviceId} shell am start -a ${action}`;
+
+      if (packageName) {
+        command += ` -n ${packageName}`;
+      }
+
+      if (component) {
+        command += `/${component}`;
+      }
+
+      await execAsync(command);
+    } catch (error) {
+      throw new Error(`Failed to start activity '${action}': ${error}`);
+    }
+  }
+
+  /**
+   * Take screenshot to file
+   */
+  async takeScreenshot(deviceId: string, outputPath: string): Promise<void> {
+    const targetDeviceId = deviceId || this.emulatorDeviceId;
+
+    try {
+      // Capture screenshot to device
+      await execAsync(`adb -s ${targetDeviceId} shell screencap -p /sdcard/screenshot.png`);
+
+      // Pull screenshot to local
+      await execAsync(`adb -s ${targetDeviceId} pull /sdcard/screenshot.png "${outputPath}"`);
+
+      // Clean up device screenshot
+      await execAsync(`adb -s ${targetDeviceId} shell rm /sdcard/screenshot.png`);
+    } catch (error) {
+      throw new Error(`Failed to take screenshot to '${outputPath}': ${error}`);
+    }
+  }
+
+  /**
+   * Dump UI hierarchy to file
+   */
+  async dumpUI(deviceId: string, outputPath: string): Promise<void> {
+    const targetDeviceId = deviceId || this.emulatorDeviceId;
+
+    try {
+      // Dump UI hierarchy to device
+      await execAsync(`adb -s ${targetDeviceId} shell uiautomator dump`);
+
+      // Pull UI dump to local
+      await execAsync(`adb -s ${targetDeviceId} pull /sdcard/window_dump.xml "${outputPath}"`);
+    } catch (error) {
+      throw new Error(`Failed to dump UI to '${outputPath}': ${error}`);
+    }
+  }
+
+  /**
+   * Press key by keycode name
+   */
+  async pressKeyByName(keyName: string, deviceId?: string): Promise<void> {
+    const targetDeviceId = deviceId || this.emulatorDeviceId;
+
+    try {
+      await execAsync(`adb -s ${targetDeviceId} shell input keyevent ${keyName}`);
+    } catch (error) {
+      throw new Error(`Failed to press key '${keyName}': ${error}`);
+    }
+  }
+
+  /**
    * Check connection health
    */
   async checkHealth(deviceId?: string): Promise<{

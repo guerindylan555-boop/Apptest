@@ -1,0 +1,85 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "3001:3001"  # Backend API
+    environment:
+      - NODE_ENV=development
+      - PORT=3001
+      - EMULATOR_ID=emulator-5556
+      - ZAI_BASE_URL=https://api.z.ai/api/coding/paas/v4
+    volumes:
+      - ./backend:/app
+      - /app/node_modules
+      - ./backend/var:/app/var
+    networks:
+      - app-network
+    depends_on:
+      - emulator
+    restart: unless-stopped
+    command: npm run dev
+
+  emulator:
+    image: us-docker.pkg.dev/android-emulator-unified/images/emulator:34.1.9
+    ports:
+      - "5555:5555"  # ADB connection to emulator
+      - "5554:5554"  # Emulator console (local only)
+    environment:
+      - ADBKEY=/root/.android/adbkey
+      - EMULATOR_ID=emulator-5556
+    volumes:
+      - android-avd:/root/.android/avd
+      - android-adb:/root/.android
+      - ./scripts:/scripts:ro
+    networks:
+      - app-network
+    privileged: true  # Required for emulator networking
+    devices:
+      - /dev/kvm:/dev/kvm  # Hardware acceleration if available
+    restart: unless-stopped
+    command: >
+      sh -c "
+        echo 'Starting Android emulator...' &&
+        emulator -avd autoapp-local -no-audio -no-boot-anim -no-window -gpu swiftshader_indirect &
+        EMU_PID=$$! &&
+        echo 'Waiting for emulator to boot...' &&
+        /scripts/wait-for-emulator.sh &&
+        echo 'Configuring network...' &&
+        /scripts/emulator-network-init.sh &&
+        echo 'Emulator ready!' &&
+        wait $$EMU_PID
+      "
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "5173:5173"  # Vite dev server
+    environment:
+      - VITE_API_URL=http://localhost:3001/api
+      - VITE_WS_URL=ws://localhost:3001
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - app-network
+    depends_on:
+      - backend
+    restart: unless-stopped
+    command: npm run dev
+
+networks:
+  app-network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  android-avd:
+  android-adb:

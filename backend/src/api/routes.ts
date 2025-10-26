@@ -18,6 +18,7 @@ import uiGraphRoutes from './routes/ui-graph';
 import stateDetectionRoutes from './state-detection';
 import flowsRoutes from './flows';
 import capturesRoutes from './routes/captures';
+import nodesRoutes from './routes/nodes';
 
 const router = Router();
 
@@ -212,6 +213,9 @@ router.get('/docs', (req: Request, res: Response) => {
 // Capture and graph management routes (User Story 1)
 router.use('/ui-graph', rateLimit(50), uiGraphRoutes);
 router.use('/captures', rateLimit(50), capturesRoutes);
+
+// Node management routes (User Story 1)
+router.use('/nodes', rateLimit(100), nodesRoutes);
 
 // State detection routes (User Story 2) - temporarily disabled
 // router.use('/', stateDetectionRoutes);
