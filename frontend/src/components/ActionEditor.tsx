@@ -266,7 +266,7 @@ export const ActionEditor: React.FC<ActionEditorProps> = ({
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             />
             <p className="text-xs text-gray-500 mt-1">
-              Use ${variableName} for placeholders that will be resolved during flow execution.
+              Use {'${variableName}'} for placeholders that will be resolved during flow execution.
             </p>
           </div>
         )}
@@ -332,7 +332,7 @@ export const ActionEditor: React.FC<ActionEditorProps> = ({
               <input
                 type="text"
                 value={action.intent?.package || ''}
-                onChange={(e) => handleIntentChange({ ...action.intent, package: e.target.value })}
+                onChange={(e) => handleIntentChange({ ...action.intent, action: action.intent?.action || '', package: e.target.value })}
                 disabled={disabled}
                 placeholder="e.g., com.mayndrive.app"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -345,7 +345,7 @@ export const ActionEditor: React.FC<ActionEditorProps> = ({
               <input
                 type="text"
                 value={action.intent?.component || ''}
-                onChange={(e) => handleIntentChange({ ...action.intent, component: e.target.value })}
+                onChange={(e) => handleIntentChange({ ...action.intent, action: action.intent?.action || '', component: e.target.value })}
                 disabled={disabled}
                 placeholder="e.g., com.mayndrive.app/.MainActivity"
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
