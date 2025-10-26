@@ -68,7 +68,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
     edges,
     loading,
     error,
-    fetchGraph,
+    loadGraph,
   } = useUIGraphStore();
 
   // Convert store data to graph format
@@ -440,7 +440,7 @@ export const GraphViewer: React.FC<GraphViewerProps> = ({
             </IconButton>
           </Tooltip>
           <Tooltip title="Refresh Graph" arrow>
-            <IconButton onClick={() => fetchGraph()} size="small">
+            <IconButton onClick={() => loadGraph()} size="small">
               <RefreshIcon />
             </IconButton>
           </Tooltip>

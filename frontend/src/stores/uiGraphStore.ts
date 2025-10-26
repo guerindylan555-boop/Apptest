@@ -156,6 +156,7 @@ export interface ScreenNode {
   };
   outgoingEdgeIds: string[];
   incomingEdgeIds: string[];
+  startStateTag?: 'clean' | 'logged_out_home' | 'logged_in_no_rental' | 'logged_in_with_rental' | 'other';
   status: 'active' | 'deprecated' | 'duplicate';
 }
 
