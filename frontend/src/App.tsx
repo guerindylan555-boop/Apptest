@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import NavSidebar from './components/NavSidebar';
 import EmulatorPage from './pages/EmulatorPage';
 import AutomationWorkbenchPage from './pages/AutomationWorkbenchPage';
+import DiscoveryPage from './pages/DiscoveryPage';
 
 /**
  * App Root Component
@@ -23,6 +24,7 @@ const App = () => {
         <main style={{ flex: 1, overflow: 'auto' }}>
           <Routes>
             <Route path="/" element={<EmulatorPage />} />
+            <Route path="/discovery" element={<DiscoveryPage />} />
             <Route path="/automation" element={<AutomationWorkbenchPage />} />
             <Route path="*" element={<EmulatorPage />} />
           </Routes>
