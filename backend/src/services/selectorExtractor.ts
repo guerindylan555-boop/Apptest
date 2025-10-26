@@ -8,7 +8,29 @@
 
 import { v4 as uuidv4 } from 'uuid';
 import { xmlNormalizer } from '../utils/xmlNormalizer';
-import type { SelectorCandidate, UIDumpElement } from '../types/uiGraph';
+import type { SelectorCandidate } from '../types/uiGraph';
+
+// Define local types to avoid import issues
+export interface UIDumpElement {
+  index: string;
+  text: string;
+  resource_id: string;
+  content_desc: string;
+  class: string;
+  package: string;
+  checkable: string;
+  checked: string;
+  clickable: string;
+  enabled: string;
+  focusable: string;
+  focused: string;
+  scrollable: string;
+  long_clickable: string;
+  password: string;
+  selected: string;
+  bounds: string;
+  accessibility: string;
+}
 
 export interface SelectorExtractionInput {
   /** Raw XML dump content */

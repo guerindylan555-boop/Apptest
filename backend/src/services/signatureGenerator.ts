@@ -86,7 +86,7 @@ export class SignatureGenerator {
         signature,
         metadata: {
           activity: signature.activity,
-          package: normalized.package || input.package,
+          package: normalized.packageName || input.package,
           extractedResourceIds: resourceIds,
           extractedTexts: requiredTexts,
           layoutFingerprint: signature.layoutFingerprint,

@@ -22,6 +22,7 @@ export interface ScreenNode {
   };
   outgoingEdgeIds: string[];
   incomingEdgeIds: string[];
+  startStateTag?: 'clean' | 'logged_out_home' | 'logged_in_no_rental' | 'logged_in_with_rental' | 'other';
   status: 'active' | 'deprecated' | 'duplicate';
 }
 
@@ -59,6 +60,11 @@ export interface ActionEdge {
     text?: string;
     keycode?: number;
     delayMs?: number;
+    intent?: {
+      action: string;
+      package?: string;
+      component?: string;
+    };
   };
   guard: {
     mustMatchSignatureHash?: string;
@@ -68,6 +74,7 @@ export interface ActionEdge {
   createdAt: string; // ISO datetime
   createdBy: string; // Operator id / automation agent
   confidence: number; // Historical success rate, <0.6 flagged
+  startStateConstraint?: string; // Optional StartStateProfile.id indicating this edge only applies in a given start-state family
 }
 
 export interface FlowDefinition {

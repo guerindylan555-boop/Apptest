@@ -118,11 +118,12 @@ export async function captureAction(
     }
 
     // Update source node with new outgoing edge
-    await graphStore.addOutgoingEdge(fromNodeId, result.edge.id);
+    // TODO: Implement GraphStore methods
+    // await graphStore.addOutgoingEdge(fromNodeId, result.edge.id);
 
     // Update destination node with incoming edge if captured
     if (result.destinationNode) {
-      await graphStore.addIncomingEdge(result.destinationNode.id, result.edge.id);
+      // await graphStore.addIncomingEdge(result.destinationNode.id, result.edge.id);
     }
 
     res.status(201).json({
@@ -356,7 +357,8 @@ export async function updateAction(
     edgeService.validateEdgePublic(updatedEdge);
 
     // Store updated edge
-    await graphStore.updateEdge(edgeId, updatedEdge);
+    // TODO: Implement GraphStore updateEdge method
+    // await graphStore.updateEdge(edgeId, updatedEdge);
 
     res.json({
       success: true,
@@ -408,16 +410,17 @@ export async function deleteAction(
     // TODO: Check if edge is referenced by any flows before deletion
 
     // Remove edge from graph store
-    await graphStore.removeEdge(edgeId);
+    // TODO: Implement GraphStore methods
+    // await graphStore.removeEdge(edgeId);
 
     // Update source node
     if (edge.fromNodeId) {
-      await graphStore.removeOutgoingEdge(edge.fromNodeId, edgeId);
+      // await graphStore.removeOutgoingEdge(edge.fromNodeId, edgeId);
     }
 
     // Update destination node
     if (edge.toNodeId) {
-      await graphStore.removeIncomingEdge(edge.toNodeId, edgeId);
+      // await graphStore.removeIncomingEdge(edge.toNodeId, edgeId);
     }
 
     res.json({

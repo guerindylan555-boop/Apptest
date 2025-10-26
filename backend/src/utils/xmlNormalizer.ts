@@ -6,7 +6,27 @@
  * needed for signature generation and selector extraction.
  */
 
-import type { UIDumpElement } from '../types/graph';
+// Define local types to avoid import issues
+export interface UIDumpElement {
+  index: string;
+  text: string;
+  resource_id: string;
+  content_desc: string;
+  class: string;
+  package: string;
+  checkable: string;
+  checked: string;
+  clickable: string;
+  enabled: string;
+  focusable: string;
+  focused: string;
+  scrollable: string;
+  long_clickable: string;
+  password: string;
+  selected: string;
+  bounds: string;
+  accessibility: string;
+}
 
 export interface NormalizationOptions {
   /** Remove text content (can be dynamic) */
@@ -29,7 +49,7 @@ export interface NormalizedUIDump {
   /** Activity name if detected */
   activity?: string;
   /** Package name if detected */
-  package?: string;
+  packageName?: string;
 }
 
 export class XMLNormalizer {
@@ -65,7 +85,7 @@ export class XMLNormalizer {
         xml: normalizedXML,
         elements,
         activity,
-        package,
+        packageName: package,
       };
     } catch (error) {
       console.error('Failed to normalize XML:', error);
